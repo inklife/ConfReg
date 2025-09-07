@@ -60,13 +60,12 @@ async function getRealCPUUsage() {
     const platform = os.platform();
     let command;
     
-    if (platform === 'darwin' || platform === 'linux') {
-      // macOS 和 Linux 使用 top 命令
+    if (platform === 'darwin') {
+      // macOS 使用 top 命令
       command = `top -l 1 -n 0 | grep "CPU usage" | awk '{print $3}' | sed 's/%//'`;
-      if (platform === 'linux') {
-        // Linux 使用不同的命令
-        command = `top -bn1 | grep "Cpu(s)" | awk '{print $2}' | awk -F'%' '{print $1}'`;
-      }
+    } else if (platform === 'linux') {
+      // Linux 使用 /proc/stat 方法，最准确
+      command = `grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$3+$4+$5)} END {print usage}'`;
     } else if (platform === 'win32') {
       // Windows 使用 wmic 命令
       command = `wmic cpu get loadpercentage /value | findstr "LoadPercentage"`;
@@ -87,8 +86,12 @@ async function getRealCPUUsage() {
       // macOS 输出可能是: "15.2% user"
       const match = stdout.match(/([\d.]+)/);
       return match ? Math.round(parseFloat(match[1])) : 0;
+    } else if (platform === 'linux') {
+      // Linux /proc/stat 输出格式: 1.44954
+      const match = stdout.trim().match(/([\d.]+)/);
+      return match ? Math.round(parseFloat(match[1])) : 0;
     } else {
-      // Linux
+      // 其他平台
       const match = stdout.match(/([\d.]+)/);
       return match ? Math.round(parseFloat(match[1])) : 0;
     }

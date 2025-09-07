@@ -9,7 +9,7 @@
   "scripts": {
     "start": "cross-env NODE_OPTIONS=--openssl-legacy-provider webpack-dev-server --open --hot",
     "dev": "cross-env NODE_OPTIONS=--openssl-legacy-provider webpack-dev-server --open --hot",
-    "build": "webpack --mode production"
+    "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider webpack --mode production"
   },
   "dependencies": {
     "@babel/runtime": "^7.12.0",

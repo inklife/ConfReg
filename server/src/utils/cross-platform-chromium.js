@@ -788,7 +788,58 @@ async function extractZip(zipPath, extractDir) {
  */
 async function downloadChromium(platformId, options = {}) {
     const { chromiumDir, downloadInfo } = getChromiumPaths(platformId);
-    
+
+    // Alpine Linux 检测与系统 chromium-browser 软链逻辑
+    const isLinux = process.platform === 'linux';
+    const fsSync = require('fs');
+    const { execSync } = require('child_process');
+    let isAlpine = false;
+    if (isLinux) {
+        try {
+            isAlpine = fsSync.existsSync('/etc/alpine-release');
+        } catch (e) {
+            isAlpine = false;
+        }
+    }
+
+    if (isLinux && isAlpine && platformId === 'linux-x64') {
+        // Alpine Linux，优先查找 /usr/bin/chromium-browser
+        const systemChromium = '/usr/bin/chromium-browser';
+        const symlinkTarget = path.join(chromiumDir, 'chrome-linux');
+        const symlinkPath = path.join(symlinkTarget, 'chrome');
+        await fs.mkdir(symlinkTarget, { recursive: true });
+        if (fsSync.existsSync(systemChromium)) {
+            // 存在则软链
+            if (fsSync.existsSync(symlinkPath)) {
+                await fs.unlink(symlinkPath);
+            }
+            await fs.symlink(systemChromium, symlinkPath);
+            console.log(`✅ 检测到 Alpine Linux，已软链系统 chromium-browser 到: ${symlinkPath}`);
+            return;
+        } else {
+            // 不存在则尝试自动安装
+            console.warn('⚠️ 检测到 Alpine Linux，未检测到 /usr/bin/chromium-browser，尝试自动安装...');
+            try {
+                execSync('apk add --no-cache chromium', { stdio: 'inherit' });
+            } catch (e) {
+                console.error('❌ 自动安装 chromium 失败，请手动运行: apk add --no-cache chromium');
+            }
+            // 再次检测
+            if (fsSync.existsSync(systemChromium)) {
+                if (fsSync.existsSync(symlinkPath)) {
+                    await fs.unlink(symlinkPath);
+                }
+                await fs.symlink(systemChromium, symlinkPath);
+                console.log(`✅ 已自动安装并软链系统 chromium-browser 到: ${symlinkPath}`);
+                return;
+            } else {
+                console.error('❌ 依然未检测到 /usr/bin/chromium-browser，请手动安装 chromium。');
+                throw new Error('Alpine Linux 环境下未检测到 chromium-browser，请手动安装。');
+            }
+        }
+    }
+
+    // 非 Alpine 或其他平台，继续原有下载逻辑
     // 下载配置
     const downloadOptions = {
         threads: options.threads || 8,        // 使用 8 线程
@@ -797,73 +848,73 @@ async function downloadChromium(platformId, options = {}) {
         resumeDownload: true,                 // 启用断点续传
         ...options
     };
-    
+
     try {
         // 检查是否支持自动下载
         if (!downloadInfo.url) {
             const manualInstructions = getManualDownloadInstructions(platformId);
             throw new Error(`当前平台 (${platformId}) 暂不支持自动下载。\n${manualInstructions}`);
         }
-        
+
         console.log(`📥 开始下载 Chromium (版本: ${downloadInfo.revision})...`);
         console.log(`🎯 目标平台: ${platformId}`);
-        
+
         // 确保目录存在
         await fs.mkdir(chromiumDir, { recursive: true });
-        
+
         // 下载文件
         const zipPath = path.join(chromiumDir, 'chromium.zip');
         console.log(`📂 下载路径: ${zipPath}`);
-        
+
         let downloadAttempt = 0;
         const maxDownloadAttempts = 3;
-        
+
         while (downloadAttempt < maxDownloadAttempts) {
             try {
                 downloadAttempt++;
                 console.log(`\n🚀 开始第 ${downloadAttempt} 次下载尝试...`);
-                
+
                 await downloadFile(downloadInfo.url, zipPath, downloadOptions);
                 break; // 下载成功，退出循环
-                
+
             } catch (downloadError) {
                 console.error(`❌ 第 ${downloadAttempt} 次下载失败:`, downloadError.message);
-                
+
                 if (downloadAttempt >= maxDownloadAttempts) {
                     throw downloadError;
                 }
-                
+
                 console.log(`⏳ 等待 ${downloadAttempt * 2} 秒后重试...`);
                 await new Promise(resolve => setTimeout(resolve, downloadAttempt * 2000));
             }
         }
-        
+
         // 验证下载的文件
         console.log('🔍 验证下载文件...');
         const zipStats = await fs.stat(zipPath);
         console.log(`📊 下载文件大小: ${(zipStats.size / 1024 / 1024).toFixed(2)} MB`);
-        
+
         if (zipStats.size < 1024 * 1024) { // 小于 1MB 可能是错误页面
             throw new Error('下载的文件过小，可能下载失败');
         }
-        
+
         // 解压文件
         console.log('📦 开始解压文件...');
         await extractZip(zipPath, chromiumDir);
-        
+
         // 验证解压结果
         const { executablePath } = getChromiumPaths(platformId);
         if (!existsSync(executablePath)) {
             throw new Error(`解压后未找到可执行文件: ${executablePath}`);
         }
-        
+
         // 删除 ZIP 文件
         console.log('🧹 清理下载文件...');
         await fs.unlink(zipPath);
-        
+
         console.log(`✅ Chromium 安装完成: ${chromiumDir}`);
         console.log(`🔧 可执行文件: ${executablePath}`);
-        
+
     } catch (error) {
         console.error(`❌ Chromium 下载失败:`, error.message);
         console.error('💡 建议操作:');
