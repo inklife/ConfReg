@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICPADS 2025 Confirmation Letter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Times New Roman', serif;
+            line-height: 1.4;
+            color: #333;
+            background: white;
+            padding: 0;
+            margin: 0;
+            font-size: 11px;
+            width: 210mm;
+            height: 297mm;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .letter-container {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            background: white;
+            border: none;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            padding: 5mm;
+        }
+        
+        /* 动态margin类 */
+        .margin-none .letter-container {
+            padding: 0mm;
+        }
+        
+        .margin-minimal .letter-container {
+            padding: 2mm;
+        }
+        
+        .margin-standard .letter-container {
+            padding: 5mm;
+        }
+        
+        .letterhead {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .letterhead::before {
+            display: none;
+        }
+        
+        .letterhead h1 {
+            font-size: 1.9rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        
+        .letterhead .conference-name {
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+        
+        .letterhead .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .letter-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+        }
+        
+        .main-content {
+            flex: 1;
+        }
+        
+        .bottom-content {
+            margin-top: auto;
+        }        .main-letter-content {
+            flex: 1;
+        }
+        
+        .bottom-section {
+            margin-top: auto;
+        }
+        
+        .date-section {
+            text-align: right;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .salutation {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .main-text {
+            font-size: 0.9rem;
+            line-height: 1.3;
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        
+        .participant-name {
+            font-weight: 700;
+            color: #2c3e50;
+            text-decoration: underline;
+        }
+        
+        .registration-details {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-left: 3px solid #2c3e50;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .registration-details h3 {
+            color: #2c3e50;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #2c3e50;
+            padding-bottom: 5px;
+        }
+        
+        .details-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .detail-item {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .detail-label {
+            font-weight: 700;
+            color: #555;
+            margin-bottom: 0;
+            margin-right: 12px;
+            font-size: 0.85rem;
+            min-width: 140px;
+        }
+        
+        .detail-value {
+            color: #333;
+            padding: 4px 8px;
+            background: white;
+            border: 1px solid #ddd;
+            font-size: 0.85rem;
+            flex: 1;
+        }
+        
+        .purpose-text {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            margin: 12px 0;
+            font-style: italic;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+        
+        .closing {
+            margin-top: 15px;
+        }
+        
+        .signature-section {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .signature-block {
+            text-align: center;
+        }
+        
+        .signature-line {
+            border-bottom: 1px solid #333;
+            height: 20px;
+            margin-bottom: 4px;
+            position: relative;
+        }
+        
+        .signature-line::after {
+            content: 'Digital Signature';
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-style: italic;
+            color: #666;
+            font-size: 0.7rem;
+        }
+        
+        .signature-title {
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 0.85rem;
+        }
+        
+        .signature-name {
+            color: #666;
+            margin-top: 2px;
+            font-size: 0.75rem;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+        }
+        
+        .footer p {
+            color: #666;
+            font-size: 0.85rem;
+        }
+        
+        .verification-code {
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            background: #2c3e50;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            display: inline-block;
+            font-weight: 600;
+            letter-spacing: 1px;
+            font-size: 0.7rem;
+        }
+        
+        @media print {
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .letter-container {
+                width: 100% !important;
+                max-width: none !important;
+                margin: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                page-break-inside: avoid;
+            }
+            
+            /* 动态margin的打印样式 */
+            .margin-none .letter-container {
+                padding: 0mm !important;
+            }
+            
+            .margin-minimal .letter-container {
+                padding: 3mm !important;
+            }
+            
+            .margin-standard .letter-container {
+                padding: 8mm !important;
+            }
+            
+            .letterhead {
+                background: #2c3e50 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .footer {
+                background: #f8f9fa !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        
+        /* A4纸张专用样式 */
+        @page {
+            size: A4;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="margin-{{marginMode}}">
+    <div class="letter-container">
+        <div class="letterhead">
+            <h1>CONFIRMATION LETTER</h1>
+            <p class="conference-name">ICPADS 2025</p>
+            <p class="subtitle">International Conference on Parallel and Distributed Systems</p>
+        </div>
+        
+        <div class="letter-content">
+            <div class="main-letter-content">
+                <div class="date-section">
+                    {{issueDate}}
+                </div>
+                
+                <div class="salutation">
+                    To Whom It May Concern:
+                </div>
+                
+                <div class="main-text">
+                    This is to confirm that <span class="participant-name">{{participantName}}</span> 
+                    has successfully registered for the International Conference on Parallel and 
+                    Distributed Systems (ICPADS 2025), which will be held from December 17-19, 2025.
+                </div>
+                
+                <div class="registration-details">
+                    <h3>REGISTRATION DETAILS</h3>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Participant Name:</span>
+                            <div class="detail-value">{{participantName}}</div>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Email Address:</span>
+                            <div class="detail-value">{{emailAddress}}</div>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Affiliation:</span>
+                            <div class="detail-value">{{affiliation}}</div>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Registration Type:</span>
+                            <div class="detail-value">{{registrationType}}</div>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Registration Date:</span>
+                            <div class="detail-value">{{registrationDate}}</div>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Conference Dates:</span>
+                            <div class="detail-value">December 17-19, 2025</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="purpose-text">
+                    This confirmation letter can be used for visa applications and other official purposes.
+                </div>
+                
+                <div class="main-text">
+                    We look forward to welcoming {{participantName}} to ICPADS 2025 and to their 
+                    contribution to the advancement of parallel and distributed systems research.
+                </div>
+            </div>
+            
+            <div class="bottom-section">
+                <div class="closing">
+                    <p>Best regards,</p>
+                    
+                    <div class="signature-section">
+                        <div class="signature-block">
+                            <div class="signature-line"></div>
+                            <div class="signature-title">Conference Chair</div>
+                            <div class="signature-name">ICPADS 2025 Organizing Committee</div>
+                        </div>
+                        <div class="signature-block">
+                            <div class="signature-line"></div>
+                            <div class="signature-title">Registration Committee</div>
+                            <div class="signature-name">ICPADS 2025</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer p">
+                International Conference on Parallel and Distributed Systems<br>
+                Email: info@icpads2025.org | Website: www.icpads2025.org
+            </div>
+            <div class="verification-code">
+                Verification Code: {{verificationCode}}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

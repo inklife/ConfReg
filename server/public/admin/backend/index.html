@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICPADS 2025 注册管理系统</title>
+    
+    <!-- 字体图标 -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://use.sevencdn.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- 主题样式 -->
+    <link href="./styles/admin-theme.css" rel="stylesheet">
+    
+    <!-- 全局样式 -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f9fafb;
+            color: #111827;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* 确保管理员应用填满整个视口 */
+        admin-app {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 加载动画 */
+        .app-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #ffffff;
+            color: #6b7280;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* 错误显示 */
+        .app-error {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #f8f9fa;
+            color: #dc3545;
+            flex-direction: column;
+            gap: 20px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .app-error i {
+            font-size: 64px;
+            opacity: 0.5;
+        }
+
+        .app-error h2 {
+            margin-bottom: 10px;
+        }
+
+        .app-error p {
+            color: #6c757d;
+            margin-bottom: 20px;
+        }
+
+        .retry-btn {
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        .retry-btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <!-- 应用容器 -->
+    <div id="app-container">
+        <!-- 初始加载状态 -->
+        <div class="app-loading" id="app-loading">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">正在加载管理系统...</div>
+        </div>
+    </div>
+
+    <!-- Web Components 模块 -->
+    <script type="module">
+        import { AdminApp, checkWebComponentsSupport, initializeComponents } from './components/index.js';
+
+        // 正式版本 - 使用完整认证流程
+
+        // 应用初始化
+        class AppBootstrap {
+            constructor() {
+                this.container = document.getElementById('app-container');
+                this.loadingElement = document.getElementById('app-loading');
+                this.init();
+            }
+
+            async init() {
+                try {
+                    // 检查浏览器兼容性
+                    if (!checkWebComponentsSupport()) {
+                        throw new Error('浏览器不支持 Web Components，请使用现代浏览器');
+                    }
+
+                    // 等待一小段时间确保所有模块加载完成
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    // 初始化组件
+                    const components = initializeComponents();
+                    console.log('Available components:', components);
+
+                    // 注册正式版本的AdminApp - 只有在未注册时才注册
+                    if (!customElements.get('admin-app')) {
+                        customElements.define('admin-app', AdminApp);
+                    }
+
+                    // 创建主应用实例
+                    const adminApp = document.createElement('admin-app');
+                    
+                    // 替换加载界面
+                    this.container.innerHTML = '';
+                    this.container.appendChild(adminApp);
+
+                    console.log('Admin application initialized successfully');
+
+                } catch (error) {
+                    console.error('Failed to initialize application:', error);
+                    this.showError(error.message);
+                }
+            }
+
+            showError(message) {
+                this.container.innerHTML = `
+                    <div class="app-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h2>应用加载失败</h2>
+                        <p>${message}</p>
+                        <button class="retry-btn" onclick="location.reload()">
+                            <i class="fas fa-redo"></i> 重试
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // 当 DOM 加载完成后启动应用
+        document.addEventListener('DOMContentLoaded', () => {
+            new AppBootstrap();
+        });
+
+        // 全局错误处理
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+        });
+    </script>
+
+    <!-- Chart.js（如果需要图表功能） -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" defer></script>
+    
+    <!-- JSZip 用于生成 ZIP 文件 -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
+    
+    <!-- PixelVoyager（如果需要） -->
+    <script src="https://cdn.jsdelivr.net/gh/inklife/pixelvoyager/pixelvoyager.js" defer></script>
+</body>
+</html>

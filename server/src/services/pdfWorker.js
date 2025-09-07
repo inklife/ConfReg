@@ -1,0 +1,466 @@
+const { parentPort } = require('worker_threads');
+const puppeteer = require('puppeteer-core');
+const path = require('path');
+const fs = require('fs').promises;
+const QRCode = require('qrcode');
+const crypto = require('crypto');
+
+// 导入现有的工具函数
+const { getChromiumExecutablePath } = require('../utils/cross-platform-chromium');
+
+// 复制pdfGenerator.js中的工具函数
+function containsChinese(text) {
+  if (!text) return false;
+  return /[\u4e00-\u9fff]/.test(text);
+}
+
+function convertChineseToReadable(text) {
+  if (!text || !containsChinese(text)) return text;
+  
+  const chineseMap = {
+    '中国科学技术大学': 'University of Science and Technology of China',
+    '北京大学': 'Peking University',
+    '清华大学': 'Tsinghua University',
+    '复旦大学': 'Fudan University',
+    '上海交通大学': 'Shanghai Jiao Tong University',
+    '浙江大学': 'Zhejiang University',
+    '南京大学': 'Nanjing University',
+    '西安交通大学': "Xi'an Jiaotong University",
+    '华中科技大学': 'Huazhong University of Science and Technology',
+    '哈尔滨工业大学': 'Harbin Institute of Technology',
+    '中山大学': 'Sun Yat-sen University',
+    '东南大学': 'Southeast University',
+    '大连理工大学': 'Dalian University of Technology',
+    '华南理工大学': 'South China University of Technology',
+    '电子科技大学': 'University of Electronic Science and Technology of China',
+    '西北工业大学': 'Northwestern Polytechnical University',
+    '北京理工大学': 'Beijing Institute of Technology',
+    '天津大学': 'Tianjin University',
+    '东北大学': 'Northeastern University',
+    '华东师范大学': 'East China Normal University'
+  };
+  
+  for (const [chinese, english] of Object.entries(chineseMap)) {
+    if (text.includes(chinese)) {
+      text = text.replace(chinese, english);
+    }
+  }
+  
+  if (containsChinese(text)) {
+    return `${text} (Chinese characters)`;
+  }
+  
+  return text;
+}
+
+function generateReceiptNumber(submissionId) {
+  const hash = crypto.createHash('md5').update(submissionId.toString()).digest('hex').toUpperCase().slice(0, 6);
+  return `ICPADS-${hash}`;
+}
+
+async function generateQRCode(data) {
+  try {
+    const qrCodeDataURL = await QRCode.toDataURL(data, {
+      width: 200,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+    return qrCodeDataURL;
+  } catch (error) {
+    console.error('QR code generation error:', error);
+    return null;
+  }
+}
+
+function getMarginMode(options) {
+  if (!options.margin) return 'standard';
+  
+  const topMargin = options.margin.top || '5mm';
+  if (topMargin === '0mm') return 'none';
+  if (topMargin === '2mm') return 'minimal';
+  return 'standard';
+}
+
+async function renderTemplate(templateName, data) {
+  try {
+    const templatePath = path.join(__dirname, '../templates', `${templateName}.html`);
+    let template = await fs.readFile(templatePath, 'utf8');
+    
+    if (templateName === 'registration-info' && data.reviewDate) {
+      const reviewTimelineItem = `
+                    <div class="timeline-item">
+                        <div class="timeline-date">${data.reviewDate}</div>
+                        <div class="timeline-event">Registration reviewed and ${data.registrationStatus}</div>
+                    </div>`;
+      template = template.replace('{{REVIEW_TIMELINE_ITEM}}', reviewTimelineItem);
+    } else {
+      template = template.replace('{{REVIEW_TIMELINE_ITEM}}', '');
+    }
+    
+    for (const [key, value] of Object.entries(data)) {
+      const regex = new RegExp(`{{${key}}}`, 'g');
+      template = template.replace(regex, value || '');
+    }
+    
+    return template;
+  } catch (error) {
+    console.error('Template rendering error:', error);
+    throw error;
+  }
+}
+
+// Worker中的PDF生成函数
+async function generatePDFFromHTML(html, options = {}) {
+  let browser;
+  try {
+    const executablePath = getChromiumExecutablePath();
+    
+    // 基于测试结果的最小可工作参数集合
+    const baseArgs = [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu'
+    ];
+
+    // macOS 特定参数 - 基于调试测试的成功配置
+    if (process.platform === 'darwin') {
+      baseArgs.push(
+        '--no-zygote',  // 这个组合在测试中成功了
+        '--disable-extensions',
+        '--no-first-run',
+        '--disable-background-networking',
+        '--disable-sync',
+        '--disable-default-apps',
+        '--disable-translate',
+        '--disable-logging'
+      );
+    }
+    
+    const launchOptions = {
+      headless: true,
+      executablePath: executablePath,
+      timeout: 60000, // 增加超时时间到60秒
+      args: baseArgs,
+      // macOS 特定的环境变量
+      env: process.platform === 'darwin' ? {
+        ...process.env,
+        'CHROME_NO_SANDBOX': '1'
+      } : process.env,
+      // 忽略默认参数，使用我们自定义的
+      ignoreDefaultArgs: process.platform === 'darwin' ? [
+        '--enable-automation',
+        '--enable-blink-features=IdleDetection'
+      ] : false
+    };
+
+    // 添加重试机制
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount <= maxRetries) {
+      try {
+        console.log(`🚀 尝试启动 Chromium (尝试 ${retryCount + 1}/${maxRetries + 1})`);
+        // 启动参数已优化，详细信息可在调试模式下查看
+        
+        browser = await puppeteer.launch(launchOptions);
+        console.log(`✅ Chromium 启动成功，Browser 实例已创建`);
+        
+        // 监听浏览器事件
+        browser.on('disconnected', () => {
+          console.log('🔄 浏览器连接已断开');
+        });
+        
+        browser.on('targetchanged', (target) => {
+          console.log(`🎯 Target 状态变化: ${target.type()} - ${target.url()}`);
+        });
+        
+        const page = await browser.newPage();
+        console.log(`📄 新页面创建成功`);
+        
+        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
+        await page.setViewport({ width: 1200, height: 800 });
+        console.log(`🔧 页面配置完成`);
+        
+        // 监听页面错误
+        page.on('error', err => {
+          console.error('❌ Page error:', err);
+        });
+        
+        page.on('pageerror', err => {
+          console.error('❌ Page script error:', err);
+        });
+        
+        page.on('response', response => {
+          // 只记录非成功状态的响应
+          if (response.status() >= 400) {
+            console.log(`📡 Response: ${response.status()} ${response.url()}`);
+          }
+        });
+        
+        page.on('requestfailed', request => {
+          console.error(`❌ Request failed: ${request.url()} - ${request.failure()?.errorText}`);
+        });
+        
+        console.log(`📝 设置页面内容，HTML长度: ${html.length} 字符`);
+        await page.setContent(html, { 
+          waitUntil: 'networkidle0',
+          timeout: 60000 // 增加页面加载超时
+        });
+        console.log(`✅ 页面内容设置完成，等待渲染...`);
+        
+        // 等待页面完全渲染
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log(`🎨 页面渲染等待完成`);
+        
+        const pdfOptions = {
+          format: 'A4',
+          printBackground: true,
+          preferCSSPageSize: true,
+          width: '210mm',
+          height: '297mm',
+          margin: {
+            top: '5mm',
+            bottom: '5mm', 
+            left: '5mm',
+            right: '5mm'
+          },
+          ...options
+        };
+        
+        console.log(`📄 开始生成 PDF，选项:`, JSON.stringify(pdfOptions, null, 2));
+        
+        // ⏰ 添加 10 秒延迟来测试队列功能
+        console.log(`⏰ 开始 10 秒延迟，用于测试队列功能...`);
+        await new Promise(resolve => setTimeout(resolve, 10000)); // 10 秒 = 10000 毫秒
+        console.log(`⏰ 10 秒延迟完成，继续生成 PDF...`);
+        
+        const pdfBuffer = await page.pdf(pdfOptions);
+        console.log(`✅ PDF 生成成功，大小: ${pdfBuffer.length} bytes`);
+        
+        // 成功生成，跳出重试循环
+        return pdfBuffer;
+        
+      } catch (error) {
+        retryCount++;
+        console.error(`❌ PDF生成失败 (尝试 ${retryCount}/${maxRetries + 1}):`, error.message);
+        
+        // 清理浏览器实例
+        if (browser) {
+          try {
+            await browser.close();
+          } catch (closeError) {
+            console.warn('浏览器关闭错误:', closeError.message);
+          }
+          browser = null;
+        }
+        
+        // 如果不是最后一次重试，等待后重试
+        if (retryCount <= maxRetries) {
+          console.log(`⏳ 等待 ${retryCount * 2} 秒后重试...`);
+          await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
+        } else {
+          // 最后一次重试也失败了，抛出错误
+          throw error;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Worker PDF generation error:', error);
+    throw error;
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
+
+// PDF生成处理函数
+async function generateReceiptPDF(submission, customOptions = {}) {
+  try {
+    const now = new Date();
+    const receiptNumber = generateReceiptNumber(submission.id);
+    const marginMode = getMarginMode(customOptions);
+    
+    const verificationData = JSON.stringify({
+      type: 'receipt',
+      receiptNumber,
+      submissionId: submission.id,
+      amount: submission.product_price,
+      date: now.toISOString().split('T')[0]
+    });
+    
+    const qrCodeDataURL = await generateQRCode(verificationData);
+    
+    const templateData = {
+      receiptNumber,
+      issueDate: now.toISOString().split('T')[0],
+      issueTime: now.toTimeString().split(' ')[0],
+      attendeeName: convertChineseToReadable(submission.name),
+      attendeeEmail: submission.email,
+      paperTitle: submission.paper_id || 'N/A',
+      productCode: convertChineseToReadable(submission.product_code),
+      amountPaid: submission.product_price,
+      transactionDate: submission.submission_time ? 
+        submission.submission_time.toISOString().replace('T', ' ').split('.')[0] : 'N/A',
+      generationDateTime: now.toISOString().replace('T', ' ').split('.')[0],
+      qrCodeDataURL: qrCodeDataURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      marginMode
+    };
+    
+    const html = await renderTemplate('receipt', templateData);
+    return await generatePDFFromHTML(html, customOptions);
+  } catch (error) {
+    console.error('Worker receipt PDF generation error:', error);
+    throw error;
+  }
+}
+
+async function generateConfirmationLetterPDF(submission, customOptions = {}) {
+  try {
+    const now = new Date();
+    const verificationCode = crypto.createHash('md5').update(`${submission.id}-${now.getTime()}`).digest('hex').toUpperCase().slice(0, 8);
+    const marginMode = getMarginMode(customOptions);
+    
+    const templateData = {
+      issueDate: now.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      participantName: convertChineseToReadable(submission.name),
+      emailAddress: submission.email,
+      affiliation: convertChineseToReadable(submission.affiliation || 'N/A'),
+      registrationType: convertChineseToReadable(submission.product_code),
+      registrationDate: submission.submission_time ? 
+        submission.submission_time.toISOString().split('T')[0] : 'N/A',
+      verificationCode,
+      marginMode
+    };
+    
+    const html = await renderTemplate('confirmation-letter', templateData);
+    return await generatePDFFromHTML(html, customOptions);
+  } catch (error) {
+    console.error('Worker confirmation letter PDF generation error:', error);
+    throw error;
+  }
+}
+
+async function generateRegistrationInfoPDF(submission, customOptions = {}) {
+  try {
+    const now = new Date();
+    
+    let statusClass = 'pending';
+    if (submission.status === 'approved') statusClass = 'approved';
+    else if (submission.status === 'rejected') statusClass = 'rejected';
+    
+    const marginMode = getMarginMode(customOptions);
+    
+    const verificationData = JSON.stringify({
+      type: 'registration',
+      submissionId: submission.id,
+      name: submission.name,
+      email: submission.email,
+      status: submission.status,
+      date: now.toISOString().split('T')[0]
+    });
+    
+    const qrCodeDataURL = await generateQRCode(verificationData);
+    
+    const templateData = {
+      fullName: convertChineseToReadable(submission.name),
+      emailAddress: submission.email,
+      phoneNumber: submission.phone || 'N/A',
+      affiliation: convertChineseToReadable(submission.affiliation || 'N/A'),
+      paperId: submission.paper_id || 'N/A',
+      registrationType: convertChineseToReadable(submission.product_code),
+      registrationFee: submission.product_price,
+      registrationStatus: submission.status?.toUpperCase() || 'PENDING',
+      statusClass,
+      submissionDate: submission.submission_time ? 
+        submission.submission_time.toISOString().split('T')[0] : 'N/A',
+      reviewDate: submission.review_time ? 
+        submission.review_time.toISOString().split('T')[0] : null,
+      generationDateTime: now.toISOString().replace('T', ' ').split('.')[0],
+      qrCodeDataURL: qrCodeDataURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      marginMode
+    };
+    
+    const html = await renderTemplate('registration-info', templateData);
+    return await generatePDFFromHTML(html, customOptions);
+  } catch (error) {
+    console.error('Worker registration info PDF generation error:', error);
+    throw error;
+  }
+}
+
+// 监听主线程消息
+parentPort.on('message', async (message) => {
+  const { taskId, type, data } = message;
+  
+  try {
+    console.log(`🔄 Worker 开始处理任务 ${taskId}, 类型: ${type}`);
+    
+    // 反序列化日期字段
+    if (data.submission) {
+      if (data.submission.submission_time && typeof data.submission.submission_time === 'string') {
+        data.submission.submission_time = new Date(data.submission.submission_time);
+      }
+      if (data.submission.review_time && typeof data.submission.review_time === 'string') {
+        data.submission.review_time = new Date(data.submission.review_time);
+      }
+    }
+    
+    let pdfBuffer;
+    
+    switch (type) {
+      case 'receipt':
+        pdfBuffer = await generateReceiptPDF(data.submission, data.options);
+        break;
+      case 'confirmation-letter':
+        pdfBuffer = await generateConfirmationLetterPDF(data.submission, data.options);
+        break;
+      case 'registration-info':
+        pdfBuffer = await generateRegistrationInfoPDF(data.submission, data.options);
+        break;
+      default:
+        throw new Error(`Unknown PDF type: ${type}`);
+    }
+    
+    // 将Buffer转换为Array以便传输
+    const pdfArray = Array.from(pdfBuffer);
+    
+    console.log(`✅ Worker 完成任务 ${taskId}, PDF大小: ${pdfBuffer.length} bytes`);
+    
+    parentPort.postMessage({
+      taskId,
+      success: true,
+      pdfBuffer: pdfArray
+    });
+    
+  } catch (error) {
+    console.error(`❌ Worker 任务 ${taskId} 失败:`, error);
+    
+    parentPort.postMessage({
+      taskId,
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// 处理未捕获的异常
+process.on('uncaughtException', (error) => {
+  console.error('Worker uncaught exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Worker unhandled rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+console.log('📄 PDF Worker 已启动并等待任务...');

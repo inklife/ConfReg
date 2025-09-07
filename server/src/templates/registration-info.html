@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICPADS 2025 Registration Information</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: white;
+            padding: 0;
+            margin: 0;
+            font-size: 11px;
+            line-height: 1.4;
+            width: 210mm;
+            min-height: 297mm;
+        }
+        
+        .document-container {
+            width: 100%;
+            max-width: none;
+            margin: 0;
+            background: white;
+            border: none;
+            min-height: 297mm;
+            box-sizing: border-box;
+            padding: 8mm;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 动态margin类 */
+        .margin-none .document-container {
+            padding: 0mm;
+        }
+        
+        .margin-minimal .document-container {
+            padding: 5mm;
+        }
+        
+        .margin-standard .document-container {
+            padding: 8mm;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 18px;
+            text-align: center;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.08"><rect x="0" y="0" width="25" height="25"/><rect x="25" y="25" width="25" height="25"/></g></g></svg>') repeat;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        
+        .header .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .main-content {
+            flex: 1;
+        }
+        
+        .main-content {
+            flex: 1;
+        }
+        
+        .bottom-section {
+            margin-top: auto;
+            text-align: center;
+            padding-top: 10px;
+        }
+        
+        .qr-section {
+            margin-bottom: 10px;
+        }
+        
+        .qr-placeholder {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 8px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .footer-text {
+            color: #666;
+            font-size: 0.8rem;
+            line-height: 1.3;
+        }
+        
+        .section {
+            margin-bottom: 12px;
+        }
+        
+        .section-title {
+            color: #2c3e50;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid #2c3e50;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .info-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 10px;
+        }
+        
+        .info-item {
+            margin-bottom: 6px;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #555;
+            font-size: 0.8rem;
+            margin-bottom: 2px;
+            display: block;
+        }
+        
+        .info-value {
+            color: #333;
+            font-size: 0.85rem;
+            padding: 3px 6px;
+            background: white;
+            border: 1px solid #ddd;
+            display: block;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+        
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status-rejected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .fee-display {
+            text-align: center;
+            background: #e9ecef;
+            color: #333;
+            padding: 8px;
+            border: 1px solid #ddd;
+            margin: 6px 0;
+        }
+        
+        .fee-amount {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        
+        .fee-label {
+            font-size: 0.8rem;
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: #ddd;
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 8px;
+            padding: 6px 10px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            margin-left: 12px;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -18px;
+            top: 12px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #2c3e50;
+            border: 2px solid white;
+        }
+        
+        .timeline-date {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 2px;
+            font-size: 0.85rem;
+        }
+        
+        .timeline-event {
+            color: #555;
+            font-size: 0.8rem;
+        }
+        
+        .qr-section {
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .qr-placeholder {
+            width: 85px;
+            height: 85px;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .qr-placeholder img {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+        }
+        
+        .footer-text {
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+        }
+        
+        .generation-info {
+            color: #888;
+            font-size: 0.75rem;
+            font-style: italic;
+        }
+        
+        @media print {
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .document-container {
+                width: 100% !important;
+                max-width: none !important;
+                margin: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                page-break-inside: avoid;
+            }
+            
+            /* 动态margin的打印样式 */
+            .margin-none .document-container {
+                padding: 0mm !important;
+            }
+            
+            .margin-minimal .document-container {
+                padding: 3mm !important;
+            }
+            
+            .margin-standard .document-container {
+                padding: 8mm !important;
+            }
+            
+            .header {
+                background: #2c3e50 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        
+        /* A4纸张专用样式 */
+        @page {
+            size: A4;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="margin-{{marginMode}}">
+    <div class="document-container">
+        <div class="header">
+            <h1>REGISTRATION INFORMATION</h1>
+            <p class="subtitle">ICPADS 2025 - International Conference on Parallel and Distributed Systems</p>
+        </div>
+        
+        <div class="content">
+            <div class="main-content">
+                <div class="section">
+                    <h2 class="section-title">Personal Information</h2>
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-item">
+                                <span class="info-label">Full Name</span>
+                                <span class="info-value">{{fullName}}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Email Address</span>
+                                <span class="info-value">{{emailAddress}}</span>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-item">
+                                <span class="info-label">Phone Number</span>
+                                <span class="info-value">{{phoneNumber}}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Paper ID</span>
+                                <span class="info-value">{{paperId}}</span>
+                            </div>
+                        </div>
+                        <div class="info-card full-width">
+                            <div class="info-item">
+                                <span class="info-label">Affiliation</span>
+                                <span class="info-value">{{affiliation}}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">Registration Information</h2>
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-item">
+                                <span class="info-label">Registration Type</span>
+                                <span class="info-value">{{registrationType}}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Registration Status</span>
+                                <span class="status-badge status-{{statusClass}}">{{registrationStatus}}</span>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <div class="fee-display">
+                                <div class="fee-amount">${{registrationFee}}</div>
+                                <div class="fee-label">Registration Fee</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">Registration Timeline</h2>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-date">{{submissionDate}}</div>
+                            <div class="timeline-event">Registration submitted</div>
+                        </div>
+                        {{REVIEW_TIMELINE_ITEM}}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bottom-section">
+                <div class="qr-section">
+                    <div class="qr-placeholder">
+                        <img src="{{qrCodeDataURL}}" alt="Verification QR Code" />
+                    </div>
+                    <p style="color: #666; font-size: 0.9rem; margin: 8px 0 0 0;">Scan for verification</p>
+                </div>
+                
+                <div class="footer-text">
+                    <p style="margin: 8px 0 0 0; font-size: 0.85rem;">This document contains your complete registration information for ICPADS 2025.</p>
+                    <p style="margin: 4px 0 0 0; font-size: 0.8rem;"><em>Generated on: {{generationDateTime}}</em></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

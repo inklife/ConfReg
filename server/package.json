@@ -1,0 +1,52 @@
+{
+  "name": "icpads2025-backend",
+  "version": "1.0.0",
+  "description": "ICPADS 2025 Registration Backend (Node.js)",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node mgt/pre-start-check.js && node src/app.js",
+    "dev": "node mgt/pre-start-check.js && node src/app.js",
+    "init-db": "node mgt/init-db.js",
+    "init-db-reset": "node mgt/init-db.js --reset",
+    "install-deps": "npm install",
+    "rebuild-sqlite": "npm rebuild sqlite3",
+    "chromium:download": "node src/utils/download-chromium.js",
+    "chromium:download-fast": "node src/utils/download-chromium.js --threads 16 --retries 10",
+    "chromium:force-download": "node src/utils/download-chromium.js --force"
+  },
+  "dependencies": {
+    "bcrypt": "6.0.0",
+    "better-sqlite3": "^9.6.0",
+    "connect-session-sequelize": "^7.1.7",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.10.0",
+    "express-session": "^1.17.3",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "node-cache": "^5.1.2",
+    "nodemailer": "^7.0.5",
+    "pdfkit": "^0.13.0",
+    "puppeteer-core": "^24.18.0",
+    "qrcode": "^1.5.4",
+    "sequelize": "^6.37.3",
+    "sqlite3": "^5.1.6",
+    "svg-captcha": "^1.4.0",
+    "uuid": "^9.0.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "axios": "^1.10.0",
+    "form-data": "^4.0.3",
+    "jest": "^29.6.2",
+    "nodemon": "^3.0.1"
+  },
+  "author": "ICPADS 2025 Team",
+  "license": "MIT"
+}
