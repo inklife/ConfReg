@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const { body, validationResult } = require('express-validator');
 const { RegistrationSubmission, User, RefundRequest } = require('../models');
 const { requireAuth } = require('../middleware/auth');
-const { generateReceiptPDF, generateConfirmationLetterPDF, generateRegistrationInfoPDF } = require('../services/pdfService');
+// 移除同步PDF生成，全部使用异步系统
 const { apiResponse } = require('../utils/response');
 const { pdfDownloadLimiter, memoryMonitor } = require('../middleware/pdfProtection');
 const asyncPDFManager = require('../services/asyncPdfManager');
@@ -451,7 +451,7 @@ router.get('/download_pdf/:taskId', requireAuth, async (req, res) => {
       case 'receipt':
         filename = `ICPADS2025_Receipt_${task.submissionId}.pdf`;
         break;
-      case 'confirmation':
+      case 'confirmation-letter':
         filename = `ICPADS2025_Confirmation_${task.submissionId}.pdf`;
         break;
       case 'registration-info':
@@ -557,7 +557,7 @@ router.post('/generate_confirmation', pdfDownloadLimiter, memoryMonitor, require
     }
 
     // 开始异步PDF生成
-    const result = await asyncPDFManager.startPDFGeneration('confirmation', submission, pdfOptions);
+    const result = await asyncPDFManager.startPDFGeneration('confirmation-letter', submission, pdfOptions);
 
     // 检查是否是重复任务
     if (result.error) {

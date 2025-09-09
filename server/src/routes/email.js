@@ -274,7 +274,7 @@ router.post('/send-password-reset',
       }
 
       // 构建重置链接
-      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+      const baseUrl = process.env.CONFREG_FE_URL || 'http://localhost:8080';
       const resetLink = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
       // 发送密码重置邮件

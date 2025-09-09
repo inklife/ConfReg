@@ -738,6 +738,7 @@ export default {
       const typeMapping = {
         'registration-info': 'registration',
         'confirmation': 'confirmation',
+        'confirmation-letter': 'confirmation', // 新增：将 confirmation-letter 映射到 confirmation
         'receipt': 'receipt'
       };
       return typeMapping[serverType] || serverType;
@@ -746,7 +747,8 @@ export default {
     // 清理重复的任务类型（确保 registration 和 registration-info 不会同时存在）
     cleanupDuplicateTaskTypes() {
       const duplicateTypePairs = [
-        ['registration', 'registration-info']
+        ['registration', 'registration-info'],
+        ['confirmation', 'confirmation-letter'] // 新增：防止 confirmation 和 confirmation-letter 重复
       ];
       
       duplicateTypePairs.forEach(([frontendType, serverType]) => {

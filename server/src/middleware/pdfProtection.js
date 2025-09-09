@@ -47,11 +47,23 @@ class PDFGenerationQueue {
       return;
     }
 
+    // 检查内存压力，如果内存使用过高，暂停处理队列
+    const memUsage = process.memoryUsage();
+    const memoryUsageMB = Math.round(memUsage.rss / 1024 / 1024);
+    const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+    
+    if (memoryUsageMB > 700 || heapUsedMB > 500) {
+      console.warn(`⏸️ 内存压力过高，暂停PDF队列处理 - RSS: ${memoryUsageMB}MB, Heap: ${heapUsedMB}MB`);
+      // 等待5秒后再次尝试
+      setTimeout(() => this.processQueue(), 5000);
+      return;
+    }
+
     const task = this.queue.shift();
     this.currentRunning++;
 
     try {
-      console.log(`📄 开始PDF生成，当前队列: ${this.currentRunning}/${this.maxConcurrent}`);
+      console.log(`📄 开始PDF生成，当前队列: ${this.currentRunning}/${this.maxConcurrent}, 内存: ${memoryUsageMB}MB`);
       const result = await task.execute();
       task.resolve(result);
     } catch (error) {
@@ -59,6 +71,16 @@ class PDFGenerationQueue {
       task.reject(error);
     } finally {
       this.currentRunning--;
+      
+      // 生成完成后检查内存，如果使用过高则触发垃圾回收
+      const finalMemUsage = process.memoryUsage();
+      const finalMemoryUsageMB = Math.round(finalMemUsage.rss / 1024 / 1024);
+      
+      if (finalMemoryUsageMB > 600 && global.gc) {
+        console.log('🗑️ PDF生成后触发垃圾回收...');
+        global.gc();
+      }
+      
       // 处理下一个任务
       setImmediate(() => this.processQueue());
     }
@@ -94,36 +116,78 @@ class PDFGenerationQueue {
 // 创建全局PDF生成队列
 const pdfQueue = new PDFGenerationQueue(3); // 最多3个并发PDF生成
 
-// 定期清理超时任务
+// 创建内存监控实例
+const MemoryMonitor = require('../services/memoryMonitor');
+const globalMemoryMonitor = new MemoryMonitor();
+
+// 启动内存基线记录
+globalMemoryMonitor.recordBaseline();
+
+// 定期清理超时任务和内存检查
 setInterval(() => {
   pdfQueue.cleanupExpiredTasks(30000); // 30秒超时
+  
+  // 检查内存健康状态
+  if (globalMemoryMonitor.shouldPerformCleanup()) {
+    console.log('🧹 自动触发内存清理...');
+    globalMemoryMonitor.performMemoryCleanup();
+  }
 }, 10000); // 每10秒检查一次
+
+// 每分钟记录内存使用情况
+setInterval(() => {
+  const report = globalMemoryMonitor.generateReport();
+  if (report.healthStatus.level >= 1) {
+    console.log('📊 内存监控报告:', {
+      timestamp: report.timestamp,
+      memory: report.current,
+      health: report.healthStatus,
+      pdfQueue: pdfQueue.getStats()
+    });
+  }
+}, 60000); // 每分钟检查一次
 
 // 内存监控中间件
 const memoryMonitor = (req, res, next) => {
   const memUsage = process.memoryUsage();
   const memoryUsageMB = Math.round(memUsage.rss / 1024 / 1024);
+  const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
   
-  // 如果内存使用超过500MB，拒绝新的PDF请求
-  const MEMORY_LIMIT_MB = 500;
+  // 分级内存限制策略（可通过环境变量调整）
+  const MEMORY_WARNING_MB = parseInt(process.env.MEMORY_WARNING_MB) || 600;   // 警告阈值
+  const MEMORY_LIMIT_MB = parseInt(process.env.MEMORY_LIMIT_MB) || 800;       // 严格限制阈值
+  const HEAP_LIMIT_MB = parseInt(process.env.HEAP_LIMIT_MB) || 600;          // 堆内存限制
   
-  if (memoryUsageMB > MEMORY_LIMIT_MB) {
-    console.warn(`⚠️ 内存使用过高: ${memoryUsageMB}MB > ${MEMORY_LIMIT_MB}MB`);
+  // 记录详细内存信息
+  if (memoryUsageMB > MEMORY_WARNING_MB || heapUsedMB > HEAP_LIMIT_MB) {
+    console.warn(`⚠️ 内存使用警告 - RSS: ${memoryUsageMB}MB, Heap: ${heapUsedMB}MB, External: ${Math.round(memUsage.external / 1024 / 1024)}MB`);
     
-    // 强制垃圾回收
+    // 尝试垃圾回收
     if (global.gc) {
+      console.log('🗑️ 执行垃圾回收...');
       global.gc();
+      
+      // 重新检查内存
+      const newMemUsage = process.memoryUsage();
+      const newMemoryUsageMB = Math.round(newMemUsage.rss / 1024 / 1024);
+      console.log(`🧹 垃圾回收后内存: ${newMemoryUsageMB}MB (减少 ${memoryUsageMB - newMemoryUsageMB}MB)`);
     }
+  }
+  
+  // 严格限制：超过800MB或堆内存超过600MB时拒绝请求
+  if (memoryUsageMB > MEMORY_LIMIT_MB || heapUsedMB > HEAP_LIMIT_MB) {
+    console.error(`❌ 内存使用过高，拒绝请求 - RSS: ${memoryUsageMB}MB > ${MEMORY_LIMIT_MB}MB 或 Heap: ${heapUsedMB}MB > ${HEAP_LIMIT_MB}MB`);
     
     return res.status(503).json({
       success: false,
-      message: 'Server is under high memory pressure. Please try again later.',
-      memoryUsage: `${memoryUsageMB}MB`
+      message: 'Server is under high memory pressure. Please try again in a few minutes.',
+      memoryUsage: `RSS: ${memoryUsageMB}MB, Heap: ${heapUsedMB}MB`,
+      retryAfter: '5 minutes'
     });
   }
   
   // 将内存信息添加到响应头（调试用）
-  res.setHeader('X-Memory-Usage', `${memoryUsageMB}MB`);
+  res.setHeader('X-Memory-Usage', `RSS:${memoryUsageMB}MB,Heap:${heapUsedMB}MB`);
   res.setHeader('X-PDF-Queue', JSON.stringify(pdfQueue.getStats()));
   
   next();
@@ -139,5 +203,6 @@ module.exports = {
   pdfDownloadLimiter,
   pdfQueue,
   memoryMonitor,
-  generatePDFWithQueue
+  generatePDFWithQueue,
+  globalMemoryMonitor
 };

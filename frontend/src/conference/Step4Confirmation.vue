@@ -149,6 +149,31 @@
         Submit Registration
       </el-button>
     </div>
+
+    <!-- 自定义确认对话框 -->
+    <div v-if="showConfirmDialog" class="custom-dialog-overlay" @click="handleOverlayClick">
+      <div class="custom-dialog" @click.stop>
+        <div class="dialog-header">
+          <h3>Re-submission Confirmation</h3>
+        </div>
+        <div class="dialog-content">
+          <div class="dialog-icon">
+            <i class="el-icon-warning"></i>
+          </div>
+          <div class="dialog-message">
+            You already have an approved registration. Re-submitting will cause your registration to return to pending review status. Are you sure you want to continue?
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button class="dialog-btn cancel-btn" @click="cancelSubmission">
+            Cancel Submission
+          </button>
+          <button class="dialog-btn confirm-btn" @click="confirmSubmission">
+            Confirm Continue
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -160,7 +185,8 @@ export default {
       uploadedProof: null,
       paymentFile: null, // 存储实际文件对象
       isSubmitting: false,
-      currentUserId: null
+      currentUserId: null,
+      showConfirmDialog: false // 自定义确认对话框显示状态
     }
   },
   computed: {
@@ -511,30 +537,12 @@ export default {
       // Check if there's an approved submission
       const hasApprovedSubmission = await this.checkApprovedSubmission();
       if (hasApprovedSubmission) {
-        // Show confirmation dialog
-        this.$confirm(
-          'You already have an approved registration. Re-submitting will cause your registration to return to pending review status. Are you sure you want to continue?',
-          'Re-submission Confirmation',
-          {
-            confirmButtonText: 'Confirm Continue',
-            cancelButtonText: 'Cancel Submission',
-            type: 'warning',
-            closeOnClickModal: false,
-            closeOnPressEscape: false
-          }
-        ).then(() => {
-          // User clicked confirm, perform submission
-          this.performSubmission();
-        }).catch(() => {
-          // User clicked cancel, return to dashboard
-          this.$message.info('Submission cancelled');
-          this.$router.push('/dashboard');
-        });
-        return;
+        // 显示自定义确认对话框
+        this.showConfirmDialog = true;
+      } else {
+        // No approved submission, submit directly
+        this.performSubmission();
       }
-
-      // No approved submission, submit directly
-      this.performSubmission();
     },
 
     async checkApprovedSubmission() {
@@ -678,6 +686,26 @@ export default {
       } finally {
         this.isSubmitting = false;
       }
+    },
+
+    // 自定义对话框方法
+    handleOverlayClick() {
+      // 点击遮罩层关闭对话框
+      this.cancelSubmission();
+    },
+
+    cancelSubmission() {
+      // 用户点击取消或点击遮罩层
+      this.showConfirmDialog = false;
+      this.$message.info('Submission cancelled');
+      this.$router.push('/dashboard');
+    },
+
+    confirmSubmission() {
+      // 用户确认继续提交
+      this.showConfirmDialog = false;
+      // 执行提交
+      this.performSubmission();
     },
 
     goBack() {
@@ -975,6 +1003,125 @@ export default {
   font-weight: bold;
 }
 
+/* 自定义确认对话框样式 */
+.custom-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.custom-dialog {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: dialogShow 0.3s ease-out;
+}
+
+@keyframes dialogShow {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.dialog-header {
+  padding: 20px 20px 0;
+  text-align: center;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.dialog-content {
+  padding: 20px;
+  text-align: center;
+}
+
+.dialog-icon {
+  margin-bottom: 16px;
+}
+
+.dialog-icon i {
+  font-size: 48px;
+  color: #ff9800;
+}
+
+.dialog-message {
+  color: #666;
+  font-size: 15px;
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+
+.dialog-actions {
+  padding: 0 20px 20px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.dialog-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 44px;
+}
+
+.cancel-btn {
+  background-color: #4caf50;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #45a049;
+  transform: translateY(-1px);
+}
+
+.cancel-btn:active {
+  background-color: #3d8b40;
+  transform: translateY(0);
+}
+
+.confirm-btn {
+  background-color: #ff9800;
+  color: white;
+}
+
+.confirm-btn:hover {
+  background-color: #ffb74d;
+  transform: translateY(-1px);
+}
+
+.confirm-btn:active {
+  background-color: #f57c00;
+  transform: translateY(0);
+}
+
 .el-button {
   padding: 10px 24px;
   border-radius: 6px;
@@ -994,5 +1141,99 @@ export default {
 .remove-btn:hover {
   background-color: #f78989;
   border-color: #f78989;
+}
+
+/* 自定义对话框移动端优化 */
+@media (max-width: 576px) {
+  .custom-dialog-overlay {
+    padding: 10px;
+  }
+
+  .custom-dialog {
+    border-radius: 8px;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+  }
+
+  .dialog-header {
+    padding: 16px 16px 0;
+  }
+
+  .dialog-header h3 {
+    font-size: 16px;
+    line-height: 1.3;
+  }
+
+  .dialog-content {
+    padding: 16px;
+  }
+
+  .dialog-icon i {
+    font-size: 40px;
+  }
+
+  .dialog-message {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .dialog-actions {
+    padding: 0 16px 16px;
+    gap: 8px;
+  }
+
+  .dialog-btn {
+    padding: 12px 16px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 400px) {
+  .custom-dialog-overlay {
+    padding: 8px;
+  }
+
+  .custom-dialog {
+    border-radius: 6px;
+  }
+
+  .dialog-header {
+    padding: 12px 12px 0;
+  }
+
+  .dialog-header h3 {
+    font-size: 15px;
+  }
+
+  .dialog-content {
+    padding: 12px;
+  }
+
+  .dialog-icon {
+    margin-bottom: 12px;
+  }
+
+  .dialog-icon i {
+    font-size: 36px;
+  }
+
+  .dialog-message {
+    font-size: 13px;
+  }
+
+  .dialog-actions {
+    padding: 0 12px 12px;
+    gap: 6px;
+    flex-direction: column;
+  }
+
+  .dialog-btn {
+    padding: 14px 20px;
+    font-size: 14px;
+    min-height: 48px;
+    width: 100%;
+  }
 }
 </style>

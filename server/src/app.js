@@ -24,7 +24,6 @@ const adminRoutes = require('./routes/admin');
 const invoiceRoutes = require('./routes/invoices');
 const emailRoutes = require('./routes/email');
 const backupEmailRoutes = require('./routes/backup-email');
-const pdfServiceRoutes = require('./routes/admin/pdfService');
 
 const app = express();
 const PORT = process.env.CONFREG_BE_PORT || 3000;
@@ -172,7 +171,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/backup-email', backupEmailRoutes);
-app.use('/api/admin/pdf-service', pdfServiceRoutes);
 
 // 统一的管理员路由 - 包含发票、转账等所有管理员功能
 app.use('/admin', adminRoutes);
@@ -218,10 +216,22 @@ app.use((req, res) => {
   });
 });
 
+// Initialize memory monitoring
+const { globalMemoryMonitor } = require('./middleware/pdfProtection');
+console.log('🧠 内存监控系统已启动');
+
+// 启动定期内存监控（每5分钟报告一次）
+globalMemoryMonitor.startPeriodicMonitoring(5 * 60 * 1000);
+
 // Start server
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`Server running on http://127.0.0.1:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // 记录服务器启动时的内存基线
+  console.log('📊 服务器启动完成，记录内存基线');
+  const startupMemory = process.memoryUsage();
+  console.log(`启动内存使用: RSS ${Math.round(startupMemory.rss / 1024 / 1024)}MB, Heap ${Math.round(startupMemory.heapUsed / 1024 / 1024)}MB`);
 });
 
 

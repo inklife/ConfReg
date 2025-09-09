@@ -301,6 +301,12 @@ export default {
     padding: 0.5rem 1rem;
   }
   
+  /* 移动端导航栏去除边距 */
+  .navbar .container-fluid {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
   /* 在小屏幕上简化用户名显示 */
   .user-profile-link {
     font-size: 0.95rem;
@@ -321,24 +327,44 @@ export default {
 }
 
 @media (max-width: 576px) {
+  /* 第一行：标题 */
+  .navbar .container-fluid {
+    flex-wrap: wrap;
+  }
+  
+  .navbar-brand {
+    width: 100%;
+    margin-bottom: 0.25rem;
+    font-size: 1.1rem !important;
+  }
+  
+  /* 第二行：用户信息和登出按钮 */
   .navbar .d-flex {
-    flex-direction: column;
-    align-items: flex-end;
+    flex-direction: row;
+    align-items: center;
     gap: 0.5rem;
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  /* 移动端底部栏去除边距 */
+  .footer .container-fluid {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
   }
   
   .user-profile-link {
-    font-size: 0.9rem;
-    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.4rem;
   }
   
   .username-text {
-    max-width: 70px;
+    max-width: 60px;
   }
   
   .btn-lg {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
   }
 }
 </style>

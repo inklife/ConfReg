@@ -89,3 +89,40 @@
   outline: none;
   box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.5);
 }
+
+/* 移动端通用样式 - 去除边距，内容贴边显示 */
+@media (max-width: 768px) {
+  /* 为主要内容区域在移动端去除边距 */
+  main .container-fluid.px-4 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  
+  /* 移动端列容器去除边距 */
+  main .row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  
+  /* 确保所有Bootstrap列类在移动端占满宽度 */
+  main [class*="col-"] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+  
+  /* 确保卡片在移动端占满宽度 */
+  main .card {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+  }
+  
+  /* 确保表单容器也遵循无边距规则 */
+  .auth-form {
+    padding: 0;
+  }
+}

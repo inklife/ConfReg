@@ -93,6 +93,11 @@
         Next Step
       </el-button>
     </div>
+
+    <!-- 移动端下滑提示 -->
+    <div class="scroll-hint" v-if="showScrollHint">
+      <i class="el-icon-arrow-down"></i> Scroll down
+    </div>
   </div>
 </template>
 
@@ -103,6 +108,9 @@ export default {
     return {
       selectedMethod: null,
       currentUserId: null,
+      showScrollHint: false,
+      initialScrollTop: 0,
+      hasScrolled: false,
       paymentMethods: [
         {
           id: 'domestic',
@@ -136,8 +144,45 @@ export default {
   },
   mounted() {
     this.initializeUserData();
+    this.checkScrollHint();
+    window.addEventListener('scroll', this.handleScroll);
+    window.addEventListener('resize', this.checkScrollHint);
   },
   methods: {
+    checkScrollHint() {
+      if (window.innerWidth <= 768 && !this.hasScrolled) {
+        // 检查是否需要显示下滑提示
+        this.$nextTick(() => {
+          const windowHeight = window.innerHeight;
+          const documentHeight = document.documentElement.scrollHeight;
+          const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          
+          // 记录初始滚动位置
+          this.initialScrollTop = currentScrollTop;
+          
+          // 如果页面内容超出视窗高度，显示提示
+          if (documentHeight > windowHeight + 100) { // 增加100px缓冲
+            this.showScrollHint = true;
+          }
+        });
+      } else {
+        this.showScrollHint = false;
+      }
+    },
+
+    handleScroll() {
+      if (this.showScrollHint && window.innerWidth <= 768) {
+        const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollDistance = Math.abs(currentScrollTop - this.initialScrollTop);
+        
+        // 用户滚动超过80px就隐藏提示
+        if (scrollDistance > 80) {
+          this.showScrollHint = false;
+          this.hasScrolled = true;
+        }
+      }
+    },
+
     initializeUserData() {
       // 获取当前登录用户信息
       const currentUser = this.$store.state.account.user;
@@ -169,6 +214,12 @@ export default {
       if (this.currentUserId) {
         localStorage.setItem(this.getStorageKey('conferencePaymentMethod'), methodId);
       }
+      // 重新检查滚动提示，因为支付详情可能会改变页面高度
+      this.$nextTick(() => {
+        // 重置滚动状态，因为页面内容发生了变化
+        this.hasScrolled = false;
+        this.checkScrollHint();
+      });
     },
 
     nextStep() {
@@ -186,6 +237,11 @@ export default {
     goBack() {
       this.$router.push('/conference/step2');
     }
+  },
+
+  beforeDestroy() {
+    window.removeEventListener('scroll', this.handleScroll);
+    window.removeEventListener('resize', this.checkScrollHint);
   }
 }
 </script>
@@ -424,5 +480,212 @@ export default {
 .el-button {
   padding: 12px 28px;
   border-radius: 8px;
+}
+
+/* 下滑提示 */
+.scroll-hint {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(64, 158, 255, 0.9);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 25px;
+  font-size: 13px;
+  white-space: nowrap;
+  animation: bounce 2s infinite;
+  z-index: 1000;
+  display: none;
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.3);
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  40% {
+    transform: translateX(-50%) translateY(-10px);
+  }
+  60% {
+    transform: translateX(-50%) translateY(-5px);
+  }
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .step-container {
+    padding: 12px;
+  }
+
+  .header {
+    margin-bottom: 20px;
+  }
+
+  .header h1 {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .progress-container {
+    gap: 10px;
+  }
+
+  .progress-nav-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .progress-bar {
+    max-width: none;
+    height: 6px;
+  }
+
+  .content {
+    margin-bottom: 20px;
+  }
+
+  .order-summary,
+  .payment-methods,
+  .payment-details {
+    padding: 16px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+  }
+
+  .order-summary h3,
+  .payment-methods h3,
+  .bank-payment h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .summary-row {
+    padding: 6px 0;
+    font-size: 14px;
+  }
+
+  .summary-row .price {
+    font-size: 17px;
+  }
+
+  .method-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .method-card {
+    padding: 16px;
+  }
+
+  .method-icon {
+    font-size: 28px;
+  }
+
+  .method-name {
+    font-size: 15px;
+  }
+
+  .method-desc {
+    font-size: 12px;
+  }
+
+  .payment-details {
+    min-height: 240px;
+  }
+
+  .qr-code {
+    width: 140px;
+    height: 140px;
+  }
+
+  .qr-instruction {
+    font-size: 13px;
+  }
+
+  .bank-info {
+    padding: 12px;
+  }
+
+  .bank-info p {
+    font-size: 13px;
+    margin: 4px 0;
+  }
+
+  .note {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .actions {
+    padding: 16px 0;
+    margin-top: 16px;
+    gap: 12px;
+  }
+
+  .actions .el-button {
+    flex: 1;
+    margin: 0;
+    padding: 12px 20px;
+  }
+
+  /* 移动端显示下滑提示 */
+  .scroll-hint {
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .step-container {
+    padding: 8px;
+  }
+
+  .header h1 {
+    font-size: 18px;
+  }
+
+  .order-summary,
+  .payment-methods,
+  .payment-details {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .order-summary h3,
+  .payment-methods h3,
+  .bank-payment h3 {
+    font-size: 15px;
+  }
+
+  .method-card {
+    padding: 12px;
+  }
+
+  .method-icon {
+    font-size: 24px;
+  }
+
+  .method-name {
+    font-size: 14px;
+  }
+
+  .qr-code {
+    width: 120px;
+    height: 120px;
+  }
+
+  .payment-details {
+    min-height: 200px;
+  }
+
+  .actions {
+    padding: 12px 0;
+  }
+
+  .actions .el-button {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
 }
 </style>

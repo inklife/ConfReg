@@ -713,7 +713,7 @@ router.post('/forgot-password', forgotPasswordLimiter, [
     }
 
     // Create reset link with code as token and email parameter for auto-fill
-    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/reset-password?token=${resetCode}&email=${encodeURIComponent(email)}`;
+    const resetLink = `${process.env.CONFREG_FE_URL || 'http://localhost:8080'}/reset-password?token=${resetCode}&email=${encodeURIComponent(email)}`;
 
     // Send unified reset email with both code and link
     try {

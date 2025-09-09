@@ -872,8 +872,31 @@ export default {
     height: 50px;
   }
   
+  /* 移动端去除边距，内容贴边显示 */
+  .container-fluid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  
+  /* 移动端列容器去除边距 */
+  .row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  
+  .col-11, .col-sm-10, .col-md-9, .col-lg-8, .col-xl-7, .col-xxl-4 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+  
   .card {
     min-width: auto;
+    margin: 0; /* 移除左右边距 */
+    border-radius: 0 !important; /* 移除圆角 */
+    border-left: none !important;
+    border-right: none !important;
   }
   
   /* 移动端按钮样式优化 */

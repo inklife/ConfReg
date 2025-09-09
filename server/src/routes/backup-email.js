@@ -116,7 +116,7 @@ router.post('/add-backup-email', requireAuth, [
 
     // 发送验证邮件（英文）
     try {
-      const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/verify-backup-email?token=${verificationToken}&email=${encodeURIComponent(backupEmail)}`;
+      const verificationLink = `${process.env.CONFREG_FE_URL || 'http://localhost:8080'}/verify-backup-email?token=${verificationToken}&email=${encodeURIComponent(backupEmail)}`;
       
       // 验证码就是token（6位数字）
       const verificationCode = verificationToken;
@@ -532,7 +532,7 @@ router.post('/resend-backup-verification', requireAuth, async (req, res) => {
 
     // 重新发送验证邮件（英文）
     try {
-      const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/verify-backup-email?token=${verificationToken}&email=${encodeURIComponent(user.backup_email)}`;
+      const verificationLink = `${process.env.CONFREG_FE_URL || 'http://localhost:8080'}/verify-backup-email?token=${verificationToken}&email=${encodeURIComponent(user.backup_email)}`;
       
       // 验证码就是token（6位数字）
       const verificationCode = verificationToken;

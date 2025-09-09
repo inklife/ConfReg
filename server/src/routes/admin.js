@@ -11,7 +11,7 @@ const RegistrationSubmission = require('../models/RegistrationSubmission');
 const User = require('../models/User');
 const { RefundRequest } = require('../models');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
-const { getPDFWorkerPoolStats, getHealthStatus } = require('../services/pdfService');
+// 移除pdfService引用，使用简化的状态检查
 const asyncPDFManager = require('../services/asyncPdfManager');
 const { sequelize } = require('../config/database');
 
@@ -236,29 +236,29 @@ router.get('/system-status', requireAdmin, async (req, res) => {
     let asyncPdfStats = {};
     
     try {
-      const pdfHealth = getHealthStatus();
-      const pdfStats = getPDFWorkerPoolStats();
+      const pdfHealth = asyncPDFManager.getHealthStatus();
+      const pdfStats = asyncPDFManager.getPDFWorkerStats();
       
-      // 根据实际worker状态设置状态文本
-      const totalWorkers = pdfStats.workers.total || 0;
-      const busyWorkers = pdfStats.workers.busy || 0;
-      const availableWorkers = pdfStats.workers.available || 0;
+      // 根据Worker池状态设置状态文本
+      const totalCreated = pdfStats.workers.totalCreated || 0; // 当前创建的Worker数量
+      const busyWorkers = pdfStats.workers.busy || 0; // 工作中的Worker数量
+      const idleWorkers = pdfStats.workers.idle || 0; // 空闲的Worker数量
       
       if (pdfHealth.status !== 'healthy') {
         pdfWorkerStatus = 'error';
       } else if (busyWorkers > 0) {
-        // 有worker在工作，显示正在工作的worker数量
+        // 有worker在工作，显示工作中的数量
         pdfWorkerStatus = `${busyWorkers}working`;
-      } else if (totalWorkers > 0) {
-        // 有worker但都空闲，显示空闲的worker数量
-        pdfWorkerStatus = `${totalWorkers}idle`;
+      } else if (idleWorkers > 0) {
+        // 只有空闲worker，显示空闲数量
+        pdfWorkerStatus = `${idleWorkers}idle`;
       } else {
-        // 没有worker（按需创建模式下的初始状态），显示"空闲"
-        pdfWorkerStatus = 'idle';
+        // 没有worker运行
+        pdfWorkerStatus = 'ready';
       }
       
-      pdfQueueCount = pdfStats.queue.pending || 0;
-      pdfProcessingCount = pdfStats.workers.busy || 0;
+      pdfQueueCount = (pdfStats.queue.pending || 0) + (pdfStats.queue.waiting || 0);
+      pdfProcessingCount = busyWorkers;
       
       // 获取异步PDF任务统计
       asyncPdfStats = asyncPDFManager.getStats();
@@ -312,14 +312,26 @@ router.get('/system-status', requireAdmin, async (req, res) => {
 // 获取PDF Worker详细状态（管理员）
 router.get('/pdf-worker-status', requireAdmin, async (req, res) => {
   try {
-    const pdfHealth = getHealthStatus();
-    const pdfStats = getPDFWorkerPoolStats();
+    const pdfHealth = asyncPDFManager.getHealthStatus();
+    const pdfStats = asyncPDFManager.getPDFWorkerStats();
+    
+    // 添加Worker机制说明
+    const workerMechanism = {
+      type: 'on-demand', // 按需创建
+      description: 'Worker processes are created on-demand when PDF tasks arrive, not pre-created',
+      poolCapacity: pdfStats.workers.total,
+      currentActive: pdfStats.workers.busy,
+      availableSlots: pdfStats.workers.available,
+      nextWorkerId: pdfStats.workers.nextWorkerId,
+      activeWorkerDetails: pdfStats.workers.activeWorkers || []
+    };
     
     res.json({
       success: true,
       data: {
         health: pdfHealth,
         stats: pdfStats,
+        mechanism: workerMechanism,
         timestamp: new Date().toISOString()
       }
     });
@@ -1435,6 +1447,55 @@ router.get('/refund-stats', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Get refund stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// 内存健康状态检查和管理（管理员）
+router.get('/memory-health', requireAdmin, async (req, res) => {
+  try {
+    const { globalMemoryMonitor } = require('../middleware/pdfProtection');
+    
+    const memoryReport = globalMemoryMonitor.generateReport();
+    const healthStatus = globalMemoryMonitor.getHealthStatus();
+    
+    res.json({
+      success: true,
+      data: {
+        memory: memoryReport.current,
+        health: healthStatus,
+        comparison: memoryReport.comparison,
+        recommendations: healthStatus.recommendations,
+        timestamp: memoryReport.timestamp
+      }
+    });
+  } catch (error) {
+    console.error('Get memory health error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// 手动触发内存清理（管理员）
+router.post('/memory-cleanup', requireAdmin, async (req, res) => {
+  try {
+    const { globalMemoryMonitor } = require('../middleware/pdfProtection');
+    
+    console.log('🧹 管理员手动触发内存清理...');
+    const cleanupResult = await globalMemoryMonitor.performMemoryCleanup();
+    
+    res.json({
+      success: true,
+      message: 'Memory cleanup completed successfully',
+      data: cleanupResult
+    });
+  } catch (error) {
+    console.error('Manual memory cleanup error:', error);
     res.status(500).json({
       success: false,
       message: error.message

@@ -30,7 +30,7 @@
           :model="userInfo" 
           :rules="rules"
           ref="userForm"
-          label-width="120px"
+          :label-width="labelWidth"
           class="user-form"
         >
           <el-form-item label="Full Name" prop="name" required>
@@ -117,6 +117,7 @@ export default {
         paperTitle: ''
       },
       currentUserId: null,
+      labelWidth: '120px',
       rules: {
         name: [
           { required: true, message: 'Please enter your full name', trigger: 'blur' }
@@ -137,8 +138,20 @@ export default {
   },
   mounted() {
     this.initializeUserData();
+    this.updateLabelWidth();
+    window.addEventListener('resize', this.updateLabelWidth);
   },
   methods: {
+    updateLabelWidth() {
+      if (window.innerWidth <= 480) {
+        this.labelWidth = '80px';
+      } else if (window.innerWidth <= 768) {
+        this.labelWidth = '90px';
+      } else {
+        this.labelWidth = '120px';
+      }
+    },
+
     initializeUserData() {
       // 获取当前登录用户信息
       const currentUser = this.$store.state.account.user;
@@ -320,6 +333,7 @@ export default {
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
     }
+    window.removeEventListener('resize', this.updateLabelWidth);
   }
 }
 </script>
@@ -447,5 +461,141 @@ export default {
 .modify-link:hover {
   color: #66b3ff;
   text-decoration: underline;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .step-container {
+    padding: 12px;
+  }
+
+  .header {
+    margin-bottom: 24px;
+  }
+
+  .header h1 {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .progress-container {
+    gap: 10px;
+  }
+
+  .progress-nav-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .progress-bar {
+    max-width: none;
+    height: 6px;
+  }
+
+  .content {
+    margin-bottom: 24px;
+  }
+
+  .form-container {
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .user-form >>> .el-form-item {
+    margin-bottom: 18px;
+  }
+
+  .user-form >>> .el-form-item__label {
+    margin-bottom: 4px;
+    font-size: 13px;
+    line-height: 1.3;
+    width: 90px !important;
+  }
+
+  .user-form >>> .el-input--large .el-input__inner {
+    height: 42px;
+    line-height: 42px;
+    padding: 0 12px;
+    font-size: 15px;
+  }
+
+  .user-form >>> .el-textarea__inner {
+    padding: 8px 12px;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+
+  .actions {
+    padding: 16px 0 0 0;
+    gap: 12px;
+  }
+
+  .actions .el-button {
+    flex: 1;
+    padding: 12px 20px;
+    margin: 0;
+  }
+
+  .field-hint {
+    font-size: 11px;
+    line-height: 1.3;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .modify-link {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .step-container {
+    padding: 8px;
+  }
+
+  .header h1 {
+    font-size: 18px;
+  }
+
+  .form-container {
+    padding: 16px;
+  }
+
+  .user-form >>> .el-form-item {
+    margin-bottom: 16px;
+  }
+
+  .user-form >>> .el-form-item__label {
+    font-size: 12px;
+    margin-bottom: 3px;
+    width: 80px !important;
+  }
+
+  .user-form >>> .el-input--large .el-input__inner {
+    height: 40px;
+    line-height: 40px;
+    font-size: 14px;
+  }
+
+  .user-form >>> .el-textarea__inner {
+    font-size: 15px;
+  }
+
+  /* 移动端隐藏邮箱输入框的锁定图标 */
+  .user-form >>> .el-input__prefix {
+    display: none;
+  }
+
+  .actions {
+    padding: 12px 0 0 0;
+  }
+
+  .actions .el-button {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
 }
 </style>

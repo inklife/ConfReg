@@ -399,10 +399,10 @@ async function generateRegistrationInfoPDF(submission, customOptions = {}) {
 
 // 监听主线程消息
 parentPort.on('message', async (message) => {
-  const { taskId, type, data } = message;
+  const { taskId, type, workerId, data } = message;
   
   try {
-    console.log(`🔄 Worker 开始处理任务 ${taskId}, 类型: ${type}`);
+    console.log(`🔄 PDF Worker #${workerId || 'Unknown'} 开始处理任务 ${taskId}, 类型: ${type}`);
     
     // 反序列化日期字段
     if (data.submission) {
@@ -433,19 +433,21 @@ parentPort.on('message', async (message) => {
     // 将Buffer转换为Array以便传输
     const pdfArray = Array.from(pdfBuffer);
     
-    console.log(`✅ Worker 完成任务 ${taskId}, PDF大小: ${pdfBuffer.length} bytes`);
+    console.log(`✅ PDF Worker #${workerId || 'Unknown'} 完成任务 ${taskId}, PDF大小: ${pdfBuffer.length} bytes`);
     
     parentPort.postMessage({
       taskId,
+      workerId,
       success: true,
       pdfBuffer: pdfArray
     });
     
   } catch (error) {
-    console.error(`❌ Worker 任务 ${taskId} 失败:`, error);
+    console.error(`❌ PDF Worker #${workerId || 'Unknown'} 任务 ${taskId} 失败:`, error);
     
     parentPort.postMessage({
       taskId,
+      workerId,
       success: false,
       error: error.message
     });
@@ -463,4 +465,4 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-console.log('📄 PDF Worker 已启动并等待任务...');
+console.log('📄 PDF Worker 已启动并等待任务分配...');

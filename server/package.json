@@ -5,7 +5,9 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node mgt/pre-start-check.js && node src/app.js",
+    "start:optimized": "node mgt/pre-start-check.js && node --expose-gc --max-old-space-size=1024 --optimize-for-size src/app.js",
     "dev": "node mgt/pre-start-check.js && node src/app.js",
+    "dev:optimized": "node mgt/pre-start-check.js && node --expose-gc --max-old-space-size=1024 --optimize-for-size src/app.js",
     "init-db": "node mgt/init-db.js",
     "init-db-reset": "node mgt/init-db.js --reset",
     "install-deps": "npm install",
