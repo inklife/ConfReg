@@ -121,17 +121,26 @@
           <div class="step-indicator">
             <div class="step-item" :class="{ active: step === 1 }">
               <div class="step-number">1</div>
-              <span class="step-label">Select Registration</span>
+              <span class="step-label">
+                <span class="step-label-full">Select Registration</span>
+                <span class="step-label-short">Select</span>
+              </span>
             </div>
             <div class="step-divider"></div>
             <div class="step-item" :class="{ active: step === 2 }">
               <div class="step-number">2</div>
-              <span class="step-label">Invoice Information</span>
+              <span class="step-label">
+                <span class="step-label-full">Invoice Information</span>
+                <span class="step-label-short">Invoice</span>
+              </span>
             </div>
             <div class="step-divider"></div>
             <div class="step-item" :class="{ active: step === 3 }">
               <div class="step-number">3</div>
-              <span class="step-label">Submit Request</span>
+              <span class="step-label">
+                <span class="step-label-full">Submit Request</span>
+                <span class="step-label-short">Submit</span>
+              </span>
             </div>
           </div>
 
@@ -864,6 +873,14 @@ export default {
   font-weight: 500;
 }
 
+.step-label-short {
+  display: none; /* 默认隐藏短标签 */
+}
+
+.step-label-full {
+  display: inline; /* 默认显示完整标签 */
+}
+
 .step-divider {
   width: 60px;
   height: 1px;
@@ -1204,32 +1221,209 @@ export default {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .invoice-management {
-    padding: 20px;
+    padding: 12px;
+  }
+  
+  .management-header {
+    padding: 16px 0;
+    text-align: center;
+  }
+  
+  .section-title {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  
+  .section-description {
+    font-size: 14px;
   }
   
   .step-indicator {
-    flex-direction: column;
-    gap: 16px;
+    padding: 12px 8px; /* 减小内边距 */
+    margin-bottom: 24px; /* 减小底部间距 */
+    overflow-x: auto; /* 允许水平滚动以防万一 */
+    flex-wrap: nowrap; /* 确保不换行 */
+  }
+  
+  .step-item {
+    flex-shrink: 0; /* 防止项目收缩 */
+    white-space: nowrap; /* 防止文本换行 */
+  }
+  
+  .step-number {
+    width: 24px; /* 减小圆圈大小 */
+    height: 24px;
+    margin-right: 6px; /* 减小右边距 */
+    font-size: 12px; /* 减小字体 */
+  }
+  
+  .step-label {
+    font-size: 12px; /* 减小标签字体 */
+    font-weight: 500;
+  }
+  
+  .step-label-full {
+    display: none; /* 移动端隐藏完整标签 */
+  }
+  
+  .step-label-short {
+    display: inline; /* 移动端显示短标签 */
   }
   
   .step-divider {
-    width: 1px;
-    height: 20px;
-    margin: 0;
+    width: 30px; /* 减小分隔线宽度 */
+    height: 1px;
+    margin: 0 12px; /* 减小左右边距 */
   }
   
   .request-header {
     flex-direction: column;
     gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .request-info h4 {
+    font-size: 16px;
+    line-height: 1.3;
+  }
+  
+  .request-id {
+    font-size: 12px;
+  }
+  
+  .request-details .el-row {
+    flex-direction: column;
+  }
+  
+  .request-details .el-col {
+    margin-bottom: 12px;
+  }
+  
+  .request-details p {
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 8px;
   }
   
   .request-actions {
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  
+  .request-actions .el-button {
+    font-size: 12px;
+    padding: 8px 16px;
   }
   
   .confirmation-content .el-row {
     flex-direction: column;
+  }
+  
+  .invoice-form .el-form-item {
+    margin-bottom: 20px;
+  }
+  
+  .invoice-form .el-form-item__label {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  
+  .files-info .el-tag {
+    font-size: 11px;
+  }
+  
+  .single-file-download .el-button,
+  .multiple-files-download .el-button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .invoice-management {
+    padding: 8px;
+  }
+  
+  .management-header {
+    padding: 12px 0;
+  }
+  
+  .section-title {
+    font-size: 18px;
+  }
+  
+  .section-description {
+    font-size: 13px;
+  }
+  
+  .request-card {
+    margin-bottom: 12px;
+  }
+  
+  .request-card .el-card__body {
+    padding: 12px;
+  }
+  
+  .request-info h4 {
+    font-size: 14px;
+  }
+  
+  .request-details p {
+    font-size: 12px;
+  }
+  
+  .el-tabs__item {
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  
+  .tab-content {
+    padding: 12px 0;
+  }
+  
+  /* 超小屏步骤指示器进一步优化 */
+  .step-indicator {
+    padding: 8px 4px; /* 进一步减小内边距 */
+    margin-bottom: 16px; /* 减小底部间距 */
+  }
+  
+  .step-number {
+    width: 20px; /* 进一步减小圆圈 */
+    height: 20px;
+    margin-right: 4px; /* 进一步减小右边距 */
+    font-size: 11px; /* 进一步减小字体 */
+  }
+  
+  .step-label {
+    font-size: 10px; /* 进一步减小标签字体 */
+  }
+  
+  .step-label-full {
+    display: none; /* 超小屏隐藏完整标签 */
+  }
+  
+  .step-label-short {
+    display: inline; /* 超小屏显示短标签 */
+  }
+  
+  .step-divider {
+    width: 20px; /* 进一步减小分隔线 */
+    margin: 0 8px; /* 进一步减小边距 */
+  }
+  
+  .empty-state,
+  .loading-state {
+    padding: 40px 20px;
+  }
+  
+  .empty-state p,
+  .loading-state p {
+    font-size: 14px;
+  }
+  
+  .empty-state small {
+    font-size: 12px;
   }
 }
 </style>

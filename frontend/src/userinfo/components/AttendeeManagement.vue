@@ -47,12 +47,6 @@
 
       <!-- 可以申请变更的状态 -->
       <div v-else class="can-transfer">
-        <!-- 重要提示 -->
-        <el-alert title="Important: Current Registration Information" type="info" :closable="false" show-icon>
-          <p>This is your current registration information. If the original attendee cannot attend, you can request an
-            attendee transfer to change this information while keeping your registration and payment status.</p>
-        </el-alert>
-
         <div class="current-info-card">
           <div class="current-info-header">
             <h3 class="current-info-title">
@@ -102,23 +96,19 @@
           </div>
 
           <div class="action-buttons">
-            <el-button type="primary" @click="showTransferDialog" icon="el-icon-edit">
-              Request Attendee Transfer
-            </el-button>
-            <el-button type="info" @click="showHistory" icon="el-icon-document">
-              View Transfer History
-            </el-button>
+            <button class="custom-button primary" @click="showTransferDialog">
+              <i class="el-icon-edit"></i>
+              <span>Request Attendee Transfer</span>
+            </button>
+            <button class="custom-button secondary" @click="showHistory">
+              <i class="el-icon-document"></i>
+              <span>View Transfer History</span>
+            </button>
           </div>
 
           <div class="transfer-notice">
             <el-alert title="Need to change attendee information?" type="warning" :closable="false" show-icon>
-              <p>If the registered attendee cannot attend the conference, you can request an attendee transfer. This
-                will:</p>
-              <ul>
-                <li>Keep your registration and payment status unchanged</li>
-                <li>Update the attendee information for certificates and conference materials</li>
-                <li>Require admin approval for the change</li>
-              </ul>
+              <p>If the original attendee cannot attend, request an attendee transfer to update information while keeping your registration status.</p>
             </el-alert>
           </div>
         </div>
@@ -523,6 +513,81 @@ export default {
   gap: 12px;
 }
 
+/* 自定义按钮样式 */
+.custom-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.custom-button:focus {
+  outline: 2px solid rgba(64, 158, 255, 0.3);
+  outline-offset: 2px;
+}
+
+.custom-button i {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.custom-button span {
+  flex: 1;
+  text-align: left;
+}
+
+/* 主要按钮样式 */
+.custom-button.primary {
+  background: #409EFF;
+  color: white;
+  border: 1px solid #409EFF;
+}
+
+.custom-button.primary:hover {
+  background: #66b1ff;
+  border-color: #66b1ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
+
+.custom-button.primary:active {
+  background: #3a8ee6;
+  border-color: #3a8ee6;
+  transform: translateY(0);
+}
+
+/* 次要按钮样式 */
+.custom-button.secondary {
+  background: #909399;
+  color: white;
+  border: 1px solid #909399;
+}
+
+.custom-button.secondary:hover {
+  background: #a6a9ad;
+  border-color: #a6a9ad;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(144, 147, 153, 0.3);
+}
+
+.custom-button.secondary:active {
+  background: #82848a;
+  border-color: #82848a;
+  transform: translateY(0);
+}
+
 .transfer-form {
   margin-top: 20px;
 }
@@ -610,43 +675,201 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .change-comparison {
-    flex-direction: column;
+  /* 页面整体优化 */
+  .attendee-management {
+    padding: 12px;
   }
-
-  .arrow {
-    transform: rotate(90deg);
+  
+  .card-header {
+    padding: 12px 0;
   }
-
-  .action-buttons {
-    flex-direction: column;
+  
+  .card-title {
+    font-size: 18px;
+    margin-bottom: 6px;
   }
-
+  
+  .card-subtitle {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  
+  /* 重要提示简化 */
+  .el-alert {
+    margin-bottom: 12px;
+  }
+  
+  .el-alert .el-alert__content {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  
+  .el-alert .el-alert__title {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  
+  /* 当前注册信息区域优化 */
+  .current-info-card {
+    margin: 12px 0;
+  }
+  
   .current-info-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 15px;
+    gap: 10px;
+    padding: 12px 0;
+    margin-bottom: 12px;
   }
 
   .current-info-title {
-    font-size: 20px;
+    font-size: 16px;
+  }
+  
+  /* 注册详情简化显示 */
+  .registration-details {
+    margin-bottom: 16px;
+  }
+  
+  .info-card {
+    padding: 12px;
+    margin-bottom: 12px;
   }
 
   .info-item {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 6px;
     text-align: left;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+  }
+  
+  .info-label {
+    font-size: 13px;
   }
 
   .info-value {
     text-align: left;
     margin-left: 0;
     width: 100%;
-    padding: 8px 12px;
+    padding: 6px 10px;
     background: rgba(64, 158, 255, 0.05);
     border-radius: 4px;
     border: 1px solid rgba(64, 158, 255, 0.15);
+    font-size: 12px;
+  }
+  
+  /* 操作按钮优化 */
+  .action-buttons {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  
+  .custom-button {
+    font-size: 13px;
+    padding: 10px 16px;
+    width: 100%;
+    text-align: left;
+  }
+  
+  /* 变更提示简化 */
+  .transfer-notice {
+    margin-top: 12px;
+  }
+  
+  .transfer-notice .el-alert {
+    margin-bottom: 0;
+  }
+  
+  .transfer-notice ul {
+    margin: 8px 0 0 16px;
+  }
+  
+  .transfer-notice li {
+    margin: 4px 0;
+    font-size: 12px;
+  }
+  
+  /* 历史记录优化 */
+  .change-comparison {
+    flex-direction: column;
+  }
+
+  .arrow {
+    transform: rotate(90deg);
+    align-self: center;
+    margin: 8px 0;
+  }
+  
+  /* 空状态优化 */
+  .empty-state {
+    padding: 40px 12px;
+  }
+  
+  /* 等待审核状态优化 */
+  .pending-request {
+    margin-top: 20px;
+  }
+  
+  .request-details {
+    margin-top: 20px;
+  }
+  
+  .request-details h4 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  
+  /* 描述列表优化 */
+  .el-descriptions {
+    font-size: 13px;
+  }
+}
+
+/* 小屏设备进一步优化 */
+@media (max-width: 480px) {
+  .attendee-management {
+    padding: 8px;
+  }
+  
+  .card-title {
+    font-size: 16px;
+  }
+  
+  .card-subtitle {
+    font-size: 12px;
+  }
+  
+  .current-info-title {
+    font-size: 14px;
+  }
+  
+  .info-label {
+    font-size: 12px;
+  }
+  
+  .info-value {
+    font-size: 13px;
+    padding: 5px 8px;
+  }
+  
+  .custom-button {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+  
+  .custom-button i {
+    font-size: 14px;
+  }
+  
+  .custom-button span {
+    font-size: 12px;
+  }
+  
+  .transfer-notice li {
+    font-size: 11px;
   }
 }
 </style>

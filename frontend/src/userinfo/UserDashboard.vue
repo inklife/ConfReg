@@ -1,34 +1,27 @@
 <template>
   <div class="user-dashboard">
-    <!-- 顶部导航栏 
-    <div class="dashboard-header">
-      <div class="header-content">
-        <div class="header-left">
-          <h1 class="dashboard-title">
-            <i class="el-icon-user"></i>
-            User Center
-          </h1>
-          <p class="dashboard-subtitle">Manage your registration information, request refunds and download related documents</p>
-        </div>
-        <div class="header-right">
-          <el-button 
-            type="primary" 
-            @click="logout" 
-            icon="el-icon-switch-button">
-            Logout
-          </el-button>
-        </div>
-      </div>
-    </div>
-    -->
+
     <!-- 主内容区域 -->
     <div class="dashboard-main">
       <!-- 侧边栏 -->
       <aside class="dashboard-sidebar">
+        <!-- 移动端网格导航 -->
+        <div class="mobile-nav-grid">
+          <div 
+            v-for="item in navigationItems" 
+            :key="item.index"
+            :class="['nav-grid-item', { 'active': activeMenu === item.index }]"
+            @click="handleMenuSelect(item.index)">
+            <i :class="item.icon"></i>
+            <span>{{ item.title }}</span>
+          </div>
+        </div>
+        
+        <!-- 桌面端菜单 -->
         <el-menu
           :default-active="activeMenu"
           @select="handleMenuSelect"
-          class="sidebar-menu"
+          class="sidebar-menu desktop-menu"
           :collapse="false">
           
           <el-menu-item index="overview">
@@ -67,9 +60,10 @@
       <main class="dashboard-content">
         <!-- 概览信息 -->
         <div v-if="activeMenu === 'overview'" class="overview-section">
-          <div class="stats-section">
+          <!-- 简化的统计信息 - 只在桌面端显示完整版 -->
+          <div class="stats-section desktop-stats">
             <el-row :gutter="20" class="stats-row">
-              <el-col :span="5">
+              <el-col :md="8" :lg="5" :xl="5">
                 <el-card class="stat-card">
                   <el-statistic 
                     title="Approved Registrations" 
@@ -80,7 +74,7 @@
                   </el-statistic>
                 </el-card>
               </el-col>
-              <el-col :span="5">
+              <el-col :md="8" :lg="5" :xl="5">
                 <el-card class="stat-card">
                   <el-statistic 
                     title="Pending Applications" 
@@ -91,7 +85,7 @@
                   </el-statistic>
                 </el-card>
               </el-col>
-              <el-col :span="5">
+              <el-col :md="8" :lg="5" :xl="5">
                 <el-card class="stat-card">
                   <el-statistic 
                     title="Transfer Requests" 
@@ -102,7 +96,7 @@
                   </el-statistic>
                 </el-card>
               </el-col>
-              <el-col :span="5">
+              <el-col :md="12" :lg="5" :xl="5">
                 <el-card class="stat-card">
                   <el-statistic 
                     title="Refund Requests" 
@@ -113,7 +107,7 @@
                   </el-statistic>
                 </el-card>
               </el-col>
-              <el-col :span="4">
+              <el-col :md="12" :lg="4" :xl="4">
                 <el-card class="stat-card">
                   <el-statistic 
                     title="Invoice Requests" 
@@ -126,6 +120,47 @@
               </el-col>
             </el-row>
           </div>
+          
+          <!-- 移动端简化统计信息 -->
+          <div class="stats-section mobile-stats">
+            <div class="mobile-stats-summary">
+              <div class="summary-item important" v-if="registrationStats.approved > 0">
+                <i class="el-icon-check" style="color: #67C23A"></i>
+                <div class="summary-content">
+                  <div class="summary-number">{{ registrationStats.approved }}</div>
+                  <div class="summary-label">Approved</div>
+                </div>
+              </div>
+              <div class="summary-item important" v-if="registrationStats.pending > 0">
+                <i class="el-icon-time" style="color: #E6A23C"></i>
+                <div class="summary-content">
+                  <div class="summary-number">{{ registrationStats.pending }}</div>
+                  <div class="summary-label">Pending</div>
+                </div>
+              </div>
+              <div class="summary-item" v-if="registrationStats.transfers > 0">
+                <i class="el-icon-edit" style="color: #409EFF"></i>
+                <div class="summary-content">
+                  <div class="summary-number">{{ registrationStats.transfers }}</div>
+                  <div class="summary-label">Transfers</div>
+                </div>
+              </div>
+              <div class="summary-item" v-if="registrationStats.refunds > 0">
+                <i class="el-icon-money" style="color: #F56C6C"></i>
+                <div class="summary-content">
+                  <div class="summary-number">{{ registrationStats.refunds }}</div>
+                  <div class="summary-label">Refunds</div>
+                </div>
+              </div>
+              <div class="summary-item" v-if="registrationStats.invoices > 0">
+                <i class="el-icon-document-add" style="color: #909399"></i>
+                <div class="summary-content">
+                  <div class="summary-number">{{ registrationStats.invoices }}</div>
+                  <div class="summary-label">Invoices</div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div class="quick-actions">
             <h3>Quick Actions</h3>
@@ -134,7 +169,7 @@
             <div class="registration-status-section">
               <el-row :gutter="20">
                 <!-- 当没有任何注册记录时，继续注册卡片在左侧 -->
-                <el-col :span="12" v-if="registrationStats.approved === 0 && registrationStats.pending === 0">
+                <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12" v-if="registrationStats.approved === 0 && registrationStats.pending === 0">
                   <el-card class="continue-registration-card" shadow="hover" @click.native="goToConferenceRegistration">
                     <div class="continue-content">
                       <div class="continue-icon">
@@ -151,7 +186,7 @@
                   </el-card>
                 </el-col>
                 <!-- 当没有任何注册记录时，状态信息卡片在右侧 -->
-                <el-col :span="12" v-if="registrationStats.approved === 0 && registrationStats.pending === 0">
+                <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12" v-if="registrationStats.approved === 0 && registrationStats.pending === 0">
                   <el-card 
                     class="status-info-card" 
                     shadow="never">
@@ -168,7 +203,7 @@
                 </el-col>
                 
                 <!-- 当有注册记录时，保持原有顺序：左侧状态信息，右侧继续注册 -->
-                <el-col :span="12" v-if="registrationStats.approved > 0 || registrationStats.pending > 0">
+                <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12" v-if="registrationStats.approved > 0 || registrationStats.pending > 0">
                   <el-card 
                     class="status-info-card" 
                     shadow="never"
@@ -196,7 +231,7 @@
                     </div>
                   </el-card>
                 </el-col>
-                <el-col :span="12" v-if="registrationStats.approved > 0 || registrationStats.pending > 0">
+                <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12" v-if="registrationStats.approved > 0 || registrationStats.pending > 0">
                   <el-card class="continue-registration-card" shadow="hover" @click.native="goToConferenceRegistration">
                     <div class="continue-content">
                       <div class="continue-icon">
@@ -216,45 +251,69 @@
               </el-row>
             </div>
 
-            <!-- 原有的四个快捷操作 -->
-            <el-row :gutter="20">
-              <el-col :span="6">
-                <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'attendee'">
-                  <div class="action-icon">
-                    <i class="el-icon-edit-outline"></i>
-                  </div>
-                  <h4>Request Attendee Transfer</h4>
-                  <p>Modify the registered attendee information</p>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'refund'">
-                  <div class="action-icon">
-                    <i class="el-icon-money"></i>
-                  </div>
-                  <h4>Request Refund</h4>
-                  <p>Apply for refund for approved registrations</p>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'invoice'">
-                  <div class="action-icon">
-                    <i class="el-icon-document-add"></i>
-                  </div>
-                  <h4>Request Invoice</h4>
-                  <p>Apply for invoice for approved registrations</p>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'documents'">
-                  <div class="action-icon">
-                    <i class="el-icon-download"></i>
-                  </div>
-                  <h4>Download Documents</h4>
-                  <p>Download confirmation letters, receipts and other documents</p>
-                </el-card>
-              </el-col>
-            </el-row>
+            <!-- 桌面端的四个快捷操作卡片 -->
+            <div class="desktop-actions">
+              <el-row :gutter="20">
+                <el-col :md="6" :lg="6" :xl="6">
+                  <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'attendee'">
+                    <div class="action-icon">
+                      <i class="el-icon-edit-outline"></i>
+                    </div>
+                    <h4>Request Attendee Transfer</h4>
+                    <p>Modify the registered attendee information</p>
+                  </el-card>
+                </el-col>
+                <el-col :md="6" :lg="6" :xl="6">
+                  <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'refund'">
+                    <div class="action-icon">
+                      <i class="el-icon-money"></i>
+                    </div>
+                    <h4>Request Refund</h4>
+                    <p>Apply for refund for approved registrations</p>
+                  </el-card>
+                </el-col>
+                <el-col :md="6" :lg="6" :xl="6">
+                  <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'invoice'">
+                    <div class="action-icon">
+                      <i class="el-icon-document-add"></i>
+                    </div>
+                    <h4>Request Invoice</h4>
+                    <p>Apply for invoice for approved registrations</p>
+                  </el-card>
+                </el-col>
+                <el-col :md="6" :lg="6" :xl="6">
+                  <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'documents'">
+                    <div class="action-icon">
+                      <i class="el-icon-download"></i>
+                    </div>
+                    <h4>Download Documents</h4>
+                    <p>Download confirmation letters, receipts and other documents</p>
+                  </el-card>
+                </el-col>
+              </el-row>
+            </div>
+            
+            <!-- 移动端简化的快捷操作 -->
+            <div class="mobile-actions">
+              <div class="mobile-actions-grid">
+                <div class="mobile-action-item" @click="activeMenu = 'attendee'">
+                  <i class="el-icon-edit-outline"></i>
+                  <span>Attendee Transfer</span>
+                </div>
+                <div class="mobile-action-item" @click="activeMenu = 'refund'">
+                  <i class="el-icon-money"></i>
+                  <span>Request Refund</span>
+                </div>
+                <div class="mobile-action-item" @click="activeMenu = 'invoice'">
+                  <i class="el-icon-document-add"></i>
+                  <span>Request Invoice</span>
+                </div>
+                <div class="mobile-action-item" @click="activeMenu = 'documents'">
+                  <i class="el-icon-download"></i>
+                  <span>Download Docs</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -305,7 +364,17 @@ export default {
       // SSE回调引用，用于正确清理
       onProgressCallback: null,
       onCompletedCallback: null,
-      onFailedCallback: null
+      onFailedCallback: null,
+
+      // 导航项数据
+      navigationItems: [
+        { index: 'overview', title: 'Overview', icon: 'el-icon-pie-chart' },
+        { index: 'profile', title: 'Profile', icon: 'el-icon-user' },
+        { index: 'attendee', title: 'Transfer', icon: 'el-icon-edit-outline' },
+        { index: 'refund', title: 'Refund', icon: 'el-icon-money' },
+        { index: 'invoice', title: 'Invoice', icon: 'el-icon-document-add' },
+        { index: 'documents', title: 'Download', icon: 'el-icon-folder-opened' }
+      ]
     };
   },
   computed: {
@@ -1093,19 +1162,7 @@ export default {
       });
     },
 
-    // logout() {
-    //   // 清除本地存储
-    //   localStorage.removeItem('user');
-    //   localStorage.removeItem('token');
-      
-    //   // 清除store状态
-    //   if (this.$store && this.$store.commit) {
-    //     this.$store.commit('account/logout');
-    //   }
-      
-    //   // 跳转到登录页
-    //   this.$router.push('/login');
-    // }
+
   }
 };
 </script>
@@ -1116,46 +1173,13 @@ export default {
   background: #f8f9fa;
 }
 
-.dashboard-header {
-  background: white;
-  border-bottom: 1px solid #e4e7ed;
-  padding: 0;
-}
-
-.header-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-left .dashboard-title {
-  font-size: 32px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 8px 0;
-}
-
-.header-left .dashboard-subtitle {
-  color: #909399;
-  font-size: 16px;
-  margin: 0;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-}
-
 .dashboard-main {
   max-width: 1400px;
   margin: 0 auto;
   display: flex;
   gap: 32px;
   padding: 32px 24px;
-  min-height: calc(100vh - 120px);
+  min-height: 100vh;
 }
 
 .dashboard-sidebar {
@@ -1164,6 +1188,83 @@ export default {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+}
+
+/* 移动端网格导航 - 默认隐藏 */
+.mobile-nav-grid {
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px;
+  background: white;
+}
+
+.nav-grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  border-radius: 8px;
+  background: #f8f9fa;
+  border: 1px solid #e4e7ed;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 70px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(64, 158, 255, 0.2);
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.nav-grid-item:hover {
+  background: #ecf5ff;
+  border-color: #409EFF;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+.nav-grid-item:active {
+  transform: translateY(0) scale(0.95);
+  background: #d9ecff;
+}
+
+.nav-grid-item.active {
+  background: #409EFF;
+  color: white;
+  border-color: #409EFF;
+}
+
+.nav-grid-item.active:hover {
+  background: #337ecc;
+}
+
+.nav-grid-item i {
+  font-size: 20px;
+  margin-bottom: 4px;
+  color: #409EFF;
+}
+
+.nav-grid-item.active i {
+  color: white;
+}
+
+.nav-grid-item span {
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.2;
+  color: #606266;
+}
+
+.nav-grid-item.active span {
+  color: white;
+}
+
+/* 桌面端菜单 - 默认显示 */
+.desktop-menu {
+  display: block;
 }
 
 .sidebar-menu {
@@ -1208,6 +1309,125 @@ export default {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 32px;
   margin-bottom: 24px;
+}
+
+/* 移动端和桌面端统计显示控制 */
+.mobile-stats {
+  display: none;
+}
+
+.desktop-stats {
+  display: block;
+}
+
+/* 移动端简化统计样式 */
+.mobile-stats-summary {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobile-stats-summary::-webkit-scrollbar {
+  display: none;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8f9fa;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  color: #606266;
+  border: 1px solid #e4e7ed;
+  flex-shrink: 0;
+  min-width: 80px;
+  transition: all 0.3s ease;
+}
+
+.summary-item.important {
+  background: #f8f9fa;
+  border-color: #e4e7ed;
+  border-width: 1px;
+  color: #606266;
+}
+
+.summary-item i {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.summary-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.summary-number {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.summary-label {
+  font-size: 11px;
+  opacity: 0.8;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+/* 桌面端和移动端操作显示控制 */
+.mobile-actions {
+  display: none;
+}
+
+.desktop-actions {
+  display: block;
+}
+
+/* 移动端简化操作样式 */
+.mobile-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mobile-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: #f8f9fa;
+  padding: 16px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #606266;
+  border: 1px solid #e4e7ed;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mobile-action-item:hover {
+  background: #ecf5ff;
+  border-color: #409EFF;
+  color: #409EFF;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+.mobile-action-item i {
+  font-size: 24px;
+  color: #409EFF;
+}
+
+.mobile-action-item span {
+  text-align: center;
+  line-height: 1.2;
 }
 
 .stats-row {
@@ -1439,47 +1659,110 @@ export default {
   .dashboard-main {
     flex-direction: column;
     padding: 16px;
+    gap: 20px;
   }
   
   .dashboard-sidebar {
     width: 100%;
+    order: -1;
+    margin-bottom: 16px;
   }
   
-  .sidebar-menu {
-    display: flex;
-    overflow-x: auto;
+  /* 在中等屏幕显示网格导航 */
+  .mobile-nav-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr);
   }
   
-  .sidebar-menu .el-menu-item {
-    white-space: nowrap;
-    min-width: 120px;
-    text-align: center;
+  .desktop-menu {
+    display: none !important;
+  }
+  
+  .stats-section,
+  .quick-actions {
+    padding: 20px;
+  }
+  
+  .quick-actions h3 {
+    font-size: 20px;
+    margin-bottom: 20px;
   }
 }
 
 @media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
+  .dashboard-main {
+    padding: 12px;
     gap: 16px;
   }
   
-  .stats-row .el-col {
+  /* 小屏幕优化网格布局 */
+  .mobile-nav-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+    padding: 8px !important;
+  }
+  
+  .nav-grid-item {
+    min-height: 64px;
+    padding: 12px 6px;
+    /* 确保移动端有足够的触摸目标 */
+    min-width: 64px;
+  }
+  
+  .nav-grid-item i {
+    font-size: 18px;
+  }
+  
+  .nav-grid-item span {
+    font-size: 10px;
+    word-break: break-word;
+    max-width: 100%;
+  }
+  
+  /* 移动端隐藏桌面版统计，显示简化版 */
+  .desktop-stats {
+    display: none;
+  }
+  
+  .mobile-stats {
+    display: block;
+  }
+  
+  /* 移动端隐藏桌面版操作，显示简化版 */
+  .desktop-actions {
+    display: none;
+  }
+  
+  .mobile-actions {
+    display: block;
+  }
+  
+  .stats-section,
+  .quick-actions {
+    padding: 16px;
+  }
+  
+  .quick-actions h3 {
+    font-size: 18px;
     margin-bottom: 16px;
   }
   
-  .action-card {
-    height: 180px;
-    margin-bottom: 16px;
+  .stats-row .el-col {
+    margin-bottom: 12px;
+  }
+  
+  .stat-card {
+    height: 100px;
+    padding: 16px 12px;
   }
   
   .registration-status-section .el-col {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
   
   .status-info-card,
   .continue-registration-card {
-    height: 100px;
+    height: 90px !important;
   }
   
   .status-content,
@@ -1489,18 +1772,93 @@ export default {
   
   .status-text h4,
   .continue-text h4 {
-    font-size: 14px;
+    font-size: 13px;
+    line-height: 1.2;
   }
   
   .status-text p,
   .continue-text p {
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.3;
   }
   
   .status-icon,
   .continue-icon {
-    font-size: 24px;
-    margin-right: 12px;
+    font-size: 22px;
+    margin-right: 10px;
+  }
+  
+  .continue-arrow {
+    font-size: 16px;
+  }
+  
+  .dashboard-sidebar {
+    margin-bottom: 12px;
+  }
+}
+
+/* 超小屏幕适配 */
+@media (max-width: 480px) {
+  .dashboard-main {
+    padding: 8px;
+  }
+  
+  .stats-section,
+  .quick-actions {
+    padding: 12px;
+  }
+  
+  .stat-card {
+    height: 80px;
+    padding: 12px 8px;
+  }
+  
+  .status-info-card,
+  .continue-registration-card {
+    height: 80px !important;
+  }
+  
+  .status-text h4,
+  .continue-text h4 {
+    font-size: 12px;
+  }
+  
+  .status-text p,
+  .continue-text p {
+    font-size: 10px;
+  }
+  
+  .status-icon,
+  .continue-icon {
+    font-size: 18px;
+    margin-right: 8px;
+  }
+  
+  .quick-actions h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  
+  /* 超小屏幕网格优化 - 改为2列布局 */
+  .mobile-nav-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    padding: 10px;
+  }
+  
+  .nav-grid-item {
+    min-height: 55px;
+    padding: 8px 4px;
+  }
+  
+  .nav-grid-item i {
+    font-size: 16px;
+    margin-bottom: 2px;
+  }
+  
+  .nav-grid-item span {
+    font-size: 9px;
+    line-height: 1.1;
   }
 }
 </style>
@@ -1554,5 +1912,43 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 移动端统计卡片样式优化 */
+@media (max-width: 768px) {
+  .stat-card .el-statistic .head .title {
+    font-size: 12px;
+    line-height: 1.1;
+  }
+  
+  .stat-card .el-statistic .con .number {
+    font-size: 24px;
+  }
+  
+  .status-info-card.el-card .el-card__body {
+    height: 90px;
+  }
+  
+  .continue-registration-card.el-card .el-card__body {
+    height: 90px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-card .el-statistic .head .title {
+    font-size: 11px;
+  }
+  
+  .stat-card .el-statistic .con .number {
+    font-size: 16px;
+  }
+  
+  .status-info-card.el-card .el-card__body {
+    height: 80px;
+  }
+  
+  .continue-registration-card.el-card .el-card__body {
+    height: 80px;
+  }
 }
 </style>

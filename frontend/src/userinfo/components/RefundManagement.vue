@@ -24,22 +24,52 @@
         
         <div class="request-details">
           <h4>Request Details</h4>
-          <el-descriptions :column="2">
-            <el-descriptions-item label="Request Time">
-              {{ formatDate(refundStatus.pendingRequest.requestTime) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="Refund Amount">
-              ${{ refundStatus.pendingRequest.refundAmount }} USD
-            </el-descriptions-item>
-            <el-descriptions-item label="Status">
-              <el-tag :type="getRefundStatusType(refundStatus.pendingRequest.status)">
-                {{ getRefundStatusText(refundStatus.pendingRequest.status) }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="Admin Notes" v-if="refundStatus.pendingRequest.adminNotes">
-              {{ refundStatus.pendingRequest.adminNotes }}
-            </el-descriptions-item>
-          </el-descriptions>
+          
+          <!-- 桌面端描述列表 -->
+          <div class="desktop-details">
+            <el-descriptions :column="2">
+              <el-descriptions-item label="Request Time">
+                {{ formatDate(refundStatus.pendingRequest.requestTime) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="Refund Amount">
+                ${{ refundStatus.pendingRequest.refundAmount }} USD
+              </el-descriptions-item>
+              <el-descriptions-item label="Status">
+                <el-tag :type="getRefundStatusType(refundStatus.pendingRequest.status)">
+                  {{ getRefundStatusText(refundStatus.pendingRequest.status) }}
+                </el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="Admin Notes" v-if="refundStatus.pendingRequest.adminNotes">
+                {{ refundStatus.pendingRequest.adminNotes }}
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+          
+          <!-- 移动端卡片形式 -->
+          <div class="mobile-details">
+            <div class="detail-card">
+              <div class="detail-item">
+                <div class="detail-label">Request Time</div>
+                <div class="detail-value">{{ formatDate(refundStatus.pendingRequest.requestTime) }}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Refund Amount</div>
+                <div class="detail-value amount-highlight">${{ refundStatus.pendingRequest.refundAmount }} USD</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Status</div>
+                <div class="detail-value">
+                  <el-tag :type="getRefundStatusType(refundStatus.pendingRequest.status)" class="status-tag">
+                    {{ getRefundStatusText(refundStatus.pendingRequest.status) }}
+                  </el-tag>
+                </div>
+              </div>
+              <div class="detail-item full-width" v-if="refundStatus.pendingRequest.adminNotes">
+                <div class="detail-label">Admin Notes</div>
+                <div class="detail-value notes">{{ refundStatus.pendingRequest.adminNotes }}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -96,25 +126,59 @@
         
         <div class="request-details">
           <h4>Approved Refund Details</h4>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="Request Time">
-              {{ formatDate(refundStatus.approvedRequest.requestTime) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="Refund Amount">
-              ${{ refundStatus.approvedRequest.refundAmount }} USD
-            </el-descriptions-item>
-            <el-descriptions-item label="Status">
-              <el-tag :type="getRefundStatusType(refundStatus.approvedRequest.status)">
-                {{ getRefundStatusText(refundStatus.approvedRequest.status) }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="Process Time" v-if="refundStatus.approvedRequest.processTime">
-              {{ formatDate(refundStatus.approvedRequest.processTime) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="Admin Notes" v-if="refundStatus.approvedRequest.adminNotes">
-              {{ refundStatus.approvedRequest.adminNotes }}
-            </el-descriptions-item>
-          </el-descriptions>
+          
+          <!-- 桌面端描述列表 -->
+          <div class="desktop-details">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="Request Time">
+                {{ formatDate(refundStatus.approvedRequest.requestTime) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="Refund Amount">
+                ${{ refundStatus.approvedRequest.refundAmount }} USD
+              </el-descriptions-item>
+              <el-descriptions-item label="Status">
+                <el-tag :type="getRefundStatusType(refundStatus.approvedRequest.status)">
+                  {{ getRefundStatusText(refundStatus.approvedRequest.status) }}
+                </el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="Process Time" v-if="refundStatus.approvedRequest.processTime">
+                {{ formatDate(refundStatus.approvedRequest.processTime) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="Admin Notes" v-if="refundStatus.approvedRequest.adminNotes">
+                {{ refundStatus.approvedRequest.adminNotes }}
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+          
+          <!-- 移动端卡片形式 -->
+          <div class="mobile-details">
+            <div class="detail-card">
+              <div class="detail-item">
+                <div class="detail-label">Request Time</div>
+                <div class="detail-value">{{ formatDate(refundStatus.approvedRequest.requestTime) }}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Refund Amount</div>
+                <div class="detail-value amount-highlight">${{ refundStatus.approvedRequest.refundAmount }} USD</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Status</div>
+                <div class="detail-value">
+                  <el-tag :type="getRefundStatusType(refundStatus.approvedRequest.status)" class="status-tag">
+                    {{ getRefundStatusText(refundStatus.approvedRequest.status) }}
+                  </el-tag>
+                </div>
+              </div>
+              <div class="detail-item" v-if="refundStatus.approvedRequest.processTime">
+                <div class="detail-label">Process Time</div>
+                <div class="detail-value">{{ formatDate(refundStatus.approvedRequest.processTime) }}</div>
+              </div>
+              <div class="detail-item full-width" v-if="refundStatus.approvedRequest.adminNotes">
+                <div class="detail-label">Admin Notes</div>
+                <div class="detail-value notes">{{ refundStatus.approvedRequest.adminNotes }}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -123,7 +187,7 @@
         <div v-if="approvedRegistrations.length > 0">
           <!-- 退款资格信息 -->
           <div class="eligibility-info">
-            <el-row :gutter="20">
+            <el-row :gutter="16">
               <el-col :span="12">
                 <div class="stats-card approved-registrations">
                   <div class="stats-icon">
@@ -168,33 +232,72 @@
           <!-- 可退款注册列表 -->
           <div v-if="eligibleRegistrationsCount > 0" class="eligible-registrations">
             <h4>Eligible Refund Registrations</h4>
-            <el-table :data="eligibleRegistrations" border style="width: 100%">
-              <el-table-column prop="productCode" label="Product Code" width="120"></el-table-column>
-              <el-table-column prop="name" label="Attendee Name"></el-table-column>
-              <el-table-column prop="email" label="Email"></el-table-column>
-              <el-table-column prop="productPrice" label="Amount" width="100">
-                <template slot-scope="scope">
-                  ${{ scope.row.productPrice }} USD
-                </template>
-              </el-table-column>
-              <el-table-column prop="submissionTime" label="Registration Time" width="180">
-                <template slot-scope="scope">
-                  <div class="registration-time">
-                    <div>{{ formatDateOnly(scope.row.submissionTime) }}</div>
-                    <div class="time-part">{{ formatTimeOnly(scope.row.submissionTime) }}</div>
+            
+            <!-- 桌面端表格显示 -->
+            <div class="desktop-table">
+              <el-table :data="eligibleRegistrations" border style="width: 100%">
+                <el-table-column prop="productCode" label="Product Code" width="120"></el-table-column>
+                <el-table-column prop="name" label="Attendee Name"></el-table-column>
+                <el-table-column prop="email" label="Email"></el-table-column>
+                <el-table-column prop="productPrice" label="Amount" width="100">
+                  <template slot-scope="scope">
+                    ${{ scope.row.productPrice }} USD
+                  </template>
+                </el-table-column>
+                <el-table-column prop="submissionTime" label="Registration Time" width="180">
+                  <template slot-scope="scope">
+                    <div class="registration-time">
+                      <div>{{ formatDateOnly(scope.row.submissionTime) }}</div>
+                      <div class="time-part">{{ formatTimeOnly(scope.row.submissionTime) }}</div>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Actions" width="140">
+                  <template slot-scope="scope">
+                    <div class="table-action-cell">
+                      <el-button size="mini" type="danger" @click="selectRegistrationForRefund(scope.row)">
+                        Apply Refund
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+            
+            <!-- 移动端卡片显示 -->
+            <div class="mobile-cards">
+              <div v-for="registration in eligibleRegistrations" :key="registration.id" class="registration-card">
+                <div class="card-header-info">
+                  <div class="product-code">{{ registration.productCode }}</div>
+                  <div class="amount">${{ registration.productPrice }} USD</div>
+                </div>
+                
+                <div class="card-content">
+                  <div class="info-row">
+                    <span class="label">Name:</span>
+                    <span class="value">{{ registration.name }}</span>
                   </div>
-                </template>
-              </el-table-column>
-              <el-table-column label="Actions" width="140">
-                <template slot-scope="scope">
-                  <div class="table-action-cell">
-                    <el-button size="mini" type="danger" @click="selectRegistrationForRefund(scope.row)">
-                      Apply Refund
-                    </el-button>
+                  <div class="info-row">
+                    <span class="label">Email:</span>
+                    <span class="value">{{ registration.email }}</span>
                   </div>
-                </template>
-              </el-table-column>
-            </el-table>
+                  <div class="info-row">
+                    <span class="label">Registration Time:</span>
+                    <span class="value">
+                      <div>{{ formatDateOnly(registration.submissionTime) }}</div>
+                      <div class="time-secondary">{{ formatTimeOnly(registration.submissionTime) }}</div>
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="card-action">
+                  <el-button type="danger" @click="selectRegistrationForRefund(registration)" block>
+                    <i class="el-icon-money"></i>
+                    Apply Refund
+                  </el-button>
+                </div>
+              </div>
+            </div>
           </div>
           
           <!-- 操作按钮 -->
@@ -833,11 +936,14 @@ export default {
   margin: 25px 0;
 }
 
+/* Element UI的gutter已经提供了间距，只需确保卡片内容不贴边 */
+
 /* 统计卡片样式 */
 .stats-card {
   display: flex;
   align-items: center;
   padding: 24px;
+  margin: 0 8px; /* 为卡片本身添加左右间距 */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 12px;
   color: white;
@@ -845,6 +951,17 @@ export default {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+}
+
+/* 确保第一个和最后一个卡片不超出容器 */
+.approved-stats-info .el-col:first-child .stats-card,
+.eligibility-info .el-col:first-child .stats-card {
+  margin-left: 0;
+}
+
+.approved-stats-info .el-col:last-child .stats-card,
+.eligibility-info .el-col:last-child .stats-card {
+  margin-right: 0;
 }
 
 .stats-card::before {
@@ -981,6 +1098,176 @@ export default {
   font-size: 18px;
 }
 
+/* 桌面端显示表格，移动端隐藏 */
+.desktop-table {
+  display: block;
+}
+
+.mobile-cards {
+  display: none;
+}
+
+/* 详情显示控制 */
+.desktop-details {
+  display: block;
+}
+
+.mobile-details {
+  display: none;
+}
+
+/* 移动端详情卡片样式 */
+.detail-card {
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-item.full-width {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 0;
+}
+
+.detail-item.full-width .detail-label {
+  margin-bottom: 8px;
+}
+
+.detail-value {
+  color: #333;
+  font-size: 14px;
+  text-align: right;
+  word-break: break-word;
+}
+
+.detail-item.full-width .detail-value {
+  text-align: left;
+  width: 100%;
+}
+
+.detail-value.amount-highlight {
+  font-weight: 600;
+  color: #10b981;
+  font-size: 16px;
+}
+
+.detail-value.notes {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  line-height: 1.5;
+  border: 1px solid #e9ecef;
+}
+
+.detail-value .status-tag {
+  font-size: 13px;
+}
+
+/* 移动端注册卡片样式 */
+.registration-card {
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.registration-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.card-header-info {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.product-code {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.amount {
+  font-size: 16px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.card-content {
+  padding: 20px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-row .label {
+  font-weight: 600;
+  color: #666;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.info-row .value {
+  color: #333;
+  text-align: right;
+  flex: 1;
+  word-break: break-all;
+}
+
+.time-secondary {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.card-action {
+  padding: 16px 20px;
+  background: #fafafa;
+  border-top: 1px solid #f0f0f0;
+}
+
+.card-action .el-button {
+  font-weight: 500;
+  border-radius: 8px;
+}
+
 .no-registrations {
   text-align: center;
   padding: 60px 40px;
@@ -1077,16 +1364,78 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .action-buttons {
-    flex-direction: column;
+  .refund-management {
+    padding: 0;
   }
   
-  .eligibility-info .el-col {
-    margin-bottom: 20px;
+  .refund-management .el-card {
+    margin: 10px;
+    border-radius: 12px;
+  }
+  
+  .refund-management .el-card__body {
+    padding: 20px 16px;
+  }
+  
+  .card-header {
+    padding: 20px 0;
+  }
+  
+  .card-title {
+    font-size: 22px;
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+  
+  .card-subtitle {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  
+  .empty-state,
+  .no-registrations,
+  .empty-history {
+    padding: 40px 20px;
+  }
+  
+  .empty-state .el-button,
+  .no-registrations .el-button {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 25px;
+  }
+  
+  .action-buttons .el-button {
+    padding: 12px 20px;
+    font-size: 14px;
+    width: 100%;
+  }
+  
+  .eligibility-info .el-col,
+  .approved-stats-info .el-col {
+    margin-bottom: 16px;
+  }
+  
+  /* 确保最后一个统计卡片没有底部边距 */
+  .eligibility-info .el-col:last-child,
+  .approved-stats-info .el-col:last-child {
+    margin-bottom: 0;
+  }
+  
+  .eligibility-info,
+  .approved-stats-info {
+    margin: 30px 0;
   }
   
   .stats-card {
-    padding: 20px;
+    padding: 20px 16px;
+    margin-bottom: 15px;
+    border-radius: 16px;
   }
   
   .stats-icon {
@@ -1096,15 +1445,426 @@ export default {
   }
   
   .stats-number {
-    font-size: 30px;
+    font-size: 28px;
+    margin-bottom: 6px;
+  }
+  
+  .stats-label {
+    font-size: 15px;
+  }
+  
+  .request-details,
+  .refund-content,
+  .pending-request {
+    margin-top: 25px;
+  }
+  
+  .request-details {
+    padding: 20px;
+    background: #fafafa;
+    border-radius: 12px;
+    border: 1px solid #e8e8e8;
+  }
+  
+  .request-details h4,
+  .eligible-registrations h4 {
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  .eligible-registrations {
+    margin: 30px 0;
+  }
+  
+  /* 移动端隐藏表格，显示卡片 */
+  .desktop-table {
+    display: none;
+  }
+  
+  .mobile-cards {
+    display: block;
+  }
+  
+  /* 移动端隐藏桌面端描述列表，显示移动端详情卡片 */
+  .desktop-details {
+    display: none;
+  }
+  
+  .mobile-details {
+    display: block;
+  }
+  
+  .detail-item {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .detail-label {
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  
+  .detail-value {
+    text-align: left;
+    font-size: 14px;
+    width: 100%;
+  }
+  
+  .detail-value.amount-highlight {
+    font-size: 16px;
+  }
+  
+  .registration-card {
+    margin-bottom: 20px;
+  }
+  
+  .card-header-info {
+    padding: 14px 16px;
+  }
+  
+  .product-code {
+    font-size: 16px;
+  }
+  
+  .amount {
+    font-size: 14px;
+  }
+  
+  .card-content {
+    padding: 16px;
+  }
+  
+  .info-row {
+    margin-bottom: 14px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .info-row .label {
+    margin-bottom: 4px;
+    min-width: auto;
+    font-size: 13px;
+  }
+  
+  .info-row .value {
+    text-align: left;
+    font-size: 14px;
+    word-break: break-word;
+  }
+  
+  .card-action {
+    padding: 12px 16px;
+  }
+  
+  .card-action .el-button {
+    padding: 12px;
+    font-size: 14px;
+  }
+  
+  /* 对话框移动端适配 */
+  .el-dialog {
+    width: 95% !important;
+    margin-top: 5vh !important;
+    margin-bottom: 5vh !important;
+  }
+  
+  .el-dialog__body {
+    padding: 15px 20px;
+  }
+  
+  .el-dialog__header {
+    padding: 15px 20px 0;
+  }
+  
+  .el-dialog__footer {
+    padding: 15px 20px 20px;
+  }
+  
+  .el-dialog__title {
+    font-size: 16px;
+  }
+  
+  .refund-form .el-form-item {
+    margin-bottom: 20px;
+  }
+  
+  .refund-form .el-form-item__label {
+    font-size: 14px;
+    line-height: 1.4;
+    padding-bottom: 8px;
+  }
+  
+  .bank-info-note {
+    font-size: 13px;
+    padding: 12px;
+    margin-bottom: 20px;
+  }
+  
+  /* 历史记录对话框适配 */
+  .el-timeline-item__timestamp {
+    font-size: 12px;
+  }
+  
+  .history-header h4 {
+    font-size: 14px;
+  }
+  
+  .bank-details h5,
+  .process-info h5 {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  
+  /* 描述列表移动端适配 */
+  .el-descriptions {
+    margin-bottom: 20px;
+  }
+  
+  .el-descriptions__label {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #666 !important;
+    padding: 8px !important;
+  }
+  
+  .el-descriptions__content {
+    font-size: 14px !important;
+    color: #333 !important;
+    padding: 8px !important;
+    word-break: break-word;
+  }
+  
+  .el-descriptions-item__cell {
+    padding: 8px !important;
+  }
+  
+  /* 移动端描述列表单列显示 */
+  .el-descriptions--border .el-descriptions-item__cell {
+    border-right: none !important;
+  }
+  
+  /* 警告框移动端适配 */
+  .el-alert {
+    margin-bottom: 20px;
+    padding: 16px;
+    border-radius: 12px;
+  }
+  
+  .el-alert__title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  .el-alert__description {
+    font-size: 14px;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+  
+  .ineligible-reasons {
+    margin: 15px 0;
+  }
+  
+  .ineligible-reasons ul {
+    margin-left: 15px;
+  }
+  
+  .ineligible-reasons li {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  
+  /* 已批准请求详情适配 */
+  .approved-request {
+    margin: 25px 0;
+  }
+  
+  .approved-request .el-alert {
+    margin-bottom: 25px;
+  }
+  
+  .approved-request .request-details {
+    padding: 20px;
+    margin-top: 20px;
+    border-radius: 12px;
+  }
+  
+  .approved-request .request-details h4 {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .refund-management .el-card {
+    margin: 8px;
+  }
+  
+  .refund-management .el-card__body {
+    padding: 16px 12px;
+  }
+  
+  .card-header {
+    padding: 16px 0;
+  }
+  
+  .card-title {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+  
+  .card-subtitle {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  
+  .stats-card {
+    padding: 16px 12px;
+    flex-direction: column;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  
+  /* 小屏幕上的统计卡片行间距 */
+  .eligibility-info .el-col,
+  .approved-stats-info .el-col {
+    margin-bottom: 12px;
+  }
+  
+  .eligibility-info .el-col:last-child,
+  .approved-stats-info .el-col:last-child {
+    margin-bottom: 0;
+  }
+  
+  .stats-icon {
+    font-size: 32px;
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+  
+  .stats-number {
+    font-size: 32px;
+    margin-bottom: 4px;
   }
   
   .stats-label {
     font-size: 14px;
   }
   
-  .table-action-cell .el-button {
-    padding: 5px 10px;
+  .empty-state,
+  .no-registrations,
+  .empty-history {
+    padding: 40px 20px;
+  }
+  
+  .action-buttons {
+    margin-top: 30px;
+    gap: 16px;
+  }
+  
+  .action-buttons .el-button {
+    font-size: 14px;
+    padding: 14px 20px;
+    border-radius: 8px;
+  }
+  
+  .el-dialog {
+    width: 98% !important;
+    margin: 2vh auto !important;
+  }
+  
+  .el-dialog__body {
+    padding: 10px 15px;
+  }
+  
+  .el-dialog__header {
+    padding: 10px 15px 0;
+  }
+  
+  .el-dialog__footer {
+    padding: 10px 15px 15px;
+  }
+  
+  .refund-form .el-form-item__label {
+    font-size: 13px;
+  }
+  
+  .bank-info-note {
+    font-size: 12px;
+    padding: 10px;
+  }
+  
+  /* 超小屏幕卡片优化 */
+  .eligible-registrations {
+    margin: 25px 0;
+  }
+  
+  .registration-card {
+    margin-bottom: 16px;
+    border-radius: 10px;
+  }
+  
+  .card-header-info {
+    padding: 12px 14px;
+  }
+  
+  .product-code {
+    font-size: 15px;
+  }
+  
+  .amount {
+    font-size: 13px;
+    padding: 3px 10px;
+  }
+  
+  .card-content {
+    padding: 14px;
+  }
+  
+  .info-row {
+    margin-bottom: 12px;
+  }
+  
+  .info-row .label {
+    font-size: 12px;
+    margin-bottom: 3px;
+  }
+  
+  .info-row .value {
+    font-size: 13px;
+  }
+  
+  .card-action {
+    padding: 10px 14px;
+  }
+  
+  .card-action .el-button {
+    padding: 10px;
+    font-size: 13px;
+  }
+  
+  /* 超小屏幕详情卡片优化 */
+  .detail-item {
+    padding: 12px 14px;
+  }
+  
+  .detail-label {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  
+  .detail-value {
+    font-size: 13px;
+  }
+  
+  .detail-value.amount-highlight {
+    font-size: 15px;
+  }
+  
+  .detail-value.notes {
+    padding: 10px;
     font-size: 12px;
   }
 }

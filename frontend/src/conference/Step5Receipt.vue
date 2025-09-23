@@ -106,6 +106,9 @@
           <el-button icon="el-icon-back" @click="goToPreviousStep" class="renew-button">
             Renew Info
           </el-button>
+          <el-button icon="el-icon-s-home" @click="goToUserPanel" class="dashboard-button">
+            Go to Dashboard
+          </el-button>
         </div>
         
         <!-- 异步下载提示 -->
@@ -150,7 +153,7 @@
         <h3>Need Help?</h3>
         <p>If you have any questions about your registration, please contact us:</p>
         <div class="contact-details">
-          <p><i class="el-icon-message"></i> Email: registration@icpads2025.org</p>
+          <p><i class="el-icon-message"></i> Email: registration@ieee-icpads.org.cn</p>
           <!-- <p><i class="el-icon-phone"></i> Phone: +1-234-567-8900</p> -->
           <p><i class="el-icon-time"></i> Office Hours: Monday - Friday, 9:00 AM - 5:00 PM EST</p>
         </div>
@@ -1064,6 +1067,21 @@ export default {
   border-color: #d32f2f !important;
   transform: translateY(-2px) !important;
   box-shadow: 0 6px 16px rgba(244, 67, 54, 0.4) !important;
+}
+
+/* Dashboard Button - Green */
+.action-buttons .dashboard-button {
+  background: linear-gradient(135deg, #4caf50 0%, #81c784 100%) !important;
+  border-color: #4caf50 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3) !important;
+}
+
+.action-buttons .dashboard-button:hover {
+  background: linear-gradient(135deg, #388e3c 0%, #4caf50 100%) !important;
+  border-color: #388e3c !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4) !important;
 }
 
 .download-notice {

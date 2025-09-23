@@ -45,7 +45,7 @@
                         </a>
                     </p>
                     <p class="mb-0">
-                            <i class="fas fa-globe me-2"></i>Contact: zhanxianghuang@mail.ustc.edu.cn
+                            <i class="fas fa-globe me-2"></i>Contact: registration@ieee-icpads.org.cn
                     </p>
       </div>
     </footer>

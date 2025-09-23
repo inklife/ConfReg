@@ -24,7 +24,7 @@
                     type="text" v-model="username" name="username" 
                       class="form-control form-control-lg py-3"
                       placeholder="Enter your username or email">
-                    <small class="form-text text-muted">You can login with either your unique username or email address</small>
+                    <!-- <small class="form-text text-muted">You can login with either your unique username or email address</small> -->
                 <div v-show="submitted && !username" class="invalid-feedback">Username or email is required</div>                      
                   </div>
 

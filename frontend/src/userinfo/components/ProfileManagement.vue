@@ -9,7 +9,15 @@
       <el-tabs v-model="activeTab" @tab-click="handleTabChange" class="profile-tabs">
         <!-- Personal Information Tab -->
         <el-tab-pane label="Personal Information" name="personal">
-          <el-form :model="userInfo" :rules="rules" ref="profileForm" label-width="140px" class="profile-form">
+          <!-- 移动端下滑提示 -->
+          <div class="scroll-hint-container" v-show="showScrollHint">
+            <div class="scroll-hint">
+              <i class="el-icon-arrow-down scroll-hint-icon"></i>
+              <span class="scroll-hint-text">Scroll down</span>
+            </div>
+          </div>
+          
+          <el-form :model="userInfo" :rules="rules" ref="profileForm" label-width="180px" class="profile-form">
             <el-form-item label="First Name" prop="firstName">
               <el-input v-model="userInfo.firstName" placeholder="Please enter your first name" @input="updateFullName">
                 <i slot="prefix" class="el-icon-user"></i>
@@ -54,21 +62,30 @@
               </el-input>
             </el-form-item>
             
-            <el-form-item>
-              <el-button type="primary" @click="saveProfile" :loading="loading" class="save-btn">
-                <i class="el-icon-check"></i>
+            <div class="custom-form-buttons">
+              <button type="button" @click="saveProfile" :disabled="loading" class="custom-btn custom-btn-primary">
+                <i v-if="loading" class="el-icon-loading"></i>
+                <i v-else class="el-icon-check"></i>
                 Save Changes
-              </el-button>
-              <el-button @click="resetForm">
+              </button>
+              <button type="button" @click="resetForm" class="custom-btn custom-btn-secondary">
                 <i class="el-icon-refresh"></i>
                 Reset
-              </el-button>
-            </el-form-item>
+              </button>
+            </div>
           </el-form>
         </el-tab-pane>
 
         <!-- Change Password Tab -->
         <el-tab-pane label="Change Password" name="password">
+          <!-- 移动端下滑提示 -->
+          <div class="scroll-hint-container" v-show="showScrollHint">
+            <div class="scroll-hint">
+              <i class="el-icon-arrow-down scroll-hint-icon"></i>
+              <span class="scroll-hint-text">Scroll down</span>
+            </div>
+          </div>
+          
           <!-- 密码修改锁定提示 -->
           <div v-if="passwordLocked" class="password-locked-warning">
             <el-alert
@@ -80,7 +97,7 @@
             </el-alert>
           </div>
           
-          <el-form :model="passwordForm" :rules="passwordRules" ref="passwordForm" label-width="160px" class="password-form">
+          <el-form :model="passwordForm" :rules="passwordRules" ref="passwordForm" label-width="180px" class="password-form">
             <el-form-item label="Current Password" prop="currentPassword">
               <el-input 
                 v-model="passwordForm.currentPassword" 
@@ -119,21 +136,30 @@
               </el-input>
             </el-form-item>
             
-            <el-form-item>
-              <el-button type="primary" @click="changePassword" :loading="passwordLoading" :disabled="passwordLocked" class="save-btn">
-                <i class="el-icon-check"></i>
+            <div class="custom-form-buttons">
+              <button type="button" @click="changePassword" :disabled="passwordLoading || passwordLocked" class="custom-btn custom-btn-primary">
+                <i v-if="passwordLoading" class="el-icon-loading"></i>
+                <i v-else class="el-icon-check"></i>
                 Change Password
-              </el-button>
-              <el-button @click="resetPasswordForm" :disabled="passwordLocked">
+              </button>
+              <button type="button" @click="resetPasswordForm" :disabled="passwordLocked" class="custom-btn custom-btn-secondary">
                 <i class="el-icon-refresh"></i>
                 Reset
-              </el-button>
-            </el-form-item>
+              </button>
+            </div>
           </el-form>
         </el-tab-pane>
 
         <!-- Email Management Tab -->
         <el-tab-pane label="Email Management" name="email">
+          <!-- 移动端下滑提示 -->
+          <div class="scroll-hint-container" v-show="showScrollHint">
+            <div class="scroll-hint">
+              <i class="el-icon-arrow-down scroll-hint-icon"></i>
+              <span class="scroll-hint-text">Scroll down</span>
+            </div>
+          </div>
+          
           <div class="email-management">
             <!-- Primary Email Section -->
             <div class="email-section">
@@ -162,13 +188,13 @@
               
               <!-- If no backup email -->
               <div v-if="!emailInfo.backupEmail" class="no-backup-email">
-                <div class="empty-state">
+                <div class="empty-state mobile-hidden">
                   <!-- <i class="el-icon-plus"></i> -->
                   <p>No backup email configured</p>
                   <p class="empty-note">Add a backup email for account security</p>
                 </div>
                 
-                <el-form :model="backupEmailForm" :rules="backupEmailRules" ref="backupEmailForm" label-width="160px" class="add-backup-form">
+                <el-form :model="backupEmailForm" :rules="backupEmailRules" ref="backupEmailForm" label-width="180px" class="add-backup-form">
                   <el-form-item label="Backup Email" prop="email">
                     <el-input 
                       v-model="backupEmailForm.email" 
@@ -185,6 +211,12 @@
                     </el-button>
                   </el-form-item>
                 </el-form>
+                
+                <div class="empty-state mobile-only">
+                  <!-- <i class="el-icon-plus"></i> -->
+                  <p>No backup email configured</p>
+                  <p class="empty-note">Add a backup email for account security</p>
+                </div>
               </div>
 
               <!-- If backup email exists -->
@@ -213,7 +245,7 @@
                       Please verify your backup email to activate it.
                     </div>
                     
-                    <el-form :model="verificationForm" :rules="verificationRules" ref="verificationForm" label-width="160px" class="verification-form">
+                    <el-form :model="verificationForm" :rules="verificationRules" ref="verificationForm" label-width="180px" class="verification-form">
                       <el-form-item label="Verification Code" prop="code">
                         <el-input 
                           v-model="verificationForm.code" 
@@ -274,6 +306,14 @@
 
         <!-- Update Username Tab -->
         <el-tab-pane label="Update Username" name="username">
+          <!-- 移动端下滑提示 -->
+          <div class="scroll-hint-container" v-show="showScrollHint">
+            <div class="scroll-hint">
+              <i class="el-icon-arrow-down scroll-hint-icon"></i>
+              <span class="scroll-hint-text">Scroll down</span>
+            </div>
+          </div>
+          
           <div class="username-management">
             <!-- Username Update Status -->
             <div v-if="!usernameUpdateStatus.canUpdate" class="username-restriction-warning">
@@ -324,7 +364,7 @@
                   Enter New Username
                 </h3>
                 
-                <el-form :model="usernameUpdateForm" :rules="usernameUpdateRules" ref="usernameUpdateForm" label-width="160px" class="username-form">
+                <el-form :model="usernameUpdateForm" :rules="usernameUpdateRules" ref="usernameUpdateForm" label-width="180px" class="username-form">
                   <el-form-item label="New Username" prop="newUsername">
                     <el-input 
                       v-model="usernameUpdateForm.newUsername" 
@@ -383,7 +423,7 @@
                       </div>
                     </div>
                     
-                    <div class="username-rules">
+                    <div class="username-rules mobile-hidden">
                       <p><i class="el-icon-info"></i> Username rules: </p>
                       <p>Unique AND No spaces or @ symbol</p>
                     </div>
@@ -398,6 +438,12 @@
                       Reset
                     </el-button>
                   </el-form-item>
+                  
+                  <!-- Username rules for mobile - moved after buttons -->
+                  <div class="username-rules mobile-only">
+                    <p><i class="el-icon-info"></i> Username rules: </p>
+                    <p>Unique AND No spaces or @ symbol</p>
+                  </div>
                 </el-form>
               </div>
 
@@ -425,7 +471,7 @@
                   </el-button>
                   
                   <div v-else class="verification-code-section">
-                    <el-form :model="usernameUpdateForm" :rules="verificationCodeRules" ref="verificationCodeForm" label-width="160px" class="verification-form">
+                    <el-form :model="usernameUpdateForm" :rules="verificationCodeRules" ref="verificationCodeForm" label-width="180px" class="verification-form">
                       <el-form-item label="Verification Code" prop="verificationCode">
                         <el-input 
                           v-model="usernameUpdateForm.verificationCode" 
@@ -489,6 +535,7 @@ export default {
   data() {
     return {
       activeTab: 'personal',
+      showScrollHint: false, // 控制滑动提示的显示
       userInfo: {
         firstName: '',
         lastName: '',
@@ -663,6 +710,12 @@ export default {
     if (subtab && ['personal', 'password', 'email', 'username'].includes(subtab)) {
       this.activeTab = subtab;
     }
+    
+    // 移动端触摸优化
+    this.$nextTick(() => {
+      this.optimizeMobileTabs();
+      this.initScrollHint();
+    });
   },
   destroyed() {
     // 清理计时器
@@ -672,6 +725,22 @@ export default {
     // 清理用户名检查计时器
     if (this.usernameCheckTimeout) {
       clearTimeout(this.usernameCheckTimeout);
+    }
+    
+    // 清理移动端触摸事件监听器
+    if (typeof window !== 'undefined') {
+      const tabItems = this.$el?.querySelectorAll('.el-tabs__item');
+      if (tabItems) {
+        tabItems.forEach(tab => {
+          tab.removeEventListener('touchstart', this.handleTabTouchStart);
+          tab.removeEventListener('touchend', this.handleTabTouchEnd);
+        });
+      }
+      
+      // 清理滚动事件监听器
+      if (this.scrollHandler) {
+        window.removeEventListener('scroll', this.scrollHandler);
+      }
     }
   },
   methods: {
@@ -693,6 +762,109 @@ export default {
           }
         });
       }
+      
+      // 在移动端切换tab时重新显示滚动提示
+      this.$nextTick(() => {
+        this.showScrollHintOnTabChange();
+      });
+    },
+
+    // 切换tab时显示滚动提示
+    showScrollHintOnTabChange() {
+      if (typeof window === 'undefined') return;
+      
+      const isMobile = window.innerWidth <= 768;
+      if (!isMobile) return;
+      
+      // 显示滚动提示
+      this.showScrollHint = true;
+      
+      // 2秒后自动隐藏
+      setTimeout(() => {
+        this.showScrollHint = false;
+      }, 2000);
+    },
+
+    // 优化移动端tabs的触摸体验
+    optimizeMobileTabs() {
+      if (typeof window === 'undefined') return;
+      
+      // 检查是否为移动设备
+      const isMobile = window.innerWidth <= 768 || 
+        ('ontouchstart' in window) || 
+        (navigator.maxTouchPoints > 0);
+        
+      if (!isMobile) return;
+      
+      this.$nextTick(() => {
+        // 查找所有tab元素
+        const tabItems = this.$el.querySelectorAll('.el-tabs__item');
+        
+        tabItems.forEach((tab, index) => {
+          // 移除现有的事件监听器
+          tab.removeEventListener('touchstart', this.handleTabTouchStart);
+          tab.removeEventListener('touchend', this.handleTabTouchEnd);
+          
+          // 添加优化的触摸事件
+          tab.addEventListener('touchstart', this.handleTabTouchStart, { passive: true });
+          tab.addEventListener('touchend', this.handleTabTouchEnd, { passive: true });
+          
+          // 添加视觉反馈
+          tab.style.cursor = 'pointer';
+          tab.style.userSelect = 'none';
+          tab.style.webkitUserSelect = 'none';
+          tab.style.webkitTapHighlightColor = 'rgba(64, 158, 255, 0.2)';
+        });
+      });
+    },
+
+    handleTabTouchStart(event) {
+      const tab = event.currentTarget;
+      tab.style.transform = 'scale(0.95)';
+      tab.style.backgroundColor = '#d9ecff';
+    },
+
+    handleTabTouchEnd(event) {
+      const tab = event.currentTarget;
+      
+      // 延迟恢复样式，提供视觉反馈
+      setTimeout(() => {
+        tab.style.transform = '';
+        tab.style.backgroundColor = '';
+      }, 150);
+    },
+
+    // 初始化滚动提示
+    initScrollHint() {
+      if (typeof window === 'undefined') return;
+      
+      // 检查是否为移动设备
+      const isMobile = window.innerWidth <= 768 || 
+        ('ontouchstart' in window) || 
+        (navigator.maxTouchPoints > 0);
+        
+      if (!isMobile) return;
+      
+      // 显示滚动提示
+      this.showScrollHint = true;
+      
+      // 添加滚动监听器来隐藏提示
+      this.scrollHandler = () => {
+        if (window.scrollY > 50) {
+          this.showScrollHint = false;
+          window.removeEventListener('scroll', this.scrollHandler);
+        }
+      };
+      
+      window.addEventListener('scroll', this.scrollHandler, { passive: true });
+      
+      // 3秒后自动隐藏提示
+      setTimeout(() => {
+        this.showScrollHint = false;
+        if (this.scrollHandler) {
+          window.removeEventListener('scroll', this.scrollHandler);
+        }
+      }, 3000);
     },
     
     async loadUserData() {
@@ -1454,8 +1626,8 @@ export default {
 }
 
 .profile-form {
-  margin-top: 32px;
-  padding: 24px 0;
+  margin-top: 8px;
+  padding: 16px 0;
 }
 
 .profile-form .el-form-item {
@@ -1464,20 +1636,131 @@ export default {
 
 .profile-form .el-input {
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   font-size: 16px;
 }
 
-.save-btn {
-  margin-right: 15px;
+.profile-form .el-form-item__label {
+  min-width: 140px;
+  text-align: right;
+}
+
+/* 自定义按钮容器样式 */
+.custom-form-buttons {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 15px;
+  margin-top: 24px;
+  padding: 0;
+}
+
+/* 自定义按钮基础样式 */
+.custom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 12px 32px;
   font-size: 16px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  outline: none;
+  user-select: none;
+  vertical-align: middle;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.custom-btn:focus {
+  outline: 2px solid rgba(64, 158, 255, 0.3);
+  outline-offset: 2px;
+}
+
+.custom-btn i {
+  font-size: 14px;
+}
+
+/* 主要按钮样式 */
+.custom-btn-primary {
+  background-color: #409EFF;
+  border-color: #409EFF;
+  color: white;
+}
+
+.custom-btn-primary:hover:not(:disabled) {
+  background-color: #66B1FF;
+  border-color: #66B1FF;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+.custom-btn-primary:active:not(:disabled) {
+  background-color: #3A8EE6;
+  border-color: #3A8EE6;
+  transform: translateY(0);
+}
+
+.custom-btn-primary:disabled {
+  background-color: #A0CFFF;
+  border-color: #A0CFFF;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 次要按钮样式 */
+.custom-btn-secondary {
+  background-color: #F5F7FA;
+  border-color: #DCDFE6;
+  color: #606266;
+}
+
+.custom-btn-secondary:hover:not(:disabled) {
+  background-color: #ECF5FF;
+  border-color: #409EFF;
+  color: #409EFF;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.custom-btn-secondary:active:not(:disabled) {
+  background-color: #D9ECFF;
+  border-color: #3A8EE6;
+  color: #3A8EE6;
+  transform: translateY(0);
+}
+
+.custom-btn-secondary:disabled {
+  background-color: #F5F7FA;
+  border-color: #E4E7ED;
+  color: #C0C4CC;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 加载状态动画 */
+.custom-btn .el-icon-loading {
+  animation: rotating 2s linear infinite;
+}
+
+@keyframes rotating {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .el-form-item__label {
   font-weight: 500;
   color: #606266;
   font-size: 16px;
+  padding-right: 12px;
 }
 
 .el-input__inner {
@@ -1520,10 +1803,80 @@ export default {
   padding: 0 24px;
   height: 48px;
   line-height: 48px;
+  min-width: 120px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.profile-tabs >>> .el-tabs__item:hover {
+  background-color: #f5f7fa;
+}
+
+.profile-tabs >>> .el-tabs__item.is-active {
+  background-color: #ecf5ff;
+}
+
+/* 移动端触摸优化 */
+@media (hover: none) and (pointer: coarse) {
+  /* 针对触摸设备的特殊样式 */
+  .profile-tabs >>> .el-tabs__item {
+    /* 确保足够的触摸目标大小 */
+    min-height: 48px !important;
+    min-width: 88px !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: rgba(64, 158, 255, 0.3) !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+  }
+  
+  .profile-tabs >>> .el-tabs__item:active {
+    background-color: #d9ecff !important;
+    transform: scale(0.95) !important;
+    transition: all 0.1s ease !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-tabs >>> .el-tabs__item {
+    /* 确保足够的触摸目标大小 */
+    min-height: 48px !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: rgba(64, 158, 255, 0.2) !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  
+  /* 为了确保点击区域覆盖整个tab，添加伪元素 */
+  .profile-tabs >>> .el-tabs__item::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 1 !important;
+    cursor: pointer !important;
+  }
+  
+  .profile-tabs >>> .el-tabs__item:active {
+    background-color: #d9ecff !important;
+    transform: scale(0.98) !important;
+  }
+  
+  /* 确保tab文本在伪元素上方 */
+  .profile-tabs >>> .el-tabs__item * {
+    position: relative !important;
+    z-index: 2 !important;
+    pointer-events: none !important;
+  }
 }
 
 .profile-tabs >>> .el-tabs__content {
-  padding-top: 24px;
+  padding-top: 8px;
 }
 
 .profile-tabs >>> .el-tab-pane {
@@ -1532,8 +1885,8 @@ export default {
 
 /* Password form specific styles */
 .password-form {
-  margin-top: 32px;
-  padding: 24px 0;
+  margin-top: 8px;
+  padding: 16px 0;
 }
 
 .password-form .el-form-item {
@@ -1542,8 +1895,13 @@ export default {
 
 .password-form .el-input {
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   font-size: 16px;
+}
+
+.password-form .el-form-item__label {
+  min-width: 140px;
+  text-align: right;
 }
 
 .password-form .el-form-item__label {
@@ -1598,7 +1956,7 @@ export default {
 
 /* 邮箱管理样式 */
 .email-management {
-  padding: 24px 0;
+  padding: 16px 0 24px 0;
 }
 
 .email-section {
@@ -1697,9 +2055,14 @@ export default {
 }
 
 .add-backup-form {
-  max-width: 500px;
+  max-width: 600px;
   margin: 0 auto;
   text-align: left;
+}
+
+.add-backup-form .el-form-item__label {
+  min-width: 180px;
+  text-align: right;
 }
 
 .verification-section {
@@ -1722,7 +2085,12 @@ export default {
 }
 
 .verification-form {
-  max-width: 500px;
+  max-width: 600px;
+}
+
+.verification-form .el-form-item__label {
+  min-width: 180px;
+  text-align: right;
 }
 
 /* 验证码输入框样式 */
@@ -1903,7 +2271,7 @@ export default {
 
 /* Username management styles */
 .username-management {
-  padding: 24px 0;
+  padding: 16px 0 24px 0;
 }
 
 .username-restriction-warning {
@@ -1991,7 +2359,12 @@ export default {
 }
 
 .username-form {
-  max-width: 500px;
+  max-width: 600px;
+}
+
+.username-form .el-form-item__label {
+  min-width: 180px;
+  text-align: right;
 }
 
 /* 用户名验证反馈样式 */
@@ -2176,14 +2549,270 @@ export default {
   line-height: 1.5;
 }
 
+/* 移动端滚动提示样式 */
+.scroll-hint-container {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.scroll-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background-color: rgba(64, 158, 255, 0.9);
+  color: white;
+  padding: 16px 4px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: scrollHintPulse 2s infinite ease-in-out;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  width: 16px;
+  height: 120px;
+  min-width: 16px;
+  max-width: 16px;
+}
+
+.scroll-hint-icon {
+  font-size: 14px;
+  animation: scrollHintBounce 1.5s infinite ease-in-out;
+  transform: rotate(0deg);
+}
+
+.scroll-hint-text {
+  font-size: 8px;
+  font-weight: 600;
+  text-align: center;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+@keyframes scrollHintPulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes scrollHintBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+/* 在桌面端隐藏滚动提示 */
+@media (min-width: 769px) {
+  .scroll-hint-container {
+    display: none !important;
+  }
+  
+  /* 桌面端显示/隐藏控制 */
+  .mobile-only {
+    display: none !important;
+  }
+  
+  .mobile-hidden {
+    display: block !important;
+  }
+}
+
 /* Responsive design for username management */
 @media (max-width: 768px) {
+  .profile-management {
+    padding: 0;
+  }
+  
+  /* 最强制的移动端表单垂直布局样式 */
+  .profile-management >>> .el-form {
+    width: 100% !important;
+  }
+  
+  .profile-management >>> .el-form-item {
+    display: block !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    margin-bottom: 20px !important;
+  }
+  
+  .profile-management >>> .el-form-item__label {
+    width: 100% !important;
+    max-width: none !important;
+    text-align: left !important;
+    min-width: 0 !important;
+    margin-bottom: 8px !important;
+    float: none !important;
+    display: block !important;
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+    line-height: 1.4 !important;
+    font-size: 14px !important;
+  }
+  
+  .profile-management >>> .el-form-item__content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    display: block !important;
+  }
+  
+  .profile-management >>> .el-input {
+    width: 100% !important;
+    max-width: none !important;
+  }
+  
+  .profile-management >>> .el-input__inner {
+    width: 100% !important;
+  }
+  
+  .profile-management .el-card {
+    margin: 12px;
+    border-radius: 12px;
+  }
+  
+  .profile-management .el-card__body {
+    padding: 16px;
+  }
+  
+  .card-header {
+    padding: 16px 0;
+  }
+  
+  .card-title {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  
+  .card-subtitle {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  
+  .profile-tabs .el-tabs__header {
+    margin-bottom: 16px;
+  }
+  
+  .profile-tabs >>> .el-tabs__item {
+    padding: 12px 8px !important;
+    font-size: 14px !important;
+    height: 56px !important;
+    line-height: 1.2 !important;
+    min-width: 80px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+    border-radius: 8px 8px 0 0 !important;
+    margin: 0 2px !important;
+    position: relative !important;
+    background-color: #f8f9fa !important;
+    border: 1px solid #e4e7ed !important;
+    border-bottom: none !important;
+  }
+  
+  .profile-tabs >>> .el-tabs__item:hover {
+    background-color: #ecf5ff !important;
+    border-color: #409EFF !important;
+    color: #409EFF !important;
+  }
+  
+  .profile-tabs >>> .el-tabs__item.is-active {
+    background-color: white !important;
+    border-color: #409EFF !important;
+    color: #409EFF !important;
+    font-weight: 600 !important;
+    z-index: 1 !important;
+  }
+  
+  .profile-tabs >>> .el-tabs__nav-wrap {
+    padding: 0 8px !important;
+  }
+  
+  .profile-tabs >>> .el-tabs__nav-scroll {
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  
+  .profile-tabs >>> .el-tabs__nav-scroll::-webkit-scrollbar {
+    display: none !important;
+  }
+  
+  .profile-tabs >>> .el-tabs__nav {
+    display: flex !important;
+    white-space: nowrap !important;
+  }
+  
+  .profile-tabs >>> .el-tabs__active-bar {
+    display: none !important;
+  }
+  
+  .profile-form,
+  .password-form {
+    max-width: 100%;
+  }
+  
+  .profile-form .el-form-item,
+  .password-form .el-form-item {
+    margin-bottom: 20px;
+  }
+  
+  /* 移动端表单标签样式 - 已在上面定义，这里删除重复 */
+  
+  .profile-form .el-input,
+  .password-form .el-input {
+    max-width: none !important;
+    width: 100% !important;
+  }
+  
+  .field-hint,
+  .password-attempt-warning {
+    font-size: 12px;
+    margin-top: 6px;
+    line-height: 1.3;
+    padding: 6px 8px;
+    border-radius: 4px;
+  }
+  
+  /* 移动端自定义按钮样式 */
+  .custom-form-buttons {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+    margin-top: 20px;
+  }
+  
+  .custom-btn {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 14px;
+    justify-content: center;
+  }
+  
   .username-step {
     padding: 16px;
+    margin-bottom: 24px;
   }
   
   .current-username-info {
     padding: 16px;
+    margin-bottom: 24px;
   }
   
   .username-form {
@@ -2197,6 +2826,349 @@ export default {
   
   .verification-actions .action-btn {
     width: 100%;
+  }
+  
+  .email-actions-container {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .email-actions-container .action-btn {
+    width: 100%;
+  }
+  
+  .add-backup-form,
+  .verification-form {
+    max-width: 100%;
+  }
+  
+  /* 其他表单的标签和内容样式 - 已在上面统一定义，这里删除重复 */
+  
+  .add-backup-form .el-input,
+  .verification-form .el-input,
+  .username-form .el-input {
+    width: 100% !important;
+  }
+  
+  .password-locked-warning {
+    margin-bottom: 16px;
+  }
+  
+  .password-locked-warning .el-alert {
+    font-size: 13px;
+  }
+  
+  .username-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .username-text {
+    font-size: 14px;
+    word-break: break-all;
+  }
+  
+  .info-value {
+    font-size: 13px;
+    word-break: break-all;
+  }
+  
+  /* 移动端邮件管理样式优化 */
+  .email-management {
+    padding: 8px 0 16px 0 !important;
+  }
+  
+  .email-section {
+    margin-bottom: 24px !important;
+    padding-bottom: 20px !important;
+  }
+  
+  .email-section:last-child {
+    margin-bottom: 0 !important;
+  }
+  
+  .section-title {
+    font-size: 16px !important;
+    margin: 0 0 12px 0 !important;
+  }
+  
+  .section-title i {
+    font-size: 18px !important;
+  }
+  
+  .email-info {
+    padding: 16px !important;
+    margin-bottom: 16px !important;
+  }
+  
+  .no-backup-email {
+    padding: 20px 12px !important;
+  }
+  
+  .empty-state {
+    margin-bottom: 20px !important;
+  }
+  
+  .empty-state i {
+    font-size: 36px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .empty-state p {
+    font-size: 15px !important;
+    margin: 6px 0 !important;
+  }
+  
+  .verification-section {
+    margin-top: 12px !important;
+    padding-top: 12px !important;
+  }
+  
+  .verification-note {
+    margin-bottom: 12px !important;
+    padding: 10px !important;
+    font-size: 13px !important;
+  }
+  
+  .backup-email-actions {
+    margin-top: 12px !important;
+    padding: 12px 16px !important;
+  }
+  
+  .email-management-info {
+    margin-top: 20px !important;
+  }
+  
+  .email-management-info .info-card {
+    padding: 16px !important;
+  }
+  
+  .email-management-info .info-card h4 {
+    font-size: 15px !important;
+    margin: 0 0 10px 0 !important;
+  }
+  
+  .email-management-info .info-card li {
+    margin-bottom: 4px !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+  }
+  
+  /* 移动端显示/隐藏控制 */
+  .mobile-only {
+    display: block !important;
+  }
+  
+  .mobile-hidden {
+    display: none !important;
+  }
+  
+  /* 移动端用户名规则优化 */
+  .mobile-only.username-rules {
+    margin-top: 20px !important;
+    padding: 14px !important;
+  }
+  
+  .mobile-only.username-rules p {
+    font-size: 14px !important;
+    margin: 0 0 8px 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-management .el-card {
+    margin: 8px;
+  }
+  
+  .profile-management .el-card__body {
+    padding: 12px;
+  }
+  
+  .card-header {
+    padding: 12px 0;
+  }
+  
+  .card-title {
+    font-size: 18px;
+  }
+  
+  .card-subtitle {
+    font-size: 13px;
+  }
+  
+  .profile-tabs >>> .el-tabs__item {
+    padding: 16px 4px !important;
+    font-size: 12px !important;
+    height: 64px !important;
+    line-height: 1.1 !important;
+    min-width: 70px !important;
+    flex: 1 !important;
+    max-width: 25% !important;
+  }
+  
+  /* 在小屏幕上让tab项平分宽度 */
+  .profile-tabs >>> .el-tabs__nav {
+    width: 100% !important;
+  }
+  
+  .profile-tabs >>> .el-tabs__item:nth-child(1),
+  .profile-tabs >>> .el-tabs__item:nth-child(2),
+  .profile-tabs >>> .el-tabs__item:nth-child(3),
+  .profile-tabs >>> .el-tabs__item:nth-child(4) {
+    flex: 1 !important;
+    margin: 0 1px !important;
+  }
+  
+  /* 480px以下屏幕的表单标签字体大小调整 */
+  .profile-form >>> .el-form-item__label,
+  .password-form >>> .el-form-item__label,
+  .add-backup-form >>> .el-form-item__label,
+  .verification-form >>> .el-form-item__label,
+  .username-form >>> .el-form-item__label {
+    font-size: 13px !important;
+    margin-bottom: 6px !important;
+  }
+  
+  .field-hint,
+  .password-attempt-warning {
+    font-size: 11px;
+  }
+  
+  .custom-btn {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+  
+  .save-btn,
+  .action-btn {
+    padding: 10px;
+    font-size: 13px;
+  }
+  
+  .username-step,
+  .current-username-info {
+    padding: 12px;
+  }
+  
+  .username-text,
+  .info-value {
+    font-size: 12px;
+  }
+  
+  .verification-actions .action-btn {
+    font-size: 13px;
+    padding: 10px 16px;
+  }
+  
+  /* 480px以下邮件管理进一步优化 */
+  .email-management {
+    padding: 6px 0 12px 0 !important;
+  }
+  
+  .email-section {
+    margin-bottom: 20px !important;
+    padding-bottom: 16px !important;
+  }
+  
+  .section-title {
+    font-size: 15px !important;
+    margin: 0 0 10px 0 !important;
+  }
+  
+  .section-title i {
+    font-size: 16px !important;
+  }
+  
+  .email-info {
+    padding: 12px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .email-address {
+    font-size: 14px !important;
+  }
+  
+  .email-note {
+    font-size: 12px !important;
+  }
+  
+  .no-backup-email {
+    padding: 16px 8px !important;
+  }
+  
+  .empty-state {
+    margin-bottom: 16px !important;
+  }
+  
+  .empty-state i {
+    font-size: 32px !important;
+    margin-bottom: 10px !important;
+  }
+  
+  .empty-state p {
+    font-size: 14px !important;
+    margin: 4px 0 !important;
+  }
+  
+  .empty-note {
+    font-size: 12px !important;
+  }
+  
+  .verification-section {
+    margin-top: 10px !important;
+    padding-top: 10px !important;
+  }
+  
+  .verification-note {
+    margin-bottom: 10px !important;
+    padding: 8px !important;
+    font-size: 12px !important;
+  }
+  
+  .backup-email-actions {
+    margin-top: 10px !important;
+    padding: 10px 12px !important;
+  }
+  
+  .email-management-info {
+    margin-top: 16px !important;
+  }
+  
+  .email-management-info .info-card {
+    padding: 12px !important;
+  }
+  
+  .email-management-info .info-card h4 {
+    font-size: 14px !important;
+    margin: 0 0 8px 0 !important;
+  }
+  
+  .email-management-info .info-card li {
+    margin-bottom: 3px !important;
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+  
+  /* 480px以下移动端显示/隐藏控制 */
+  .mobile-only {
+    display: block !important;
+  }
+  
+  .mobile-hidden {
+    display: none !important;
+  }
+  
+  /* 移动端用户名规则优化 */
+  .mobile-only.username-rules {
+    margin-top: 16px !important;
+    padding: 12px !important;
+    font-size: 13px !important;
+  }
+  
+  .mobile-only.username-rules p {
+    font-size: 13px !important;
+    margin: 0 0 6px 0 !important;
   }
 }
 </style>

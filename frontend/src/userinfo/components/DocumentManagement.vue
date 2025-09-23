@@ -26,15 +26,16 @@
       
       <!-- 有已批准注册的状态 -->
       <div v-else class="document-content">
-        <!-- PDF格式选择 -->
-        <div class="format-selection">
-          <h4>PDF Download Options</h4>
+        <!-- 移动端简化的格式选择 -->
+        <div class="format-selection mobile-optimized">
           <div class="options-row">
-            <el-radio-group v-model="pdfMarginMode" size="small" class="format-radios">
-              <el-radio label="standard">Standard (5mm)</el-radio>
-              <el-radio label="minimal">Compact (2mm)</el-radio>
-              <el-radio label="none">Full page (0mm)</el-radio>
-            </el-radio-group>
+            <div class="format-radios">
+              <el-radio-group v-model="pdfMarginMode" size="small">
+                <el-radio label="standard">Standard</el-radio>
+                <el-radio label="minimal">Compact</el-radio>
+                <el-radio label="none">Full page</el-radio>
+              </el-radio-group>
+            </div>
             <div class="download-settings">
               <el-checkbox v-model="autoDownload" size="small">
                 Auto download
@@ -133,7 +134,8 @@
         <!-- 注册信息概览 -->
         <div class="registration-overview">
           <h4>Your Registration Information</h4>
-          <el-table :data="approvedRegistrations" border style="width: 100%">
+          <div class="registration-table">
+            <el-table :data="approvedRegistrations" border style="width: 100%">
             <el-table-column prop="productCode" label="Product Code" width="120"></el-table-column>
             <el-table-column prop="name" label="Attendee Name"></el-table-column>
             <el-table-column prop="email" label="Email"></el-table-column>
@@ -164,6 +166,7 @@
               </template>
             </el-table-column>
           </el-table>
+          </div>
         </div>
       </div>
     </el-card>
@@ -764,7 +767,7 @@ export default {
     // 从后端加载用户的pending任务
     async loadPendingTasksFromServer() {
       try {
-        console.log('� [DEBUG] loadPendingTasksFromServer 开始执行');
+        console.log(' [DEBUG] loadPendingTasksFromServer 开始执行');
         console.log('📡 [DEBUG] 加载前的本地任务:', JSON.parse(JSON.stringify(this.pendingTasks)));
         
         const axios = (await import('axios')).default;
@@ -776,56 +779,69 @@ export default {
           const serverTasks = response.data.data.tasks;
           console.log('📡 [DEBUG] 从服务器获取到任务:', JSON.parse(JSON.stringify(serverTasks)));
           
-          // 过滤掉已完成的任务，只处理真正进行中的任务
-          const processingTasks = serverTasks.filter(task => task.status === 'processing');
-          console.log('� [DEBUG] 过滤后的进行中任务:', JSON.parse(JSON.stringify(processingTasks)));
+          // 以服务器状态为准，先清空本地所有任务
+          console.log('📡 [DEBUG] 以服务器状态为准，清空本地所有任务');
+          this.pendingTasks = {};
           
-          // 不要清空现有任务，而是有选择地更新
-          // this.pendingTasks = {};
+          // 同时清理全局store中该用户的所有任务
+          if (this.$store) {
+            console.log('📡 [DEBUG] 清理全局 store 中的用户任务');
+            this.$store.dispatch('tasks/clearUserTasks', { userId: this.currentUserId });
+          }
           
-          // 只添加或更新进行中的任务
-          processingTasks.forEach(task => {
+          // 过滤待处理的任务（包括processing和generated状态）
+          const pendingTasks = serverTasks.filter(task => 
+            task.status === 'processing' || 
+            task.status === 'generated' || 
+            task.status === 'completed'
+          );
+          console.log(' [DEBUG] 过滤后的待处理任务:', JSON.parse(JSON.stringify(pendingTasks)));
+          
+          // 添加服务器返回的待处理任务
+          pendingTasks.forEach(task => {
             // 将服务器类型映射到前端类型
             const frontendType = this.mapServerDocumentType(task.type);
             
             console.log(`📡 [DEBUG] 处理服务器任务: ${task.type} -> ${frontendType}`, JSON.parse(JSON.stringify(task)));
             
-            // 检查是否是本页面已知的任务
-            const existingTask = this.pendingTasks[frontendType];
-            const isKnownTask = existingTask && existingTask.taskId === task.taskId;
-            
-            console.log(`📡 [DEBUG] 现有任务检查: ${frontendType}, 存在:${!!existingTask}, 是否已知:${isKnownTask}`);
+            // 映射服务器状态到前端状态
+            let frontendStatus = task.status;
+            if (task.status === 'completed') {
+              frontendStatus = 'generated';
+            }
             
             this.pendingTasks[frontendType] = {
               taskId: task.taskId,
-              status: task.status,
+              status: frontendStatus,
               progress: task.progress,
               timestamp: new Date(task.createdAt).getTime(),
-              initiatedInCurrentPage: isKnownTask ? (existingTask.initiatedInCurrentPage || false) : false
+              initiatedInCurrentPage: false // 从服务器恢复的任务标记为非当前页面发起
             };
             
-            console.log(`📡 [DEBUG] 更新后的任务 ${frontendType}:`, JSON.parse(JSON.stringify(this.pendingTasks[frontendType])));
+            console.log(`📡 [DEBUG] 添加任务 ${frontendType}:`, JSON.parse(JSON.stringify(this.pendingTasks[frontendType])));
           });
           
           // 清理重复的任务类型
           this.cleanupDuplicateTaskTypes();
           
-          // 同时更新到全局store（只添加进行中的任务）
-          if (this.$store) {
-            console.log('📡 [DEBUG] 更新全局 store 中的任务');
-            // 不要清空store中的任务，而是有选择地更新
-            // this.$store.dispatch('tasks/clearUserTasks', { userId: this.currentUserId });
-            
-            // 添加服务器返回的进行中任务
-            processingTasks.forEach(task => {
+          // 添加服务器返回的待处理任务到全局store
+          if (this.$store && pendingTasks.length > 0) {
+            console.log('📡 [DEBUG] 添加服务器任务到全局 store');
+            pendingTasks.forEach(task => {
               // 将服务器类型映射到前端类型
               const frontendType = this.mapServerDocumentType(task.type);
+              
+              // 映射服务器状态到前端状态
+              let frontendStatus = task.status;
+              if (task.status === 'completed') {
+                frontendStatus = 'generated';
+              }
               
               this.$store.dispatch('tasks/addDownloadTask', {
                 taskId: task.taskId,
                 type: frontendType,
                 userId: this.currentUserId,
-                status: task.status,
+                status: frontendStatus,
                 progress: task.progress
               });
             });
@@ -836,16 +852,24 @@ export default {
           
           console.log('� [DEBUG] 服务器加载完成后的本地任务:', JSON.parse(JSON.stringify(this.pendingTasks)));
         } else {
-          // 服务器没有任务数据，但不要清空本地已完成的任务
-          console.log('� [DEBUG] 服务器无pending任务，保持本地已完成任务');
-          // 移除本地所有进行中的任务（因为服务器说没有pending任务）
+          // 服务器没有任务数据，清空本地所有未下载的任务
+          console.log('� [DEBUG] 服务器无pending任务，清空本地所有未下载的任务');
+          // 移除本地所有未下载的任务（包括processing、generated等状态）
           Object.keys(this.pendingTasks).forEach(type => {
             const task = this.pendingTasks[type];
-            if (task.status === 'processing') {
-              console.log(`� [DEBUG] 移除本地进行中的任务: ${type}`);
+            // 只保留已下载的任务，清除其他所有状态的任务
+            if (task.status !== 'downloaded') {
+              console.log(`� [DEBUG] 移除本地任务: ${type}, 状态: ${task.status}`);
               this.$delete(this.pendingTasks, type);
             }
           });
+          
+          // 同时清理全局store中该用户的所有任务
+          if (this.$store) {
+            console.log('📡 [DEBUG] 清理全局 store 中的用户任务');
+            this.$store.dispatch('tasks/clearUserTasks', { userId: this.currentUserId });
+          }
+          
           this.savePendingTasksToStorage();
         }
       } catch (error) {
@@ -2072,47 +2096,305 @@ export default {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+/* 平板设备 */
+@media (max-width: 1024px) {
   .document-grid {
-    grid-template-columns: 1fr;
-    gap: 18px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
   }
   
   .document-card {
-    padding: 24px 18px;
-    min-height: 200px;
+    padding: 28px 16px;
+    min-height: 210px;
   }
   
-  .document-icon {
-    font-size: 42px;
+  .registration-overview {
+    overflow-x: auto; /* 注册信息表格水平滚动 */
+  }
+  
+  .registration-overview .el-table {
+    min-width: 800px; /* 确保表格最小宽度 */
+  }
+}
+
+/* 手机设备 - 768px及以下 */
+@media (max-width: 768px) {
+  .document-management {
+    padding: 12px; /* 进一步减小外边距 */
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0; /* 减小垂直间距 */
+  }
+  
+  .header-left {
+    width: 100%;
+  }
+  
+  .card-title {
+    font-size: 18px; /* 减小标题字体 */
+    margin-bottom: 6px;
+  }
+  
+  .card-subtitle {
+    font-size: 13px; /* 减小副标题字体 */
+    line-height: 1.4;
+  }
+  
+  .header-right {
+    width: 100%;
+    margin-top: 0;
+  }
+  
+  .format-selection {
+    padding: 10px; /* 进一步减小内边距 */
+    margin-bottom: 12px; /* 减小底部间距 */
+  }
+  
+  .format-selection h4 {
+    font-size: 13px; /* 进一步减小字体 */
+    margin-bottom: 6px; /* 减小底部间距 */
   }
   
   .options-row {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px; /* 减小间距 */
   }
   
   .format-radios .el-radio {
-    margin-right: 12px;
-    margin-bottom: 8px;
+    margin-right: 6px;
+    margin-bottom: 4px;
+    font-size: 12px; /* 进一步减小字体 */
+  }
+  
+  .document-grid {
+    grid-template-columns: 1fr;
+    gap: 12px; /* 减小卡片间距 */
+    margin-bottom: 20px; /* 减小底部间距 */
+  }
+  
+  .document-card {
+    padding: 16px 12px; /* 减小卡片内边距 */
+    min-height: 160px; /* 减小卡片最小高度 */
+  }
+  
+  .document-icon {
+    font-size: 36px; /* 减小图标尺寸 */
+    margin-bottom: 10px; /* 减小底部间距 */
+  }
+  
+  .document-card h4 {
+    font-size: 15px; /* 减小标题字体 */
+    margin: 8px 0 6px 0; /* 减小间距 */
+  }
+  
+  .document-card p {
+    font-size: 12px; /* 减小描述字体 */
+    margin-bottom: 12px; /* 减小底部间距 */
+    line-height: 1.3; /* 优化行高 */
+  }
+  
+  .document-card .el-button {
+    width: 100%;
+    padding: 8px 14px; /* 减小按钮内边距 */
+    font-size: 13px; /* 减小按钮字体 */
+  }
+  
+  .pending-downloads {
+    padding: 12px;
+    margin-bottom: 16px;
   }
   
   .progress-content {
     flex-direction: column;
     align-items: flex-start;
-    gap: 6px;
-  }
-  
-  .progress-tasks {
-    flex-direction: column;
     gap: 8px;
   }
   
+  .progress-tasks {
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .pending-task {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e8f4fd;
+  }
+  
+  .pending-task:last-child {
+    border-bottom: none;
+  }
+  
+  .task-status {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
   .task-status .el-button {
-    min-width: 70px;
-    height: 24px;
+    min-width: 80px;
+    height: 28px;
     font-size: 12px;
+    padding: 6px 12px;
+  }
+  
+  .registration-overview {
+    margin: 20px 0; /* 减小上下间距 */
+  }
+  
+  .registration-overview h4 {
+    font-size: 16px; /* 减小标题字体 */
+    margin-bottom: 12px; /* 减小底部间距 */
+  }
+  
+  /* 表格移动端优化 */
+  .registration-overview {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .registration-overview .el-table {
+    min-width: 700px;
+    font-size: 13px;
+  }
+  
+  .registration-overview .el-table th,
+  .registration-overview .el-table td {
+    padding: 8px 6px;
+  }
+  
+  .registration-time {
+    font-size: 12px;
+  }
+  
+  .empty-state {
+    padding: 40px 16px;
+  }
+  
+  /* 移动端格式选择优化 */
+  .format-selection.mobile-optimized h4 {
+    display: none; /* 隐藏标题节省空间 */
+  }
+  
+  .format-selection.mobile-optimized {
+    background: transparent; /* 简化背景 */
+    border: none;
+    padding: 8px 0;
+    margin-bottom: 8px;
+  }
+  
+  /* 移动端下载设置位置调整 */
+  .format-selection.mobile-optimized .options-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .format-selection.mobile-optimized .format-radios {
+    flex: none;
+  }
+  
+  .format-selection.mobile-optimized .download-settings {
+    flex: none;
+  }
+}
+
+/* 小屏手机设备 - 480px及以下 */
+@media (max-width: 480px) {
+  .document-management {
+    padding: 8px; /* 进一步减小 */
+  }
+  
+  .card-title {
+    font-size: 16px; /* 进一步减小 */
+  }
+  
+  .card-subtitle {
+    font-size: 12px; /* 进一步减小 */
+    display: none; /* 小屏幕隐藏副标题节省空间 */
+  }
+  
+  .card-header {
+    padding: 8px 0; /* 减小头部间距 */
+  }
+  
+  /* 格式选择进一步简化 */
+  .format-selection.mobile-optimized {
+    padding: 4px 0;
+    margin-bottom: 4px;
+  }
+  
+  .format-selection.mobile-optimized .options-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .format-radios .el-radio {
+    display: inline-block;
+    margin-right: 4px;
+    margin-bottom: 4px;
+    font-size: 11px;
+  }
+  
+  .download-settings .el-checkbox {
+    font-size: 11px;
+  }
+  
+  .document-card {
+    padding: 12px 8px; /* 进一步减小 */
+    min-height: 140px; /* 进一步减小高度 */
+  }
+  
+  .document-icon {
+    font-size: 30px; /* 进一步减小图标 */
+    margin-bottom: 8px; /* 减小间距 */
+  }
+  
+  .document-card h4 {
+    font-size: 14px; /* 进一步减小 */
+    margin: 6px 0 4px 0; /* 减小间距 */
+  }
+  
+  .document-card p {
+    font-size: 11px; /* 进一步减小 */
+    margin-bottom: 10px; /* 减小间距 */
+    line-height: 1.2; /* 优化行高 */
+  }
+  
+  .document-card .el-button {
+    padding: 6px 10px; /* 进一步减小 */
+    font-size: 12px; /* 进一步减小 */
+  }
+  
+  .pending-task {
+    font-size: 12px;
+    gap: 4px;
+  }
+  
+  .task-status .el-button {
+    min-width: 60px;
+    height: 26px;
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  
+  .registration-overview .el-table {
+    min-width: 600px;
+    font-size: 12px;
+  }
+  
+  .registration-overview .el-table th,
+  .registration-overview .el-table td {
+    padding: 6px 4px;
   }
 }
 
@@ -2140,5 +2422,104 @@ export default {
   color: #909399;
   font-size: 12px;
   margin-top: 2px;
+}
+
+/* 移动端消息弹窗优化 */
+@media (max-width: 768px) {
+  /* Element UI 消息弹窗样式优化 */
+  .el-message {
+    min-width: 300px !important;
+    max-width: calc(100vw - 32px) !important;
+    font-size: 14px !important;
+    padding: 12px 16px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  .el-message--success {
+    background-color: #f0f9ff !important;
+    border-color: #67c23a !important;
+    color: #67c23a !important;
+  }
+  
+  .el-message--error {
+    background-color: #fef0f0 !important;
+    border-color: #f56c6c !important;
+    color: #f56c6c !important;
+  }
+  
+  .el-message--info {
+    background-color: #f4f4f5 !important;
+    border-color: #909399 !important;
+    color: #909399 !important;
+  }
+  
+  .el-message--warning {
+    background-color: #fdf6ec !important;
+    border-color: #e6a23c !important;
+    color: #e6a23c !important;
+  }
+  
+  /* 通知弹窗优化 */
+  .el-notification {
+    width: calc(100vw - 32px) !important;
+    max-width: 380px !important;
+    right: 16px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+  }
+  
+  .el-notification__title {
+    font-size: 15px !important;
+    margin-bottom: 6px !important;
+  }
+  
+  .el-notification__content {
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+  }
+}
+
+/* 小屏设备消息优化 */
+@media (max-width: 480px) {
+  .el-message {
+    min-width: 280px !important;
+    font-size: 13px !important;
+    padding: 10px 14px !important;
+  }
+  
+  .el-notification {
+    width: calc(100vw - 24px) !important;
+    max-width: 320px !important;
+    right: 12px !important;
+    font-size: 12px !important;
+  }
+  
+  .el-notification__title {
+    font-size: 14px !important;
+  }
+  
+  .el-notification__content {
+    font-size: 12px !important;
+  }
+}
+
+/* 移动端表格滚动优化 */
+@media (max-width: 768px) {
+  .registration-table {
+    position: relative;
+  }
+  
+  .registration-table::after {
+    content: "← Swipe left/right to view more →";
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #909399;
+    font-size: 12px;
+    text-align: center;
+    white-space: nowrap;
+  }
 }
 </style>
