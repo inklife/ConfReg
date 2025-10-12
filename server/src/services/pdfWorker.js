@@ -233,10 +233,10 @@ async function generatePDFFromHTML(html, options = {}) {
         
         console.log(`📄 开始生成 PDF，选项:`, JSON.stringify(pdfOptions, null, 2));
         
-        // ⏰ 添加 10 秒延迟来测试队列功能
-        console.log(`⏰ 开始 10 秒延迟，用于测试队列功能...`);
-        await new Promise(resolve => setTimeout(resolve, 10000)); // 10 秒 = 10000 毫秒
-        console.log(`⏰ 10 秒延迟完成，继续生成 PDF...`);
+        // ⏰ 添加 3 秒延迟来测试队列功能
+        console.log(`⏰ 开始 3 秒延迟，用于测试队列功能...`);
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3 秒 = 3000 毫秒
+        console.log(`⏰ 3 秒延迟完成，继续生成 PDF...`);
         
         const pdfBuffer = await page.pdf(pdfOptions);
         console.log(`✅ PDF 生成成功，大小: ${pdfBuffer.length} bytes`);

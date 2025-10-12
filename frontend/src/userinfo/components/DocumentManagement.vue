@@ -114,8 +114,8 @@
           </el-card> -->
         </div>
         
-        <!-- 注册信息概览 -->
-        <div class="registration-overview">
+        <!-- 注册信息概览 - 仅在有注册时显示 -->
+        <div v-if="approvedRegistrations.length > 0" class="registration-overview">
           <h4>Your Registration Information</h4>
           <div class="registration-table">
             <el-table :data="approvedRegistrations" border style="width: 100%">
@@ -805,6 +805,27 @@ export default {
     goToRegistrations() {
       // 发送事件给父组件，让父组件处理菜单切换
       this.$emit('navigate', 'registrations');
+    },
+
+    async loadApprovedMealVouchers() {
+      try {
+        console.log('DocumentManagement: Loading approved meal vouchers...');
+        const axios = (await import('axios')).default;
+        const response = await axios.get('/api/vouchers/', {
+          withCredentials: true
+        });
+        
+        if (response.data && response.data.vouchers) {
+          this.approvedMealVouchers = response.data.vouchers.filter(v => v.status === 'approved');
+          console.log('DocumentManagement: Found approved meal vouchers:', this.approvedMealVouchers.length);
+        } else {
+          console.log('DocumentManagement: No meal vouchers data in response');
+          this.approvedMealVouchers = [];
+        }
+      } catch (error) {
+        console.error('DocumentManagement: Failed to load meal vouchers:', error);
+        this.approvedMealVouchers = [];
+      }
     },
     
     async loadDownloadHistory() {
