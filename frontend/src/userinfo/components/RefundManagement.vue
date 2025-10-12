@@ -25,7 +25,7 @@
       <!-- 无已批准注册的状态 -->
       <div v-if="!refundStatus.hasApprovedRegistration" class="empty-state">
         <el-empty description="You need to have approved registrations before requesting refunds">
-          <el-button type="primary" @click="$router.push('/conference/new')">Register Now</el-button>
+          <el-button type="primary" @click="goToRegistrations">Register Now</el-button>
         </el-empty>
       </div>
       
@@ -178,7 +178,7 @@
         
         <div v-else class="no-registrations">
           <el-empty description="You have no approved registration records">
-            <el-button type="primary" @click="$router.push('/conference/new')">Register Now</el-button>
+            <el-button type="primary" @click="goToRegistrations">Register Now</el-button>
           </el-empty>
         </div>
       </div>
@@ -574,6 +574,12 @@ export default {
     await this.checkRefundStatus();
   },
   methods: {
+    // 跳转到注册页面
+    goToRegistrations() {
+      // 发送事件给父组件，让父组件处理菜单切换
+      this.$emit('navigate', 'registrations');
+    },
+
     async loadApprovedRegistrations() {
       try {
         const response = await userService.getApprovedRegistrations();

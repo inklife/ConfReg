@@ -9,7 +9,7 @@
       <!-- 无已批准注册的状态 -->
       <div v-if="!transferStatus.hasApprovedRegistration" class="empty-state">
         <el-empty description="You need to have an approved registration before requesting attendee transfer">
-          <el-button type="primary" @click="$router.push('/conference/new')">Register Now</el-button>
+          <el-button type="primary" @click="goToRegistrations">Register Now</el-button>
         </el-empty>
       </div>
 
@@ -630,6 +630,12 @@ export default {
 
     togglePaymentDetails() {
       this.showPaymentDetails = !this.showPaymentDetails;
+    },
+
+    // 跳转到注册页面
+    goToRegistrations() {
+      // 发送事件给父组件，让父组件处理菜单切换
+      this.$emit('navigate', 'registrations');
     },
 
     handleFileChange(file) {

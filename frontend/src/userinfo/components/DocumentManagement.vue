@@ -17,15 +17,8 @@
         </div>
       </div>
       
-      <!-- 无已批准注册的状态 -->
-      <div v-if="!hasApprovedRegistration" class="empty-state">
-        <el-empty description="You need to have approved registrations before downloading related documents">
-          <el-button type="primary" @click="$router.push('/conference/new')">Register Now</el-button>
-        </el-empty>
-      </div>
-      
-      <!-- 有已批准注册的状态 -->
-      <div v-else class="document-content">
+      <!-- 文档下载内容 - 始终显示 -->
+      <div class="document-content">
         <!-- 移动端简化的格式选择 -->
         <div class="format-selection mobile-optimized">
           <div class="options-row">
@@ -464,6 +457,7 @@ export default {
     // 加载通用数据（不依赖用户状态的数据）
     console.log('🚀 [DEBUG] 2. 加载通用数据');
     await this.loadApprovedRegistrations();
+    await this.loadApprovedMealVouchers();
     await this.loadDownloadHistory();
     this.checkCertificateAvailability();
     
@@ -805,6 +799,12 @@ export default {
         console.error('DocumentManagement: Fallback check also failed:', error);
         this.hasApprovedRegistration = false;
       }
+    },
+    
+    // 跳转到注册页面
+    goToRegistrations() {
+      // 发送事件给父组件，让父组件处理菜单切换
+      this.$emit('navigate', 'registrations');
     },
     
     async loadDownloadHistory() {

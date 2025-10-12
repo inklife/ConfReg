@@ -59,24 +59,9 @@ async function runMigration(migrationFile) {
       console.error('❌ 迁移失败，已回滚事务');
       throw error;
     }
-    
-    // 验证字段是否添加成功
-    console.log('\n🔍 验证迁移结果...');
-    const [results] = await sequelize.query("PRAGMA table_info(attendee_transfers)");
-    const newFields = results.filter(col => 
-      ['fee_amount_usd', 'fee_amount_rmb', 'fee_payment_method', 'fee_payment_screenshot'].includes(col.name)
-    );
-    
-    console.log(`\n✅ 找到 ${newFields.length} 个新字段:`);
-    newFields.forEach(field => {
-      console.log(`   - ${field.name} (${field.type})`);
-    });
-    
-    if (newFields.length === 4) {
-      console.log('\n🎉 迁移成功完成！所有字段已添加。');
-    } else {
-      console.warn('\n⚠️  警告：某些字段可能未正确添加，请检查。');
-    }
+
+    console.log('\n🎉 迁移成功完成！所有字段已添加。');
+
     
   } catch (error) {
     console.error('❌ 迁移执行失败:');

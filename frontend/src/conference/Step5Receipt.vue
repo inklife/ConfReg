@@ -97,10 +97,6 @@
               <span class="label">Phone:</span>
               <span class="value">{{ userInfo.phone }}</span>
             </div>
-            <div class="info-item" v-if="userInfo.country">
-              <span class="label">Country:</span>
-              <span class="value">{{ userInfo.country }}</span>
-            </div>
             <div class="info-item" v-if="userInfo.paperID">
               <span class="label">Paper ID:</span>
               <span class="value">{{ userInfo.paperID }}</span>
@@ -344,7 +340,6 @@ export default {
           fullName: regData.name || '',
           email: regData.email || '',
           organization: regData.affiliation || '',
-          country: regData.country || 'N/A',
           phone: regData.phone || '',
           paperID: regData.paper_id || '',
           paperPages: regData.paper_pages || 0
@@ -364,7 +359,6 @@ export default {
             fullName: regData.userInfo.name || '',
             email: regData.userInfo.email || '',
             organization: regData.userInfo.affiliation || '',
-            country: regData.userInfo.country || 'N/A',
             phone: regData.userInfo.phone || '',
             paperID: regData.userInfo.paperId || regData.userInfo.paper_id || ''
           };
@@ -379,7 +373,6 @@ export default {
           fullName: userInfo.name || userInfo.fullName || '',
           email: userInfo.email || '',
           organization: userInfo.invoiceTitle || userInfo.organization || userInfo.affiliation || '',
-          country: userInfo.country || 'N/A',
           phone: userInfo.phone || '',
           paperID: userInfo.paperID || userInfo.paper_id || userInfo.paperId || ''
         };
@@ -389,7 +382,6 @@ export default {
         fullName: '',
         email: '',
         organization: '',
-        country: 'N/A',
         phone: '',
         paperID: ''
       };

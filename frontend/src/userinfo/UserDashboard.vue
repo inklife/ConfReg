@@ -306,7 +306,8 @@
         <component 
           v-if="activeMenu !== 'overview'" 
           :is="currentComponent"
-          @update="handleComponentUpdate">
+          @update="handleComponentUpdate"
+          @navigate="handleMenuSelect">
         </component>
       </main>
     </div>
