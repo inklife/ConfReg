@@ -69,10 +69,10 @@ const forgotPasswordLimiter = rateLimit({
 // 管理员登录尝试限制器
 const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟窗口
-  max: 5, // 每个IP每15分钟最多5次管理员登录尝试（比普通登录更严格）
+  max: 2, // 每个IP每15分钟最多2次管理员登录尝试
   message: {
     success: false,
-    message: 'Too many admin login attempts. Please try again in 15 minutes.'
+    message: '登录尝试次数过多，请15分钟后再试。Too many admin login attempts. Please try again in 15 minutes.'
   },
   standardHeaders: true,
   legacyHeaders: false,

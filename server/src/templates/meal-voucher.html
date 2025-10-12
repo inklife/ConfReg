@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICPADS 2025 Meal Voucher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: white;
+            padding: 0;
+            margin: 0;
+            font-size: 14px;
+            width: 210mm;
+            height: 297mm;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .voucher-container {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            background: white;
+            border: none;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            padding: 12mm;
+        }
+        
+        /* 动态margin类 */
+        .margin-none .voucher-container {
+            padding: 5mm;
+        }
+        
+        .margin-minimal .voucher-container {
+            padding: 8mm;
+        }
+        
+        .margin-standard .voucher-container {
+            padding: 12mm;
+        }
+        
+        .header {
+            background: #27ae60;
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 18px;
+        }
+        
+        .header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        
+        .header .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            font-weight: 500;
+        }
+        
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+        }
+        
+        .voucher-info {
+            margin-bottom: 15px;
+        }
+        
+        .info-block {
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            padding: 15px 18px;
+            border-radius: 6px;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .info-block h3 {
+            color: #27ae60;
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #27ae60;
+            font-weight: 700;
+        }
+        
+        .info-row {
+            display: flex;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+            align-items: center;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            flex: 0 0 180px;
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 1rem;
+        }
+        
+        .info-value {
+            flex: 1;
+            color: #34495e;
+            font-size: 1rem;
+        }
+        
+        .info-value strong {
+            font-size: 1.15rem;
+            color: #27ae60;
+            font-weight: 700;
+        }
+        
+        .qr-section {
+            text-align: center;
+            margin-top: auto;
+            padding: 18px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 2px solid #27ae60;
+        }
+        
+        .qr-section p:first-child {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #27ae60;
+            margin-bottom: 10px;
+        }
+        
+        .qr-code {
+            margin: 12px 0;
+        }
+        
+        .qr-code img {
+            width: 160px !important;
+            height: 160px !important;
+        }
+        
+        .qr-section p:last-child {
+            font-size: 0.95rem;
+            color: #7f8c8d;
+            font-style: italic;
+            margin-top: 8px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px 12px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            border-top: 2px solid #ecf0f1;
+            margin-top: 15px;
+        }
+        
+        .footer p {
+            margin: 5px 0;
+            line-height: 1.4;
+        }
+        
+        .footer p:first-child {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body class="{{MARGIN_CLASS}}">
+    <div class="voucher-container">
+        <div class="header">
+            <h1>🍽️ Meal Voucher</h1>
+            <p class="subtitle">ICPADS 2025 Conference</p>
+        </div>
+        
+        <div class="content">
+            <div class="voucher-info">
+                <div class="info-block">
+                    <h3>Attendee Information</h3>
+                    <div class="info-row">
+                        <span class="info-label">Name:</span>
+                        <span class="info-value">{{ATTENDEE_NAME}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email:</span>
+                        <span class="info-value">{{EMAIL}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Voucher Code:</span>
+                        <span class="info-value"><strong>{{VOUCHER_CODE}}</strong></span>
+                    </div>
+                </div>
+                
+                <div class="info-block">
+                    <h3>Meal Details</h3>
+                    <div class="info-row">
+                        <span class="info-label">Quantity:</span>
+                        <span class="info-value">{{QUANTITY}} meal(s)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Unit Price:</span>
+                        <span class="info-value">{{CURRENCY_SYMBOL}}{{UNIT_PRICE}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Total Amount:</span>
+                        <span class="info-value"><strong>{{CURRENCY_SYMBOL}}{{TOTAL_AMOUNT}}</strong></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Payment Method:</span>
+                        <span class="info-value">{{PAYMENT_METHOD}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value">{{STATUS}}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="qr-section">
+                <p>Scan QR Code for Verification</p>
+                <div class="qr-code">
+                    <img src="{{QR_CODE}}" alt="QR Code">
+                </div>
+                <p>Present this voucher at meal service</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>ICPADS 2025 - International Conference on Parallel and Distributed Systems</p>
+            <p>Generated on {{GENERATION_DATE}}</p>
+            <p>This is an official meal voucher. Please keep it for your records.</p>
+        </div>
+    </div>
+</body>
+</html>

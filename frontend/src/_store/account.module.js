@@ -31,11 +31,9 @@ const actions = {
                             dispatch('showAdminRedirectPrompt', user);
                         }, 500);
                     } else {
-                        console.log('普通用户登录，等待session建立后检查注册状态');
-                        // 等待session建立后检查注册状态
-                        setTimeout(() => {
-                            dispatch('checkRegistrationAndRedirect', user);
-                        }, 1000);
+                        console.log('普通用户登录，跳转到 dashboard');
+                        // 跳转到用户面板（dashboard）
+                        router.push('/dashboard');
                     }
                     
                     return user; // 返回用户数据
@@ -214,13 +212,13 @@ const actions = {
                     }
                 }).catch((error) => {
                     console.error('权限升级失败:', error);
-                    // 权限验证失败，继续用户流程
+                    // 权限验证失败，跳转到用户面板
                     sessionStorage.removeItem('adminRedirect');
                     const prompt = document.getElementById('admin-redirect-prompt');
                     if (prompt) {
                         prompt.remove();
                     }
-                    dispatch('checkRegistrationAndRedirect', user);
+                    router.push('/dashboard');
                 });
             }
         }, 1000);
@@ -249,13 +247,13 @@ const actions = {
                     }
                 }).catch((error) => {
                     console.error('权限升级失败:', error);
-                    // 权限验证失败，继续用户流程
+                    // 权限验证失败，跳转到用户面板
                     sessionStorage.removeItem('adminRedirect');
                     const prompt = document.getElementById('admin-redirect-prompt');
                     if (prompt) {
                         prompt.remove();
                     }
-                    dispatch('checkRegistrationAndRedirect', user);
+                    router.push('/dashboard');
                 });
             };
         }
@@ -270,52 +268,9 @@ const actions = {
                 if (prompt) {
                     prompt.remove();
                 }
-                // 继续正常用户流程
-                dispatch('checkRegistrationAndRedirect', user);
-            };
-        }
-    },
-    
-    // 新增：检查注册状态并智能跳转
-    async checkRegistrationAndRedirect({ commit }, user) {
-        try {
-            console.log('检查用户注册状态:', user.username);
-            
-            // 首先验证认证状态 - 使用完整路径
-            const authResponse = await axios.get('/api/auth/me', {
-                withCredentials: true
-            });
-            
-            if (!authResponse.data.success) {
-                console.log('认证验证失败，跳转到登录页');
-                router.push('/login');
-                return;
-            }
-            
-            // 检查注册状态 - 使用相对路径
-            const registrationResponse = await axios.get('/api/submissions/check-registration', {
-                params: { username: user.username },
-                withCredentials: true
-            });
-            
-            if (registrationResponse.data.approved) {
-                // 注册已完成且被批准 - 直接跳转到用户面板
-                console.log('会议注册已完成且已批准，直接跳转到用户面板');
+                // 跳转到用户面板
                 router.push('/dashboard');
-            } else if (registrationResponse.data.has_submission) {
-                // 有提交但未批准 - 跳转到第5步查看状态
-                console.log('有未批准的会议注册，跳转到第5步查看状态');
-                router.push('/conference/step5');
-            } else {
-                // 未注册 - 跳转到会议参会信息页开始填写
-                console.log('未进行会议注册，跳转到会议参会信息页开始填写');
-                router.push('/conference');
-            }
-            
-        } catch (error) {
-            console.error('检查会议注册状态失败:', error);
-            // 出错时默认跳转到会议参会信息页
-            router.push('/conference');
+            };
         }
     },
     
@@ -326,24 +281,35 @@ const actions = {
             'conferenceProofFile', 
             'conferenceUserInfo',
             'conferencePaymentInfo',
+            'conferencePaymentMethod',
+            'conferencePaymentProof',
             'conferenceSubmissionData',
+            'conferenceRegistrationData',
+            'conferenceRegistrationComplete',
+            'conferenceRegistrationId',
             'lastConferenceUserId'
         ];
         
         // 清理所有可能带用户ID后缀的数据
         const allKeys = Object.keys(localStorage);
+        let cleanedCount = 0;
+        
         allKeys.forEach(key => {
-            // 清理所有会议相关的键（包括带用户ID的）
+            // 清理所有会议相关的键（包括带用户ID和注册记录ID的）
             if (keysToRemove.some(baseKey => key.startsWith(baseKey))) {
                 localStorage.removeItem(key);
+                cleanedCount++;
+                console.log('Cleared:', key);
             }
             // 清理所有DocumentManagement相关的键
             if (key.startsWith('documentTasks_') || key === 'documentTasks' || key === 'documentPendingTasks') {
                 localStorage.removeItem(key);
+                cleanedCount++;
+                console.log('Cleared:', key);
             }
         });
         
-        console.log('Conference and Document data cleared on logout');
+        console.log(`Conference and Document data cleared on logout (${cleanedCount} items removed)`);
         
         userService.logout();
         commit('logout');

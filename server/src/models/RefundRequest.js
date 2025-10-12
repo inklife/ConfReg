@@ -38,13 +38,24 @@ const RefundRequest = sequelize.define('RefundRequest', {
     field: 'refund_amount',
     validate: {
       min: 0
-    }
+    },
+    comment: 'Refund amount in the currency specified by refund_currency'
+  },
+  refundCurrency: {
+    type: DataTypes.STRING(10),
+    allowNull: false,
+    field: 'refund_currency',
+    defaultValue: 'USD',
+    validate: {
+      isIn: [['USD', 'RMB']]
+    },
+    comment: 'Currency of the refund amount: USD or RMB'
   },
   bankInfo: {
     type: DataTypes.JSON,
     allowNull: true,
     field: 'bank_info',
-    comment: 'JSON structure: {accountName, bankName, accountNumber, routingNumber, country}'
+    comment: 'JSON structure: {bankType: "international"|"domestic", accountName, bankName, accountNumber, beneficiaryAddress, country, swiftCode, bankAddress}'
   },
   requestTime: {
     type: DataTypes.DATE,
@@ -167,6 +178,14 @@ RefundRequest.checkRefundEligibility = async function(userId, registrationId) {
     };
   }
 
+  // 检查是否已经退款
+  if (registration.is_refunded) {
+    return {
+      eligible: false,
+      reason: 'This registration has already been refunded'
+    };
+  }
+
   // 检查是否已有待处理的退款申请
   const existingRequest = await this.findOne({
     where: {
@@ -183,6 +202,27 @@ RefundRequest.checkRefundEligibility = async function(userId, registrationId) {
     };
   }
 
+  // 检查是否是paper ID的唯一全额注册
+  if (registration.paper_id && registration.paper_id.trim() !== '') {
+    // 查询该paper_id下所有已批准且未退款的全额注册
+    const fullRegistrationsForPaper = await this.sequelize.models.RegistrationSubmission.findAll({
+      where: {
+        paper_id: registration.paper_id,
+        status: 'approved',
+        is_refunded: false,
+        registration_category: 'full'
+      }
+    });
+
+    // 如果只有一个全额注册，且正是当前注册，则不允许退款
+    if (fullRegistrationsForPaper.length === 1 && fullRegistrationsForPaper[0].id === registrationId) {
+      return {
+        eligible: false,
+        reason: `This is the only full registration for Paper ID ${registration.paper_id}. At least one full registration must be maintained for this paper. Refund is not allowed.`
+      };
+    }
+  }
+
   // 检查退款时间限制（例如：会议开始前30天）
   const now = new Date();
   const conferenceDate = new Date('2025-12-08'); // 根据实际会议日期调整
@@ -195,10 +235,34 @@ RefundRequest.checkRefundEligibility = async function(userId, registrationId) {
     };
   }
 
+  // 计算退款手续费
+  const REFUND_FEE_USD = 100;
+  const REFUND_FEE_RMB = 750;
+  
+  // 根据支付方式确定手续费
+  let refundFee = REFUND_FEE_USD;
+  let refundFeeCurrency = 'USD';
+  
+  if (registration.payment_method === 'domestic') {
+    refundFee = REFUND_FEE_RMB;
+    refundFeeCurrency = 'RMB';
+  }
+  
+  // 计算实际退款金额
+  let actualRefundAmount;
+  if (registration.payment_method === 'domestic') {
+    actualRefundAmount = Math.max(0, (registration.total_amount_rmb || registration.product_price_rmb || 0) - refundFee);
+  } else {
+    actualRefundAmount = Math.max(0, (registration.total_amount_usd || registration.product_price || 0) - refundFee);
+  }
+
   return {
     eligible: true,
     registration: registration,
-    daysBeforeConference: daysBeforeConference
+    daysBeforeConference: daysBeforeConference,
+    refundFee: refundFee,
+    refundFeeCurrency: refundFeeCurrency,
+    actualRefundAmount: actualRefundAmount
   };
 };
 

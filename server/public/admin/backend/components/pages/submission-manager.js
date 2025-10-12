@@ -87,9 +87,9 @@ class SubmissionManager extends BaseComponent {
                                 <option value="pending">待审核</option>
                                 <option value="approved">已通过</option>
                                 <option value="rejected">已拒绝</option>
-                                <option value="paid">已支付</option>
+                                <option value="refunded">已退款</option>
                             </select>
-                            <input type="text" class="search-input" id="search-input" placeholder="搜索姓名或邮箱...">
+                            <input type="text" class="search-input" id="search-input" placeholder="搜索姓名、邮箱或 Paper ID...">
                         </div>
                         <button class="btn btn-primary" id="search-btn">
                             <i class="fas fa-search"></i>
@@ -107,13 +107,14 @@ class SubmissionManager extends BaseComponent {
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 16%;">姓名</th>
-                                    <th style="width: 16%;">邮箱</th>
-                                    <th style="width: 16%;">机构</th>
-                                    <th style="width: 12%;">产品代码</th>
-                                    <th style="width: 10%;">价格</th>
-                                    <th style="width: 9%;">状态</th>
-                                    <th style="width: 10%;">提交时间</th>
+                                    <th style="width: 14%;">姓名</th>
+                                    <th style="width: 14%;">邮箱</th>
+                                    <th style="width: 14%;">机构</th>
+                                    <th style="width: 12%;">Paper ID</th>
+                                    <th style="width: 10%;">产品代码</th>
+                                    <th style="width: 8%;">价格</th>
+                                    <th style="width: 8%;">状态</th>
+                                    <th style="width: 9%;">提交时间</th>
                                     <th style="width: 11%;">操作</th>
                                 </tr>
                             </thead>
@@ -364,7 +365,7 @@ class SubmissionManager extends BaseComponent {
         if (this.submissions.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="empty-state">
+                    <td colspan="9" class="empty-state">
                         <i class="fas fa-inbox"></i>
                         <h3>暂无数据</h3>
                         <p>当前筛选条件下没有找到注册记录</p>
@@ -374,16 +375,29 @@ class SubmissionManager extends BaseComponent {
             return;
         }
 
-        tbody.innerHTML = this.submissions.map(submission => `
+        tbody.innerHTML = this.submissions.map(submission => {
+            // 根据支付方式显示对应的总价和货币
+            const isDomestic = submission.payment_method === 'domestic';
+            const amount = isDomestic 
+                ? (submission.total_amount_rmb || submission.product_price_rmb || '0')
+                : (submission.total_amount_usd || submission.product_price || '0');
+            const currency = isDomestic ? 'RMB' : 'USD';
+            const priceDisplay = `${parseFloat(amount).toFixed(2)} ${currency}`;
+            
+            // 确定显示状态：如果已退款，优先显示退款状态
+            const displayStatus = submission.is_refunded ? 'refunded' : submission.status;
+            
+            return `
             <tr>
                 <td class="text-ellipsis" title="${submission.name || submission.fullname || submission.realname || '未提供'}">${submission.name || submission.fullname || submission.realname || '未提供'}</td>
                 <td class="text-ellipsis" title="${submission.email || '未提供'}">${submission.email || '未提供'}</td>
                 <td class="text-ellipsis" title="${submission.affiliation || '未提供'}">${submission.affiliation || '未提供'}</td>
+                <td class="text-ellipsis" title="${submission.paper_id || '未提供'}">${submission.paper_id || '未提供'}</td>
                 <td>${submission.product_code || '未知'}</td>
-                <td>${submission.product_price || submission.price || '0'}</td>
+                <td>${priceDisplay}</td>
                 <td>
-                    <span class="status-badge status-${submission.status}">
-                        ${this.getStatusText(submission.status)}
+                    <span class="status-badge status-${displayStatus}">
+                        ${this.getStatusText(displayStatus)}
                     </span>
                 </td>
                 <td>
@@ -398,7 +412,8 @@ class SubmissionManager extends BaseComponent {
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
         
         // 添加事件监听器
         this.addRowEventListeners();
@@ -422,7 +437,7 @@ class SubmissionManager extends BaseComponent {
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="loading-state">
+                <td colspan="9" class="loading-state">
                     <div class="loading-spinner"></div>
                     <p>正在加载数据...</p>
                 </td>
@@ -436,7 +451,7 @@ class SubmissionManager extends BaseComponent {
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="empty-state">
+                <td colspan="9" class="empty-state">
                     <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i>
                     <h3>加载失败</h3>
                     <p>${message}</p>
@@ -475,7 +490,7 @@ class SubmissionManager extends BaseComponent {
             'pending': '待审核',
             'approved': '已通过',
             'rejected': '已拒绝',
-            'paid': '已支付'
+            'refunded': '已退款'
         };
         return statusMap[status] || '未知';
     }
@@ -954,9 +969,9 @@ class SubmissionManager extends BaseComponent {
                 color: #991b1b;
             }
 
-            #submission-modal-global .status-paid {
-                background: #dbeafe;
-                color: #1e40af;
+            #submission-modal-global .status-refunded {
+                background: #f3e8ff;
+                color: #6b21a8;
             }
 
             @keyframes modalFadeIn {
@@ -1073,6 +1088,10 @@ class SubmissionManager extends BaseComponent {
                 </h4>
                 <div class="detail-grid">
                     <div class="detail-item">
+                        <div class="detail-label">Paper ID</div>
+                        <div class="detail-value">${this.escapeHtml(submission.paper_id || '未填写')}</div>
+                    </div>
+                    <div class="detail-item">
                         <div class="detail-label">产品代码</div>
                         <div class="detail-value">
                             <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">
@@ -1083,14 +1102,42 @@ class SubmissionManager extends BaseComponent {
                     <div class="detail-item">
                         <div class="detail-label">价格</div>
                         <div class="detail-value" style="color: #059669; font-weight: 600;">
-                            $${parseFloat(submission.product_price || submission.price || 0).toFixed(2)}
+                            ${(() => {
+                                const isDomestic = submission.payment_method === 'domestic';
+                                const amount = isDomestic 
+                                    ? (submission.total_amount_rmb || submission.product_price_rmb || 0)
+                                    : (submission.total_amount_usd || submission.product_price || 0);
+                                const currency = isDomestic ? 'RMB' : 'USD';
+                                return `${parseFloat(amount).toFixed(2)} ${currency}`;
+                            })()}
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">论文页数</div>
+                        <div class="detail-value">
+                            ${submission.paper_pages || 0} 页
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">超页费用</div>
+                        <div class="detail-value" style="color: ${(submission.extra_page_fee_usd > 0 || submission.extra_page_fee_rmb > 0) ? '#dc2626' : '#6b7280'};">
+                            ${(() => {
+                                const isDomestic = submission.payment_method === 'domestic';
+                                const extraFee = isDomestic 
+                                    ? (submission.extra_page_fee_rmb || 0)
+                                    : (submission.extra_page_fee_usd || 0);
+                                const currency = isDomestic ? 'RMB' : 'USD';
+                                return extraFee > 0 
+                                    ? `${parseFloat(extraFee).toFixed(2)} ${currency}`
+                                    : '无';
+                            })()}
                         </div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">状态</div>
                         <div class="detail-value">
-                            <span class="status-badge status-${submission.status || 'pending'}">
-                                ${this.getStatusText(submission.status)}
+                            <span class="status-badge status-${submission.is_refunded ? 'refunded' : (submission.status || 'pending')}">
+                                ${this.getStatusText(submission.is_refunded ? 'refunded' : submission.status)}
                             </span>
                         </div>
                     </div>
@@ -1370,7 +1417,7 @@ class SubmissionManager extends BaseComponent {
             'pending': '待审核',
             'approved': '已通过',
             'rejected': '已拒绝',
-            'paid': '已支付'
+            'refunded': '已退款'
         };
         return statusMap[status] || '未知';
     }

@@ -55,10 +55,7 @@
             </el-input>
             <div class="field-hint">
               <i class="el-icon-info"></i>
-              Email is loaded from your account. 
-              <router-link to="/dashboard?tab=profile&subtab=email" class="modify-link">
-                Click here to modify your primary email
-              </router-link>
+              Email is loaded from your account. <router-link to="/dashboard?tab=profile&subtab=email" class="modify-link">Click here to modify your primary email</router-link>
             </div>
           </el-form-item>
 
@@ -78,14 +75,35 @@
             ></el-input>
           </el-form-item>
 
-          <el-form-item label="Paper Title" prop="paperTitle">
+          <el-form-item label="Paper ID" prop="paperId">
             <el-input 
-              v-model="userInfo.paperTitle" 
-              placeholder="Enter paper title (if applicable)"
+              v-model="userInfo.paperId" 
+              placeholder="Enter paper ID (numbers only, if applicable)"
               size="large"
-              type="textarea"
-              :rows="3"
             ></el-input>
+            <div class="field-hint">
+              <i class="el-icon-warning"></i>
+              <strong>Note:</strong> Paper ID and Paper Pages must be filled together or left empty together.
+            </div>
+          </el-form-item>
+
+          <el-form-item label="Paper Pages" prop="paperPages">
+            <el-input 
+              v-model="userInfo.paperPages" 
+              placeholder="Enter number of pages (1-10)"
+              size="large"
+              type="number"
+              min="1"
+              max="10"
+            ></el-input>
+            <div class="field-hint">
+              <i class="el-icon-info"></i>
+              Papers are limited to 8 pages, including figures and references. Authors may include up to 2 additional pages subject to an overlength page charge. <strong style="color: #f56c6c;">Extra page fee: $80 (RMB 600) for pages 9-10</strong>
+            </div>
+            <div class="field-hint">
+              <i class="el-icon-warning"></i>
+              <strong>Note:</strong> Paper ID and Paper Pages must be filled together or left empty together.
+            </div>
           </el-form-item>
         </el-form>
       </div>
@@ -107,6 +125,12 @@
 <script>
 export default {
   name: 'Step2PersonalInfo',
+  props: {
+    id: {
+      type: String,
+      default: 'auto'
+    }
+  },
   data() {
     return {
       userInfo: {
@@ -114,13 +138,51 @@ export default {
         email: '',
         phone: '',
         affiliation: '',
-        paperTitle: ''
+        paperId: '',
+        paperPages: ''
       },
       currentUserId: null,
+      editMode: false,
       labelWidth: '120px',
       rules: {
         name: [
           { required: true, message: 'Please enter your full name', trigger: 'blur' }
+        ],
+        paperId: [
+          { 
+            pattern: /^[1-9]\d*$/, 
+            message: 'Paper ID must be a number without leading zeros', 
+            trigger: 'blur' 
+          },
+          {
+            validator: (rule, value, callback) => {
+              // 如果 Paper ID 有值，Paper Pages 必须也有值
+              if (value && value.trim() && (!this.userInfo.paperPages || !this.userInfo.paperPages.trim())) {
+                callback(new Error('If you provide Paper ID, you must also provide Paper Pages'));
+              } else {
+                callback();
+              }
+            },
+            trigger: 'blur'
+          }
+        ],
+        paperPages: [
+          { 
+            pattern: /^([1-9]|10)$/, 
+            message: 'Paper pages must be a number from 1 to 10', 
+            trigger: 'blur' 
+          },
+          {
+            validator: (rule, value, callback) => {
+              // 如果 Paper Pages 有值，Paper ID 必须也有值
+              if (value && value.trim() && (!this.userInfo.paperId || !this.userInfo.paperId.trim())) {
+                callback(new Error('If you provide Paper Pages, you must also provide Paper ID'));
+              } else {
+                callback();
+              }
+            },
+            trigger: 'blur'
+          }
         ]
         // 移除email验证规则，因为email现在是只读的，从用户账户信息中获取
       }
@@ -137,6 +199,12 @@ export default {
     }
   },
   mounted() {
+    // 检测编辑模式
+    if (this.id && this.id !== 'new') {
+      this.editMode = true;
+      console.log('Step2 - Edit mode detected, registration ID:', this.id);
+    }
+    
     this.initializeUserData();
     this.updateLabelWidth();
     window.addEventListener('resize', this.updateLabelWidth);
@@ -152,7 +220,7 @@ export default {
       }
     },
 
-    initializeUserData() {
+    async initializeUserData() {
       // 获取当前登录用户信息
       const currentUser = this.$store.state.account.user;
       if (!currentUser || !currentUser.id) {
@@ -171,11 +239,78 @@ export default {
         this.clearUserInfo();
       }
 
+      // 如果是编辑模式，先尝试从后端加载特定注册记录的数据
+      if (this.editMode && this.id && this.id !== 'new') {
+        await this.loadBackendRegistrationData();
+      }
+
       this.loadUserInfo();
     },
 
     getStorageKey(baseName) {
+      // 生成带用户ID和注册记录ID的存储键名
+      // 如果有注册记录ID（编辑模式），包含在键名中以区分不同注册记录
+      if (this.id && this.id !== 'new') {
+        return `${baseName}_${this.currentUserId}_${this.id}`;
+      }
+      // 新建注册时，只用用户ID
       return `${baseName}_${this.currentUserId}`;
+    },
+
+    async loadBackendRegistrationData() {
+      try {
+        console.log('Step2 - Loading backend registration data for ID:', this.id);
+        
+        // 验证ID格式
+        if (!/^\d+$/.test(this.id)) {
+          console.warn('Step2 - Invalid registration ID format:', this.id);
+          this.$message.warning('Invalid registration ID');
+          this.$router.push('/dashboard?tab=registrations');
+          return;
+        }
+        
+        const axios = (await import('axios')).default;
+        
+        const response = await axios.get(`/api/submissions/registration/${this.id}`, {
+          withCredentials: true
+        });
+        
+        console.log('Step2 - Backend registration response:', response.data);
+        
+        if (response.data.success && response.data.registration_data) {
+          const regData = response.data.registration_data;
+          
+          // 保存用户信息到 localStorage
+          const userInfo = {
+            name: regData.name,
+            email: regData.email,
+            phone: regData.phone,
+            affiliation: regData.affiliation,
+            paperId: regData.paper_id,
+            paperPages: regData.paper_pages
+          };
+          localStorage.setItem(
+            this.getStorageKey('conferenceUserInfo'), 
+            JSON.stringify(userInfo)
+          );
+          
+          console.log('Step2 - Backend data saved to localStorage');
+        } else {
+          // 注册记录不存在
+          console.warn('Step2 - Registration not found for ID:', this.id);
+          this.$message.warning('Registration not found');
+          this.$router.push('/dashboard?tab=registrations');
+        }
+      } catch (error) {
+        console.error('Step2 - Failed to load backend registration data:', error);
+        
+        // 如果是404错误，说明ID不存在
+        if (error.response && error.response.status === 404) {
+          this.$message.warning('Registration not found');
+          this.$router.push('/dashboard?tab=registrations');
+        }
+        // 其他错误不阻塞流程
+      }
     },
 
     async loadUserInfo() {
@@ -277,7 +412,8 @@ export default {
         email: '',
         phone: '',
         affiliation: '',
-        paperTitle: ''
+        paperId: '',
+        paperPages: ''
       };
     },
 
@@ -296,11 +432,27 @@ export default {
     },
 
     nextStep() {
+      // 额外检查：Paper ID 和 Paper Pages 必须同时填写或同时留空
+      const hasPaperId = this.userInfo.paperId && this.userInfo.paperId.trim();
+      const hasPaperPages = this.userInfo.paperPages && this.userInfo.paperPages.trim();
+      
+      if ((hasPaperId && !hasPaperPages) || (!hasPaperId && hasPaperPages)) {
+        this.$message.error('Paper ID and Paper Pages must be filled together or left empty together');
+        return;
+      }
+      
       this.$refs.userForm.validate((valid) => {
         if (valid) {
           this.saveUserInfo();
           this.$emit('step-complete', { userInfo: this.userInfo });
-          this.$router.push('/conference/step3');
+          
+          if (this.id === 'new') {
+            this.$router.push('/conference/new/step3');
+          } else if (this.editMode && this.id) {
+            this.$router.push(`/conference/${this.id}/step3`);
+          } else {
+            this.$router.push('/conference/new/step3');
+          }
         } else {
           this.$message.error('Please fill in all required fields correctly');
         }
@@ -309,7 +461,14 @@ export default {
 
     goBack() {
       this.saveUserInfo(); // 保存当前输入
-      this.$router.push('/conference/step1');
+      
+      if (this.id === 'new') {
+        this.$router.push('/conference/new/step1');
+      } else if (this.editMode && this.id) {
+        this.$router.push(`/conference/${this.id}/step1`);
+      } else {
+        this.$router.push('/conference/new/step1');
+      }
     }
   },
 
@@ -439,23 +598,27 @@ export default {
 }
 
 .field-hint {
-  margin-top: 5px;
-  font-size: 12px;
+  margin-top: 4px;
+  font-size: 11px;
   color: #909399;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
+  line-height: 1.4;
+  max-width: 100%;
 }
 
 .field-hint i {
-  font-size: 12px;
+  font-size: 10px;
+  margin-top: 1px;
+  flex-shrink: 0;
 }
 
 .modify-link {
   color: #409EFF;
   text-decoration: none;
-  margin-left: 8px;
   transition: color 0.3s ease;
+  white-space: nowrap;
 }
 
 .modify-link:hover {
@@ -539,15 +702,17 @@ export default {
   }
 
   .field-hint {
-    font-size: 11px;
+    font-size: 10px;
     line-height: 1.3;
-    flex-direction: column;
+    flex-wrap: wrap;
     align-items: flex-start;
-    gap: 2px;
+    gap: 3px;
+    margin-top: 3px;
   }
 
   .modify-link {
     margin-left: 0;
+    font-size: 10px;
   }
 }
 
@@ -587,6 +752,20 @@ export default {
   /* 移动端隐藏邮箱输入框的锁定图标 */
   .user-form >>> .el-input__prefix {
     display: none;
+  }
+
+  .field-hint {
+    font-size: 9px;
+    line-height: 1.2;
+    margin-top: 2px;
+  }
+
+  .field-hint i {
+    font-size: 8px;
+  }
+
+  .modify-link {
+    font-size: 9px;
   }
 
   .actions {

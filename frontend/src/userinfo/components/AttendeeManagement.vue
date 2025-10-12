@@ -3,125 +3,235 @@
     <el-card>
       <div slot="header" class="card-header">
         <span class="card-title">Attendee Information Transfer</span>
-        <p class="card-subtitle">Modify registered attendee information for cases where the original attendee cannot
-          attend</p>
+        <p class="card-subtitle">Modify registered attendee information for cases where the original attendee cannot attend</p>
       </div>
 
       <!-- 无已批准注册的状态 -->
       <div v-if="!transferStatus.hasApprovedRegistration" class="empty-state">
         <el-empty description="You need to have an approved registration before requesting attendee transfer">
-          <el-button type="primary" @click="$router.push('/conference/auto')">Register Now</el-button>
+          <el-button type="primary" @click="$router.push('/conference/new')">Register Now</el-button>
         </el-empty>
       </div>
 
-      <!-- 有待处理的变更申请 -->
-      <div v-else-if="transferStatus.pendingTransfer" class="pending-request">
-        <el-alert title="Pending Transfer Request" type="warning" :closable="false" show-icon>
-        </el-alert>
-
-        <div class="request-details">
-          <h4>Request Details</h4>
-          <el-descriptions :column="2">
-            <el-descriptions-item label="Request Time">
-              {{ formatDate(transferStatus.pendingTransfer.requestTime) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="Status">
-              <el-tag type="warning">Pending Admin Review</el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="New Attendee Name">
-              {{ transferStatus.pendingTransfer.newAttendee.name }}
-            </el-descriptions-item>
-            <el-descriptions-item label="New Attendee Email">
-              {{ transferStatus.pendingTransfer.newAttendee.email }}
-            </el-descriptions-item>
-          </el-descriptions>
-        </div>
-      </div>
-
-      <!-- 不能变更的状态 -->
-      <div v-else-if="!transferStatus.canTransfer" class="cannot-transfer">
-        <el-alert :title="transferStatus.reason || 'Cannot request transfer at the moment'" type="info"
-          :closable="false" show-icon>
-        </el-alert>
-      </div>
-
-      <!-- 可以申请变更的状态 -->
-      <div v-else class="can-transfer">
-        <div class="current-info-card">
-          <div class="current-info-header">
-            <h3 class="current-info-title">
-              <i class="el-icon-user"></i>
-              Current Registration Information
-            </h3>
-            <el-tag type="success" size="medium">
-              <i class="el-icon-check"></i>
-              Registered & Approved
-            </el-tag>
+      <!-- 有已批准注册的状态 - 显示注册列表 -->
+      <div v-else class="registrations-list">
+        <!-- 统计信息 -->
+        <div class="stats-bar">
+          <div class="stat-item">
+            <i class="el-icon-document"></i>
+            <span>Total: {{ transferStatus.totalCount || 0 }}</span>
           </div>
-
-          <div class="registration-details">
-            <el-card class="info-card" shadow="hover">
-              <div class="info-item">
-                <div class="info-label">
-                  <i class="el-icon-user-solid"></i>
-                  Attendee Name
-                </div>
-                <div class="info-value">{{ transferStatus.currentRegistration.name }}</div>
-              </div>
-
-              <div class="info-item">
-                <div class="info-label">
-                  <i class="el-icon-message"></i>
-                  Email Address
-                </div>
-                <div class="info-value">{{ transferStatus.currentRegistration.email }}</div>
-              </div>
-
-              <div class="info-item" v-if="transferStatus.currentRegistration.phone">
-                <div class="info-label">
-                  <i class="el-icon-phone"></i>
-                  Phone Number
-                </div>
-                <div class="info-value">{{ transferStatus.currentRegistration.phone }}</div>
-              </div>
-
-              <div class="info-item" v-if="transferStatus.currentRegistration.affiliation">
-                <div class="info-label">
-                  <i class="el-icon-office-building"></i>
-                  Affiliation
-                </div>
-                <div class="info-value">{{ transferStatus.currentRegistration.affiliation }}</div>
-              </div>
-            </el-card>
+          <div class="stat-item available">
+            <i class="el-icon-check"></i>
+            <span>Can Transfer: {{ transferStatus.canTransferCount || 0 }}</span>
           </div>
-
-          <div class="action-buttons">
-            <button class="custom-button primary" @click="showTransferDialog">
-              <i class="el-icon-edit"></i>
-              <span>Request Attendee Transfer</span>
-            </button>
-            <button class="custom-button secondary" @click="showHistory">
-              <i class="el-icon-document"></i>
-              <span>View Transfer History</span>
-            </button>
+          <div class="stat-item pending" v-if="transferStatus.pendingCount > 0">
+            <i class="el-icon-time"></i>
+            <span>Pending: {{ transferStatus.pendingCount }}</span>
           </div>
-
-          <div class="transfer-notice">
-            <el-alert title="Need to change attendee information?" type="warning" :closable="false" show-icon>
-              <p>If the original attendee cannot attend, request an attendee transfer to update information while keeping your registration status.</p>
-            </el-alert>
+          <div class="stat-item completed" v-if="transferStatus.approvedCount > 0">
+            <i class="el-icon-circle-check"></i>
+            <span>Transferred: {{ transferStatus.approvedCount }}</span>
           </div>
+          <el-button class="history-button" size="small" @click="showHistory">
+            <i class="el-icon-document"></i>
+            View History
+          </el-button>
         </div>
 
+        <!-- 注册项目列表 -->
+        <div class="registration-items">
+          <div 
+            v-for="registration in transferStatus.approvedRegistrations" 
+            :key="registration.id"
+            class="registration-item"
+            :class="{ 'has-pending': !registration.canTransfer, 'is-expanded': expandedItems[registration.id] }">
+            
+            <!-- 注册信息头部 - 始终显示 -->
+            <div class="item-header" @click="toggleExpand(registration.id)">
+              <div class="header-left">
+                <i class="el-icon-arrow-right expand-icon" :class="{ 'is-expanded': expandedItems[registration.id] }"></i>
+                <span class="product-code">{{ registration.productCode }}</span>
+                <span class="product-price">
+                  {{ formatBasePrice(registration) }}
+                  <span v-if="hasExtraPageFee(registration)" class="extra-fee">
+                    + {{ formatExtraPageFee(registration) }}
+                  </span>
+                </span>
+                <span class="registration-id">#{{ registration.id }}</span>
+              </div>
+              <div class="header-right">
+                <span class="attendee-name">{{ registration.name }}</span>
+                <el-tag v-if="registration.isRefunded" type="danger" size="small">Refunded</el-tag>
+                <el-tag v-else-if="registration.canTransfer" type="success" size="small">Can Transfer</el-tag>
+                <el-tag v-else-if="registration.pendingTransfer" type="warning" size="small">Transfer Pending</el-tag>
+                <el-tag v-else-if="registration.approvedTransfer" type="info" size="small">Transferred</el-tag>
+              </div>
+            </div>
+
+            <!-- 折叠的详细信息 -->
+            <el-collapse-transition>
+              <div v-show="expandedItems[registration.id]" class="item-details">
+                <!-- 参会者信息 -->
+                <div class="attendee-info">
+                  <div class="info-line">
+                    <span v-if="registration.paperId" class="label">Paper ID: {{ registration.paperId }}</span>
+                  </div>
+                  <div class="info-line">
+                    <span><strong>Name:</strong> {{ registration.name }}</span>
+                    <span class="separator">•</span>
+                    <span><strong>Email:</strong> {{ registration.email }}</span>
+                  </div>
+                  <div class="info-line">
+                    <span><strong>Payment:</strong> {{ formatPaymentMethod(registration.paymentMethod) }}</span>
+                    <span class="separator">•</span>
+                    <span><strong>Pages:</strong> {{ registration.paperPages }}</span>
+                    <span class="separator">•</span>
+                    <span><strong>Registered:</strong> {{ formatDate(registration.submissionTime) }}</span>
+                  </div>
+                </div>
+
+                <!-- 待处理的转让请求 -->
+                <div v-if="!registration.canTransfer && registration.pendingTransfer" class="pending-transfer-info">
+                  <el-alert type="warning" :closable="false">
+                    <div class="pending-content">
+                      <div><strong>Pending Transfer Request</strong></div>
+                      <div class="pending-details">
+                        <span>New Attendee: {{ registration.pendingTransfer.newAttendee.name }}</span>
+                        <span class="separator">•</span>
+                        <span>{{ registration.pendingTransfer.newAttendee.email }}</span>
+                      </div>
+                      <div class="request-time">
+                        Requested: {{ formatDate(registration.pendingTransfer.requestTime) }}
+                      </div>
+                    </div>
+                  </el-alert>
+                </div>
+
+                <!-- 已批准的转让记录 -->
+                <div v-if="!registration.canTransfer && registration.approvedTransfer" class="approved-transfer-info">
+                  <el-alert type="success" :closable="false">
+                    <div class="approved-content">
+                      <div><strong>Transfer Completed</strong></div>
+                      <div class="transfer-details">
+                        <div class="detail-row">
+                          <span class="label">Original Attendee:</span>
+                          <span>{{ registration.approvedTransfer.originalAttendee.name }} ({{ registration.approvedTransfer.originalAttendee.email }})</span>
+                        </div>
+                        <div class="detail-row">
+                          <span class="label">Current Attendee:</span>
+                          <span>{{ registration.approvedTransfer.newAttendee.name }} ({{ registration.approvedTransfer.newAttendee.email }})</span>
+                        </div>
+                        <div class="detail-row">
+                          <span class="label">Processed:</span>
+                          <span>{{ formatDate(registration.approvedTransfer.processTime) }}</span>
+                        </div>
+                      </div>
+                      <div class="transfer-notice">
+                        <i class="el-icon-info"></i>
+                        This registration has been transferred and cannot be transferred again.
+                      </div>
+                    </div>
+                  </el-alert>
+                </div>
+
+                <!-- 已退款的注册 -->
+                <div v-if="registration.isRefunded" class="refunded-info">
+                  <el-alert type="error" :closable="false">
+                    <div class="refunded-content">
+                      <div><strong>Refunded Registration</strong></div>
+                      <div class="refund-notice">
+                        <i class="el-icon-warning"></i>
+                        This registration has been refunded and cannot be transferred.
+                      </div>
+                    </div>
+                  </el-alert>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="item-actions">
+                  <el-button 
+                    type="primary" 
+                    size="small"
+                    :disabled="!registration.canTransfer"
+                    @click.stop="selectRegistrationForTransfer(registration)">
+                    <i class="el-icon-edit"></i>
+                    Request Transfer
+                  </el-button>
+                  <template v-if="!registration.canTransfer">
+                    <el-tooltip v-if="registration.isRefunded" 
+                      content="Refunded registrations cannot be transferred" 
+                      placement="top">
+                      <span class="disabled-hint">
+                        <i class="el-icon-info"></i>
+                        Refunded
+                      </span>
+                    </el-tooltip>
+                    <el-tooltip v-else-if="registration.approvedTransfer" 
+                      content="This registration has already been transferred" 
+                      placement="top">
+                      <span class="disabled-hint">
+                        <i class="el-icon-info"></i>
+                        Already Transferred
+                      </span>
+                    </el-tooltip>
+                  </template>
+                </div>
+              </div>
+            </el-collapse-transition>
+          </div>
+        </div>
+
+        <!-- 提示信息 - 可折叠 -->
+        <div class="notice-section">
+          <div class="notice-collapse">
+            <div class="notice-header" @click="showNotice = !showNotice">
+              <i class="el-icon-info"></i>
+              <span>Transfer Notice</span>
+              <i 
+                class="el-icon-arrow-down collapse-icon"
+                :class="{ 'is-active': showNotice }"
+              ></i>
+            </div>
+            <el-collapse-transition>
+              <div v-show="showNotice" class="notice-content">
+                <p>• <strong>Transfer Processing Fee:</strong> A fee of <strong>$100 USD</strong> or <strong>¥750 RMB</strong> is required for each attendee transfer request</p>
+                <p>• Each registration can be transferred independently</p>
+                <p>• <strong>Each registration can only be transferred once</strong></p>
+                <p>• Only one pending transfer request per registration at a time</p>
+                <p>• Transfer updates attendee information while keeping registration and payment records</p>
+              </div>
+            </el-collapse-transition>
+          </div>
+        </div>
       </div>
     </el-card>
 
     <!-- 变更申请对话框 -->
-    <el-dialog title="Request Attendee Transfer" :visible.sync="dialogVisible" width="600px"
+    <el-dialog title="Request Attendee Transfer" :visible.sync="dialogVisible" width="650px"
       :close-on-click-modal="false">
 
-      <el-alert title="Important Notice" type="warning" :closable="false" show-icon>
-        <p>This operation will change your registered attendee information. The registration and payment remain under
+      <!-- 显示当前注册信息 -->
+      <div v-if="selectedRegistration" class="dialog-current-info">
+        <h4>Current Registration Information</h4>
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="Registration ID">
+            #{{ selectedRegistration.id }}
+          </el-descriptions-item>
+          <el-descriptions-item label="Product Code">
+            {{ selectedRegistration.productCode }}
+          </el-descriptions-item>
+          <el-descriptions-item label="Current Name">
+            {{ selectedRegistration.name }}
+          </el-descriptions-item>
+          <el-descriptions-item label="Current Email">
+            {{ selectedRegistration.email }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <el-alert title="Important Notice" type="warning" :closable="false" show-icon style="margin: 20px 0;">
+        <p>This operation will change the registered attendee information. The registration and payment remain under
           your account, but certificates and documents will show the new attendee's information.</p>
       </el-alert>
 
@@ -151,11 +261,136 @@
           <el-input type="textarea" v-model="transferForm.reason"
             placeholder="Please provide detailed reason for attendee transfer" :rows="4"></el-input>
         </el-form-item>
+
+        <!-- 手续费支付部分 -->
+        <el-divider></el-divider>
+        <h4 style="margin: 20px 0 16px 0; color: #303133;">Transfer Processing Fee</h4>
+        
+        <el-alert type="info" :closable="false" show-icon style="margin-bottom: 20px;">
+          <div slot="title">Processing Fee Required</div>
+          <p>A processing fee of <strong>$100 USD</strong> or <strong>¥750 RMB</strong> is required for attendee transfer.</p>
+        </el-alert>
+
+        <el-form-item label="Payment Method" prop="feePaymentMethod">
+          <el-radio-group v-model="transferForm.feePaymentMethod" size="medium">
+            <el-radio label="international">International Bank Transfer ($100 USD)</el-radio>
+            <el-radio label="domestic">China Mainland Payment (¥750 RMB)</el-radio>
+          </el-radio-group>
+        </el-form-item>
+
+        <!-- Payment Details Section - Collapsible -->
+        <div v-if="transferForm.feePaymentMethod" class="payment-details-section">
+          <div class="payment-details-collapse">
+            <div 
+              class="collapse-header"
+              @click="togglePaymentDetails"
+            >
+              <div class="collapse-header-content">
+                <i class="el-icon-info"></i>
+                <span v-if="transferForm.feePaymentMethod === 'international'">
+                  View Bank Transfer Details
+                </span>
+                <span v-else>查看转账信息</span>
+              </div>
+              <i 
+                class="el-icon-arrow-down collapse-icon"
+                :class="{ 'is-active': showPaymentDetails }"
+              ></i>
+            </div>
+            
+            <el-collapse-transition>
+              <div v-show="showPaymentDetails" class="collapse-content">
+                <!-- International Bank Transfer Details -->
+                <div v-if="transferForm.feePaymentMethod === 'international'" class="payment-info-box">
+                  <div class="bank-details">
+                    <div class="detail-group">
+                      <h5>Beneficiary's Details</h5>
+                      <p><strong>Account Number:</strong> 01266320164304</p>
+                      <p><strong>Name:</strong> YUAN LONGZHI</p>
+                      <p><strong>Address:</strong></p>
+                      <p class="address-indent">ROOM G7751, YEUNGKIN MAN BUILD.</p>
+                      <p class="address-indent">CITY UNIVERSITY OF HONG KONG</p>
+                      <p class="address-indent">83,TAT CHEE AVENUE, KLN HONG KONG</p>
+                    </div>
+                    
+                    <div class="detail-group">
+                      <h5>Beneficiary's Bank Details</h5>
+                      <p><strong>Country / Region:</strong> Hong Kong</p>
+                      <p><strong>SWIFT Code:</strong> BKCHHKHHXXX</p>
+                      <p><strong>Bank Name:</strong> Bank of China (Hong Kong) Limited</p>
+                      <p><strong>Bank Address:</strong> 1 Garden Road, Central, Hong Kong</p>
+                    </div>
+                    
+                    <div class="detail-group">
+                      <h5>Transfer Reference</h5>
+                      <p><strong>Format:</strong> <code>Name+ICPADS 2025+TransferFee</code></p>
+                      <p class="reference-example">Example: JohnDoe+ICPADS 2025+TransferFee</p>
+                    </div>
+                  </div>
+                  <div class="payment-note">
+                    <i class="el-icon-warning"></i>
+                    Please upload payment confirmation screenshot after completing the transfer.
+                  </div>
+                </div>
+
+                <!-- Domestic Payment Details -->
+                <div v-if="transferForm.feePaymentMethod === 'domestic'" class="payment-info-box domestic">
+                  <div class="bank-details">
+                    <div class="detail-group">
+                      <h5>收款账户信息</h5>
+                      <p><strong>账户名称：</strong>合肥博研会议会务服务有限公司</p>
+                      <p><strong>开户行：</strong>中国邮政储蓄银行股份有限公司安徽自贸试验区合肥片区支行</p>
+                      <p><strong>账户号码：</strong>934012013000728814</p>
+                    </div>
+                    
+                    <div class="detail-group">
+                      <h5>转账附言</h5>
+                      <p><strong>格式：</strong> <code>姓名+ICPADS 2025+转让手续费</code></p>
+                      <p class="reference-example">示例：张三+ICPADS 2025+转让手续费</p>
+                    </div>
+                  </div>
+                  <div class="payment-note">
+                    <i class="el-icon-warning"></i>
+                    支付后请上传支付截图作为凭证。
+                  </div>
+                </div>
+              </div>
+            </el-collapse-transition>
+          </div>
+        </div>
+
+        <el-form-item label="Payment Proof" prop="feePaymentScreenshot" required>
+          <el-upload
+            class="upload-demo"
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            :show-file-list="false"
+            accept="image/*"
+            action="#">
+            <el-button size="small" type="primary">
+              <i class="el-icon-upload"></i> Upload Screenshot
+            </el-button>
+          </el-upload>
+          <div class="upload-tip">jpg/png files with a size less than 10MB</div>
+          
+          <div v-if="uploadedProof" class="preview-section">
+            <div class="preview-label">Uploaded:</div>
+            <div class="preview-content">
+              <img :src="uploadedProof" alt="Payment Proof" class="proof-preview-small">
+              <el-button 
+                size="mini" 
+                @click="removeProof" 
+                class="remove-btn-inline">
+                Remove
+              </el-button>
+            </div>
+          </div>
+        </el-form-item>
       </el-form>
 
       <div slot="footer">
         <el-button @click="dialogVisible = false">Cancel</el-button>
-        <el-button type="primary" @click="submitTransfer" :loading="loading">Submit Request</el-button>
+        <el-button type="primary" @click="submitTransfer" :loading="loading" :disabled="!canSubmit">Submit Request</el-button>
       </div>
     </el-dialog>
 
@@ -240,22 +475,26 @@ export default {
     return {
       transferStatus: {
         hasApprovedRegistration: false,
-        pendingTransfer: null,
-        canTransfer: false,
-        currentRegistration: null,
-        reason: ''
+        approvedRegistrations: [],
+        totalCount: 0,
+        canTransferCount: 0,
+        pendingCount: 0
       },
+      selectedRegistration: null,
       dialogVisible: false,
       historyDialogVisible: false,
       loading: false,
       transferForm: {
+        registrationId: '',
         newAttendee: {
           name: '',
           email: '',
           phone: '',
           affiliation: ''
         },
-        reason: ''
+        reason: '',
+        feePaymentMethod: 'international',
+        feePaymentScreenshot: ''
       },
       transferRules: {
         'newAttendee.name': [
@@ -268,10 +507,31 @@ export default {
         reason: [
           { required: true, message: 'Please provide reason for transfer', trigger: 'blur' },
           { min: 10, message: 'Please provide detailed reason (at least 10 characters)', trigger: 'blur' }
+        ],
+        feePaymentMethod: [
+          { required: true, message: 'Please select payment method', trigger: 'change' }
+        ],
+        feePaymentScreenshot: [
+          { required: true, message: 'Please upload payment proof screenshot', trigger: 'change' }
         ]
       },
-      transferHistory: []
+      transferHistory: [],
+      uploadedProof: null,
+      paymentFile: null,
+      showPaymentDetails: false,
+      expandedItems: {}, // 用于追踪每个注册项的展开/折叠状态
+      showNotice: false // 控制提示信息的显示/隐藏
     };
+  },
+  computed: {
+    canSubmit() {
+      return this.transferForm.registrationId &&
+             this.transferForm.newAttendee.name &&
+             this.transferForm.newAttendee.email &&
+             this.transferForm.reason &&
+             this.transferForm.feePaymentMethod &&
+             this.uploadedProof;
+    }
   },
   async mounted() {
     await this.checkTransferStatus();
@@ -282,6 +542,13 @@ export default {
         const response = await userService.checkTransferStatus();
         if (response && response.data) {
           this.transferStatus = response.data;
+          
+          // 如果只有一个注册项，默认展开
+          if (this.transferStatus.approvedRegistrations && 
+              this.transferStatus.approvedRegistrations.length === 1) {
+            const registrationId = this.transferStatus.approvedRegistrations[0].id;
+            this.$set(this.expandedItems, registrationId, true);
+          }
         }
       } catch (error) {
         console.error('Failed to check transfer status:', error);
@@ -289,16 +556,23 @@ export default {
       }
     },
 
-    showTransferDialog() {
+    selectRegistrationForTransfer(registration) {
+      this.selectedRegistration = registration;
       this.transferForm = {
+        registrationId: registration.id,
         newAttendee: {
           name: '',
           email: '',
           phone: '',
           affiliation: ''
         },
-        reason: ''
+        reason: '',
+        feePaymentMethod: 'international',
+        feePaymentScreenshot: ''
       };
+      this.uploadedProof = null;
+      this.paymentFile = null;
+      this.showPaymentDetails = false;
       this.dialogVisible = true;
     },
 
@@ -318,12 +592,26 @@ export default {
         const valid = await this.$refs.transferForm.validate();
         if (!valid) return;
 
+        if (!this.paymentFile) {
+          this.$message.error('Please upload payment proof screenshot');
+          return;
+        }
+
         this.loading = true;
 
-        await userService.transferRegistration(this.transferForm);
+        // 创建 FormData 对象
+        const formData = new FormData();
+        formData.append('registrationId', this.transferForm.registrationId);
+        formData.append('newAttendee', JSON.stringify(this.transferForm.newAttendee));
+        formData.append('reason', this.transferForm.reason);
+        formData.append('feePaymentMethod', this.transferForm.feePaymentMethod);
+        formData.append('feePaymentScreenshot', this.paymentFile);
+
+        await userService.transferRegistration(formData);
 
         this.$message.success('Attendee transfer request submitted successfully! Please wait for admin review.');
         this.dialogVisible = false;
+        this.selectedRegistration = null;
 
         // 刷新状态
         await this.checkTransferStatus();
@@ -336,9 +624,96 @@ export default {
       }
     },
 
+    toggleExpand(registrationId) {
+      this.$set(this.expandedItems, registrationId, !this.expandedItems[registrationId]);
+    },
+
+    togglePaymentDetails() {
+      this.showPaymentDetails = !this.showPaymentDetails;
+    },
+
+    handleFileChange(file) {
+      const isImage = file.raw.type.startsWith('image/');
+      const isLt10M = file.raw.size / 1024 / 1024 < 10;
+
+      if (!isImage) {
+        this.$message.error('Only image files are allowed!');
+        return;
+      }
+      if (!isLt10M) {
+        this.$message.error('Image size must be less than 10MB!');
+        return;
+      }
+
+      this.paymentFile = file.raw;
+      
+      // 创建预览
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.uploadedProof = e.target.result;
+        // 更新表单字段以触发验证
+        this.transferForm.feePaymentScreenshot = file.name;
+        // 手动触发表单验证
+        this.$nextTick(() => {
+          this.$refs.transferForm.validateField('feePaymentScreenshot');
+        });
+      };
+      reader.readAsDataURL(file.raw);
+    },
+
+    removeProof() {
+      this.uploadedProof = null;
+      this.paymentFile = null;
+      this.transferForm.feePaymentScreenshot = '';
+      // 手动触发表单验证
+      this.$nextTick(() => {
+        this.$refs.transferForm.validateField('feePaymentScreenshot');
+      });
+    },
+
     formatDate(dateString) {
       if (!dateString) return 'N/A';
-      return new Date(dateString).toLocaleString('en-US');
+      const date = new Date(dateString);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+
+    formatBasePrice(registration) {
+      // 根据支付方式显示基础产品价格
+      if (registration.paymentMethod === 'domestic') {
+        const amount = parseFloat(registration.productPriceRmb) || 0;
+        return `¥${amount.toFixed(2)}`;
+      } else {
+        const amount = parseFloat(registration.productPriceUsd) || 0;
+        return `$${amount.toFixed(2)}`;
+      }
+    },
+
+    formatPaymentMethod(method) {
+      return method === 'domestic' ? 'Domestic (RMB)' : 'International (USD)';
+    },
+
+    hasExtraPageFee(registration) {
+      if (registration.paymentMethod === 'domestic') {
+        return parseFloat(registration.extraPageFeeRmb || 0) > 0;
+      } else {
+        return parseFloat(registration.extraPageFeeUsd || 0) > 0;
+      }
+    },
+
+    formatExtraPageFee(registration) {
+      if (registration.paymentMethod === 'domestic') {
+        const fee = parseFloat(registration.extraPageFeeRmb) || 0;
+        return `¥${fee.toFixed(2)}`;
+      } else {
+        const fee = parseFloat(registration.extraPageFeeUsd) || 0;
+        return `$${fee.toFixed(2)}`;
+      }
     },
 
     getStatusType(status) {
@@ -388,204 +763,394 @@ export default {
   padding: 60px 20px;
 }
 
-.pending-request {
-  margin-top: 32px;
-}
-
-.request-details {
-  margin-top: 32px;
-}
-
-.request-details h4 {
-  margin-bottom: 20px;
-  color: #303133;
-  font-size: 20px;
-}
-
-.cannot-transfer {
-  margin-top: 20px;
-}
-
-.can-transfer {
-  margin-top: 20px;
-}
-
-.current-info-card {
-  margin: 20px 0;
-}
-
-.current-info-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 20px 0;
-  border-bottom: 2px solid #e4e7ed;
-}
-
-.current-info-title {
-  margin: 0;
-  color: #303133;
-  font-size: 22px;
-  font-weight: 600;
+/* 统计栏样式 */
+.stats-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.current-info-title i {
-  color: #409EFF;
-  font-size: 24px;
-}
-
-.registration-details {
-  margin-bottom: 25px;
-}
-
-.info-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f0f8ff 100%);
-  border: 1px solid #e1f3ff;
-  border-radius: 12px;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 20px;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(64, 158, 255, 0.1);
-  background: rgba(255, 255, 255, 0.95);
-  margin-bottom: 8px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.08);
-  border: 1px solid rgba(64, 158, 255, 0.1);
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-.info-item:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-.info-label {
-  font-weight: 600;
-  color: #606266;
+.stat-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  color: #606266;
+  font-weight: 500;
+  font-size: 14px;
 }
 
-.info-label i {
-  color: #409EFF;
+.stat-item i {
   font-size: 16px;
+  color: #909399;
 }
 
-.info-value {
-  color: #303133;
-  font-weight: 500;
-  font-size: 15px;
-  text-align: right;
-  flex: 1;
-  margin-left: 20px;
+.stat-item.available {
+  color: #67C23A;
 }
 
-.transfer-notice {
-  margin-top: 20px;
+.stat-item.available i {
+  color: #67C23A;
 }
 
-.transfer-notice ul {
-  margin: 10px 0 0 20px;
-  padding: 0;
-}
-
-.transfer-notice li {
-  margin: 6px 0;
+.stat-item.pending {
   color: #E6A23C;
-  font-weight: 500;
 }
 
-.current-info {
-  margin-bottom: 25px;
+.stat-item.pending i {
+  color: #E6A23C;
 }
 
-.action-buttons {
+.stat-item.completed {
+  color: #409EFF;
+}
+
+.stat-item.completed i {
+  color: #409EFF;
+}
+
+.history-button {
+  margin-left: auto;
+}
+
+/* 注册项目列表样式 */
+.registration-items {
   display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-/* 自定义按钮样式 */
-.custom-button {
+.registration-item {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 16px;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.registration-item:hover {
+  border-color: #409EFF;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
+}
+
+.registration-item.has-pending {
+  border-color: #3d5f9e;
+  /* background-color: white; */
+  border-width: 1px;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+  /* margin: -8px -16px 0;
+  padding: 8px 16px 12px; */
+  border-radius: 6px 6px 0 0;
+}
+
+.item-header:hover {
+  background-color: #f5f7fa;
+}
+
+.registration-item.is-expanded .item-header {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 6px;
+  gap: 12px;
+  flex: 1;
+}
+
+.expand-icon {
+  font-size: 14px;
+  color: #909399;
+  transition: transform 0.3s;
+}
+
+.expand-icon.is-expanded {
+  transform: rotate(90deg);
+}
+
+.product-code {
+  font-size: 14px;
+  font-weight: 600;
+  color: #409EFF;
+  background: #ecf5ff;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.product-price {
+  font-size: 15px;
+  font-weight: 600;
+  color: #67C23A;
+}
+
+.extra-fee {
+  font-size: 13px;
+  color: #f59e0b;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.registration-id {
+  font-size: 12px;
+  color: #909399;
+  background: #f5f7fa;
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.attendee-name {
   font-size: 14px;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-decoration: none;
-  outline: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+  color: #303133;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.custom-button:focus {
-  outline: 2px solid rgba(64, 158, 255, 0.3);
-  outline-offset: 2px;
+.item-details {
+  margin-top: 12px;
+  padding-top: 12px;
 }
 
-.custom-button i {
-  font-size: 16px;
+/* 参会者信息样式 */
+.attendee-info {
+  margin-bottom: 12px;
+}
+
+.info-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.6;
+}
+
+.info-line:last-child {
+  margin-bottom: 0;
+}
+
+.info-line .label {
+  color: #909399;
+  font-size: 12px;
+}
+
+.info-line .separator {
+  color: #dcdfe6;
+  margin: 0 4px;
+}
+
+.info-line strong {
+  color: #303133;
+  font-weight: 500;
+}
+
+/* 待处理转让信息 */
+.pending-transfer-info {
+  margin-bottom: 16px;
+}
+
+.pending-content {
+  font-size: 13px;
+}
+
+.pending-details {
+  margin: 8px 0;
+  color: #606266;
+}
+
+.separator {
+  margin: 0 8px;
+  color: #909399;
+}
+
+.request-time {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 6px;
+}
+
+/* 已批准转让信息 */
+.approved-transfer-info {
+  margin-bottom: 16px;
+}
+
+.approved-content {
+  font-size: 13px;
+}
+
+.transfer-details {
+  margin: 12px 0;
+}
+
+.detail-row {
+  display: flex;
+  margin-bottom: 8px;
+  color: #606266;
+  line-height: 1.6;
+}
+
+.detail-row .label {
+  font-weight: 500;
+  min-width: 140px;
+  color: #303133;
   flex-shrink: 0;
 }
 
-.custom-button span {
+.transfer-notice {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e4e7ed;
+  font-size: 12px;
+  color: #67c23a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 已退款信息 */
+.refunded-info {
+  margin-bottom: 16px;
+}
+
+.refunded-content {
+  font-size: 13px;
+}
+
+.refund-notice {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #f56c6c;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.transfer-notice i {
+  font-size: 14px;
+}
+
+/* 操作按钮样式 */
+.item-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.disabled-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #909399;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.disabled-hint i {
+  font-size: 14px;
+}
+
+/* 提示信息 */
+.notice-section {
+  margin-top: 20px;
+}
+
+.notice-collapse {
+  border: 1px solid #d9ecff;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #ecf5ff;
+}
+
+.notice-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  color: #409EFF;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.notice-header:hover {
+  background-color: #d9ecff;
+}
+
+.notice-header i:first-child {
+  font-size: 16px;
+}
+
+.notice-header span {
   flex: 1;
-  text-align: left;
 }
 
-/* 主要按钮样式 */
-.custom-button.primary {
-  background: #409EFF;
-  color: white;
-  border: 1px solid #409EFF;
+.notice-header .collapse-icon {
+  font-size: 14px;
+  transition: transform 0.3s;
 }
 
-.custom-button.primary:hover {
-  background: #66b1ff;
-  border-color: #66b1ff;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+.notice-header .collapse-icon.is-active {
+  transform: rotate(180deg);
 }
 
-.custom-button.primary:active {
-  background: #3a8ee6;
-  border-color: #3a8ee6;
-  transform: translateY(0);
+.notice-content {
+  padding: 12px 16px;
+  background: white;
+  border-top: 1px solid #d9ecff;
 }
 
-/* 次要按钮样式 */
-.custom-button.secondary {
-  background: #909399;
-  color: white;
-  border: 1px solid #909399;
+.notice-content p {
+  margin: 8px 0;
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.6;
 }
 
-.custom-button.secondary:hover {
-  background: #a6a9ad;
-  border-color: #a6a9ad;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(144, 147, 153, 0.3);
+.notice-content p:first-child {
+  margin-top: 0;
 }
 
-.custom-button.secondary:active {
-  background: #82848a;
-  border-color: #82848a;
-  transform: translateY(0);
+.notice-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* 对话框样式 */
+.dialog-current-info {
+  margin-bottom: 20px;
+}
+
+.dialog-current-info h4 {
+  margin-bottom: 12px;
+  color: #303133;
+  font-size: 20px;
 }
 
 .transfer-form {
@@ -675,124 +1240,94 @@ export default {
 }
 
 @media (max-width: 768px) {
-  /* 页面整体优化 */
-  .attendee-management {
-    padding: 12px;
-  }
-  
   .card-header {
-    padding: 12px 0;
+    padding: 16px 0;
   }
   
   .card-title {
     font-size: 18px;
-    margin-bottom: 6px;
   }
   
   .card-subtitle {
     font-size: 13px;
-    line-height: 1.4;
   }
-  
-  /* 重要提示简化 */
-  .el-alert {
-    margin-bottom: 12px;
+
+  .stats-bar {
+    padding: 10px 12px;
+    gap: 10px;
   }
-  
-  .el-alert .el-alert__content {
-    font-size: 13px;
-    line-height: 1.4;
+
+  .stat-item {
+    font-size: 12px;
   }
-  
-  .el-alert .el-alert__title {
-    font-size: 14px;
-    margin-bottom: 4px;
+
+  .history-button {
+    margin-left: 0;
+    width: 100%;
+    margin-top: 8px;
   }
-  
-  /* 当前注册信息区域优化 */
-  .current-info-card {
-    margin: 12px 0;
+
+  .registration-item {
+    padding: 12px;
   }
-  
-  .current-info-header {
+
+  .item-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
-    padding: 12px 0;
-    margin-bottom: 12px;
+    gap: 8px;
   }
 
-  .current-info-title {
-    font-size: 16px;
-  }
-  
-  /* 注册详情简化显示 */
-  .registration-details {
-    margin-bottom: 16px;
-  }
-  
-  .info-card {
-    padding: 12px;
-    margin-bottom: 12px;
-  }
-
-  .info-item {
+  .header-left {
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
-    text-align: left;
-    padding: 10px 12px;
-    margin-bottom: 6px;
   }
-  
-  .info-label {
+
+  .product-code {
     font-size: 13px;
   }
 
-  .info-value {
-    text-align: left;
-    margin-left: 0;
+  .product-price {
+    font-size: 14px;
+  }
+
+  .extra-fee {
+    font-size: 11px;
+  }
+
+  .header-right {
     width: 100%;
-    padding: 6px 10px;
-    background: rgba(64, 158, 255, 0.05);
-    border-radius: 4px;
-    border: 1px solid rgba(64, 158, 255, 0.15);
+  }
+
+  .info-line {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .info-line .separator {
+    margin: 0 2px;
+  }
+
+  .pending-content {
     font-size: 12px;
   }
-  
-  /* 操作按钮优化 */
-  .action-buttons {
+
+  .pending-details {
     flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
   }
-  
-  .custom-button {
-    font-size: 13px;
-    padding: 10px 16px;
-    width: 100%;
-    text-align: left;
+
+  .item-actions {
+    justify-content: stretch;
   }
-  
-  /* 变更提示简化 */
-  .transfer-notice {
-    margin-top: 12px;
+
+  .item-actions .el-button {
+    flex: 1;
   }
-  
-  .transfer-notice .el-alert {
-    margin-bottom: 0;
-  }
-  
-  .transfer-notice ul {
-    margin: 8px 0 0 16px;
-  }
-  
-  .transfer-notice li {
-    margin: 4px 0;
+
+  .notice-section p {
     font-size: 12px;
   }
-  
-  /* 历史记录优化 */
+
   .change-comparison {
     flex-direction: column;
   }
@@ -803,28 +1338,8 @@ export default {
     margin: 8px 0;
   }
   
-  /* 空状态优化 */
   .empty-state {
     padding: 40px 12px;
-  }
-  
-  /* 等待审核状态优化 */
-  .pending-request {
-    margin-top: 20px;
-  }
-  
-  .request-details {
-    margin-top: 20px;
-  }
-  
-  .request-details h4 {
-    font-size: 16px;
-    margin-bottom: 12px;
-  }
-  
-  /* 描述列表优化 */
-  .el-descriptions {
-    font-size: 13px;
   }
 }
 
@@ -871,5 +1386,200 @@ export default {
   .transfer-notice li {
     font-size: 11px;
   }
+}
+
+/* Payment Details Section */
+.payment-details-section {
+  margin: 16px 0;
+}
+
+.payment-details-collapse {
+  border: 1px solid #DCDFE6;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.collapse-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  cursor: pointer;
+  transition: all 0.3s;
+  user-select: none;
+}
+
+.collapse-header:hover {
+  background: #ecf5ff;
+}
+
+.collapse-header-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #409EFF;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.collapse-header-content i {
+  font-size: 16px;
+}
+
+.collapse-icon {
+  color: #909399;
+  transition: transform 0.3s;
+  font-size: 14px;
+}
+
+.collapse-icon.is-active {
+  transform: rotate(180deg);
+}
+
+.collapse-content {
+  padding: 16px;
+  background: white;
+}
+
+.payment-info-box {
+  background: #f8f9fa;
+  border: 2px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.payment-info-box.domestic {
+  background: #fff7e6;
+  border-color: #ffd666;
+}
+
+.bank-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-group {
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 3px solid #409EFF;
+}
+
+.payment-info-box.domestic .detail-group {
+  border-left-color: #E6A23C;
+}
+
+.detail-group h5 {
+  color: #606266;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-group p {
+  color: #303133;
+  font-size: 13px;
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.detail-group p strong {
+  color: #606266;
+  font-weight: 600;
+  min-width: 120px;
+  display: inline-block;
+}
+
+.detail-group code {
+  background: #ecf5ff;
+  color: #409EFF;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.payment-info-box.domestic .detail-group code {
+  background: #fef0e0;
+  color: #E6A23C;
+}
+
+.address-indent {
+  padding-left: 16px;
+  color: #606266;
+  font-size: 12px;
+}
+
+.reference-example {
+  color: #909399;
+  font-style: italic;
+  padding-left: 16px;
+  font-size: 12px;
+}
+
+.payment-note {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #ecf5ff;
+  border-radius: 4px;
+  color: #409EFF;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+.payment-info-box.domestic .payment-note {
+  background: #fef0e0;
+  color: #E6A23C;
+}
+
+.payment-note i {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.upload-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 8px;
+}
+
+.preview-section {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.preview-label {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.preview-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.proof-preview-small {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #DCDFE6;
+}
+
+.remove-btn-inline {
+  padding: 5px 15px;
 }
 </style>

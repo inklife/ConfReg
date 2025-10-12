@@ -249,7 +249,7 @@ class InvoiceManager extends BaseComponent {
         const content = invoice.content || '会议注册费用';
         const invoiceType = invoice.invoiceType === 'electronic' ? '电子发票' : '纸质发票';
         const status = invoice.status || 'pending';
-        const amount = invoice.amount || '0';
+        const amount = `${invoice.invoiceAmount || invoice.amount || '0'} ${invoice.invoiceCurrency || 'RMB'}`;
         const requestedAt = invoice.requestedAt || invoice.created_at || new Date().toISOString();
         const filesCount = invoice.files ? invoice.files.length : 0;
         
@@ -869,29 +869,6 @@ class InvoiceManager extends BaseComponent {
                 <p class="header-subtitle">管理和处理系统发票申请</p>
             </div>
             -->
-            <!-- 统计卡片 -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value stat-pending" id="stat-pending">0</div>
-                    <div class="stat-label">待处理</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value stat-processing" id="stat-processing">0</div>
-                    <div class="stat-label">处理中</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value stat-completed" id="stat-completed">0</div>
-                    <div class="stat-label">已完成</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value stat-rejected" id="stat-rejected">0</div>
-                    <div class="stat-label">已拒绝</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value stat-amount" id="stat-amount">$0</div>
-                    <div class="stat-label">已开票金额</div>
-                </div>
-            </div>
 
             <!-- 主要内容区域 -->
             <div class="main-content">
@@ -2721,6 +2698,11 @@ class InvoiceManager extends BaseComponent {
 
     renderInvoiceDetails(invoice) {
         console.log('Rendering invoice details:', invoice); // 添加调试日志
+        console.log('Contact info:', {
+            contactName: invoice.contactName,
+            contactPhone: invoice.contactPhone,
+            contactEmail: invoice.contactEmail
+        });
         
         // 安全地访问嵌套属性
         const userName = invoice.user?.fullname || invoice.user?.username || '未知用户';
@@ -2728,7 +2710,7 @@ class InvoiceManager extends BaseComponent {
         const invoiceTitle = invoice.invoiceTitle || '未指定';
         const invoiceType = invoice.invoiceType === 'electronic' ? '电子发票' : '纸质发票';
         const content = invoice.content || '会议注册费用';
-        const amount = invoice.amount || '0';
+        const amount = `${invoice.invoiceAmount || invoice.amount || '0'} ${invoice.invoiceCurrency || 'RMB'}`;
         const requestedAt = invoice.requestedAt || invoice.created_at || new Date().toISOString();
         
         return `
@@ -2751,6 +2733,32 @@ class InvoiceManager extends BaseComponent {
                     </div>
                 </div>
                 
+                ${invoice.contactName || invoice.contactPhone || invoice.contactEmail ? `
+                <div class="detail-section">
+                    <div class="detail-title">
+                        <i class="fas fa-address-card"></i> 联系人信息
+                    </div>
+                    ${invoice.contactName ? `
+                    <div class="detail-row">
+                        <span class="detail-label">联系人姓名:</span>
+                        <span class="detail-value">${invoice.contactName}</span>
+                    </div>
+                    ` : ''}
+                    ${invoice.contactPhone ? `
+                    <div class="detail-row">
+                        <span class="detail-label">联系电话:</span>
+                        <span class="detail-value">${invoice.contactPhone}</span>
+                    </div>
+                    ` : ''}
+                    ${invoice.contactEmail ? `
+                    <div class="detail-row">
+                        <span class="detail-label">联系邮箱:</span>
+                        <span class="detail-value">${invoice.contactEmail}</span>
+                    </div>
+                    ` : ''}
+                </div>
+                ` : ''}
+                
                 <div class="detail-section">
                     <div class="detail-title">
                         <i class="fas fa-file-invoice"></i> 发票信息
@@ -2764,6 +2772,10 @@ class InvoiceManager extends BaseComponent {
                         <span class="detail-value">${invoiceType}</span>
                     </div>
                     <div class="detail-row">
+                        <span class="detail-label">发票类别:</span>
+                        <span class="detail-value">${invoice.invoiceCategory === 'vat' ? '增值税专用发票' : '普通发票'}</span>
+                    </div>
+                    <div class="detail-row">
                         <span class="detail-label">发票内容:</span>
                         <span class="detail-value">${content}</span>
                     </div>
@@ -2771,6 +2783,12 @@ class InvoiceManager extends BaseComponent {
                         <span class="detail-label">发票金额:</span>
                         <span class="detail-value" style="font-weight: 600; color: var(--green-600);">${amount}</span>
                     </div>
+                    ${invoice.registrationSystemNo ? `
+                    <div class="detail-row">
+                        <span class="detail-label">注册系统编号:</span>
+                        <span class="detail-value">${invoice.registrationSystemNo}</span>
+                    </div>
+                    ` : ''}
                 </div>
                 
                 ${invoice.taxNumber ? `
@@ -2782,17 +2800,31 @@ class InvoiceManager extends BaseComponent {
                         <span class="detail-label">纳税人识别号:</span>
                         <span class="detail-value">${invoice.taxNumber}</span>
                     </div>
-                    ${invoice.bankName ? `
-                    <div class="detail-row">
-                        <span class="detail-label">开户行:</span>
-                        <span class="detail-value">${invoice.bankName}</span>
-                    </div>
-                    ` : ''}
-                    ${invoice.registeredAddress ? `
-                    <div class="detail-row">
-                        <span class="detail-label">注册地址:</span>
-                        <span class="detail-value">${invoice.registeredAddress}</span>
-                    </div>
+                    ${invoice.invoiceCategory === 'vat' ? `
+                        ${invoice.registeredAddress ? `
+                        <div class="detail-row">
+                            <span class="detail-label">注册地址:</span>
+                            <span class="detail-value">${invoice.registeredAddress}</span>
+                        </div>
+                        ` : ''}
+                        ${invoice.registeredPhone ? `
+                        <div class="detail-row">
+                            <span class="detail-label">注册电话:</span>
+                            <span class="detail-value">${invoice.registeredPhone}</span>
+                        </div>
+                        ` : ''}
+                        ${invoice.bankAccount ? `
+                        <div class="detail-row">
+                            <span class="detail-label">银行账号:</span>
+                            <span class="detail-value">${invoice.bankAccount}</span>
+                        </div>
+                        ` : ''}
+                        ${invoice.bankName ? `
+                        <div class="detail-row">
+                            <span class="detail-label">开户行:</span>
+                            <span class="detail-value">${invoice.bankName}</span>
+                        </div>
+                        ` : ''}
                     ` : ''}
                 </div>
                 ` : ''}
@@ -2817,6 +2849,15 @@ class InvoiceManager extends BaseComponent {
                 </div>
                 ` : ''}
             </div>
+            
+            ${invoice.notes ? `
+            <div class="detail-section" style="margin-top: 20px;">
+                <div class="detail-title">
+                    <i class="fas fa-comment"></i> 用户备注
+                </div>
+                <p style="margin: 8px 0 0 0; color: var(--gray-700);">${invoice.notes}</p>
+            </div>
+            ` : ''}
             
             ${invoice.adminNotes ? `
             <div class="detail-section" style="margin-top: 20px;">

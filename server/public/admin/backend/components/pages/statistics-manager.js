@@ -176,7 +176,8 @@ class StatisticsManager extends BaseComponent {
             clearTimeout(timeoutId);
             
             if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch payment stats`);
-            return await response.json();
+            const result = await response.json();
+            return result.data || result; // 返回 data 部分，如果没有则返回整个结果
         } catch (error) {
             clearTimeout(timeoutId);
             console.error('Payment stats fetch error:', error);
@@ -308,14 +309,31 @@ class StatisticsManager extends BaseComponent {
                         <i class="fas fa-dollar-sign"></i>
                     </div>
                     <div class="stats-card-body">
-                        <div class="stats-number">$${this.formatCurrency(stats.payment?.total || 0)}</div>
+                        <div class="stats-number-group">
+                            <div class="stats-number-line">
+                                <span class="currency-label">美元:</span>
+                                <span class="stats-number-small">$${this.formatCurrency(stats.payment?.total_usd || 0)}</span>
+                            </div>
+                            <div class="stats-number-line">
+                                <span class="currency-label">人民币:</span>
+                                <span class="stats-number-small">¥${this.formatCurrency(stats.payment?.total_rmb || 0)}</span>
+                            </div>
+                        </div>
                         <div class="stats-label">总收入</div>
                         <div class="stats-breakdown">
                             <span class="stat-item">
-                                今日: $${this.formatCurrency(stats.payment?.today || 0)}
+                                <div>今日:</div>
+                                <div class="stat-amounts">
+                                    <span>$${this.formatCurrency(stats.payment?.today_usd || 0)}</span>
+                                    <span>¥${this.formatCurrency(stats.payment?.today_rmb || 0)}</span>
+                                </div>
                             </span>
                             <span class="stat-item">
-                                本周: $${this.formatCurrency(stats.payment?.week || 0)}
+                                <div>本周:</div>
+                                <div class="stat-amounts">
+                                    <span>$${this.formatCurrency(stats.payment?.week_usd || 0)}</span>
+                                    <span>¥${this.formatCurrency(stats.payment?.week_rmb || 0)}</span>
+                                </div>
                             </span>
                         </div>
                     </div>
@@ -460,6 +478,33 @@ class StatisticsManager extends BaseComponent {
             return '<p class="no-data">暂无产品统计数据</p>';
         }
 
+        // 按产品代码分组统计
+        const groupedStats = {};
+        productStats.forEach(item => {
+            const productCode = item._id || item.product_code;
+            if (!groupedStats[productCode]) {
+                groupedStats[productCode] = {
+                    count: 0,
+                    total_usd: 0,
+                    total_rmb: 0,
+                    domestic_count: 0,
+                    international_count: 0
+                };
+            }
+            groupedStats[productCode].count += parseInt(item.count) || 0;
+            
+            if (item.payment_method === 'international') {
+                groupedStats[productCode].total_usd += parseFloat(item.total_usd) || 0;
+                groupedStats[productCode].international_count += parseInt(item.count) || 0;
+            } else if (item.payment_method === 'domestic') {
+                groupedStats[productCode].total_rmb += parseFloat(item.total_rmb) || 0;
+                groupedStats[productCode].domestic_count += parseInt(item.count) || 0;
+            }
+        });
+
+        // 计算总数
+        const totalCount = Object.values(groupedStats).reduce((sum, p) => sum + p.count, 0);
+
         return `
             <table class="product-table">
                 <thead>
@@ -472,23 +517,37 @@ class StatisticsManager extends BaseComponent {
                     </tr>
                 </thead>
                 <tbody>
-                    ${productStats.map(product => {
-                        const total = productStats.reduce((sum, p) => sum + parseInt(p.count), 0);
-                        const percentage = total > 0 ? ((parseInt(product.count) / total) * 100).toFixed(1) : 0;
-                        const avgPrice = product.total && product.count ? (product.total / product.count).toFixed(2) : 0;
+                    ${Object.entries(groupedStats).map(([productCode, stats]) => {
+                        const percentage = totalCount > 0 ? ((stats.count / totalCount) * 100).toFixed(1) : 0;
+                        
+                        // 计算平均价格
+                        const avgPriceUsd = stats.international_count > 0 
+                            ? (stats.total_usd / stats.international_count).toFixed(2) 
+                            : 0;
+                        const avgPriceRmb = stats.domestic_count > 0 
+                            ? (stats.total_rmb / stats.domestic_count).toFixed(2) 
+                            : 0;
                         
                         return `
                             <tr>
-                                <td class="product-code">${product._id || product.product_code}</td>
-                                <td class="count">${product.count}</td>
-                                <td class="revenue">$${this.formatCurrency(product.total || 0)}</td>
+                                <td class="product-code">${productCode}</td>
+                                <td class="count">${stats.count}</td>
+                                <td class="revenue">
+                                    ${stats.total_usd > 0 ? `<div class="revenue-line"><span class="currency-label">国际:</span> $${this.formatCurrency(stats.total_usd)}</div>` : ''}
+                                    ${stats.total_rmb > 0 ? `<div class="revenue-line"><span class="currency-label">国内:</span> ¥${this.formatCurrency(stats.total_rmb)}</div>` : ''}
+                                    ${stats.total_usd === 0 && stats.total_rmb === 0 ? '<div class="revenue-line">-</div>' : ''}
+                                </td>
                                 <td class="percentage">
                                     <div class="percentage-bar">
                                         <div class="percentage-fill" style="width: ${percentage}%"></div>
                                         <span class="percentage-text">${percentage}%</span>
                                     </div>
                                 </td>
-                                <td class="avg-price">$${avgPrice}</td>
+                                <td class="avg-price">
+                                    ${avgPriceUsd > 0 ? `<div class="price-line"><span class="currency-label">国际:</span> $${avgPriceUsd}</div>` : ''}
+                                    ${avgPriceRmb > 0 ? `<div class="price-line"><span class="currency-label">国内:</span> ¥${avgPriceRmb}</div>` : ''}
+                                    ${avgPriceUsd === 0 && avgPriceRmb === 0 ? '<div class="price-line">-</div>' : ''}
+                                </td>
                             </tr>
                         `;
                     }).join('')}
@@ -730,6 +789,32 @@ class StatisticsManager extends BaseComponent {
                 margin-bottom: 8px;
             }
 
+            .stats-number-group {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                margin-bottom: 8px;
+            }
+
+            .stats-number-line {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .stats-number-line .currency-label {
+                font-size: 14px;
+                font-weight: 600;
+                color: #6c757d;
+                min-width: 50px;
+            }
+
+            .stats-number-small {
+                font-size: 24px;
+                font-weight: bold;
+                color: #212529;
+            }
+
             .stats-label {
                 color: #6c757d;
                 font-size: 14px;
@@ -744,9 +829,16 @@ class StatisticsManager extends BaseComponent {
 
             .stat-item {
                 display: flex;
-                align-items: center;
-                gap: 6px;
+                flex-direction: column;
+                gap: 4px;
                 font-size: 14px;
+                color: #495057;
+            }
+
+            .stat-amounts {
+                display: flex;
+                gap: 12px;
+                font-size: 13px;
                 color: #495057;
             }
 
@@ -883,6 +975,35 @@ class StatisticsManager extends BaseComponent {
                 padding: 4px 8px;
                 border-radius: 4px;
                 font-weight: 500;
+            }
+
+            .revenue-line,
+            .price-line {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 2px 0;
+            }
+
+            .revenue-line:not(:last-child),
+            .price-line:not(:last-child) {
+                margin-bottom: 4px;
+            }
+
+            .currency-label {
+                display: inline-block;
+                font-size: 12px;
+                font-weight: 600;
+                color: #6c757d;
+                min-width: 40px;
+            }
+
+            .revenue {
+                min-width: 150px;
+            }
+
+            .avg-price {
+                min-width: 130px;
             }
 
             .percentage-bar {
@@ -1966,16 +2087,53 @@ class StatisticsManager extends BaseComponent {
         try {
             const productStats = this.statistics.registration?.product_stats || [];
             
+            // 按产品代码分组统计
+            const groupedStats = {};
+            productStats.forEach(item => {
+                const productCode = item._id || item.product_code;
+                if (!groupedStats[productCode]) {
+                    groupedStats[productCode] = {
+                        count: 0,
+                        total_usd: 0,
+                        total_rmb: 0,
+                        domestic_count: 0,
+                        international_count: 0
+                    };
+                }
+                groupedStats[productCode].count += parseInt(item.count) || 0;
+                
+                if (item.payment_method === 'international') {
+                    groupedStats[productCode].total_usd += parseFloat(item.total_usd) || 0;
+                    groupedStats[productCode].international_count += parseInt(item.count) || 0;
+                } else if (item.payment_method === 'domestic') {
+                    groupedStats[productCode].total_rmb += parseFloat(item.total_rmb) || 0;
+                    groupedStats[productCode].domestic_count += parseInt(item.count) || 0;
+                }
+            });
+            
             // 创建CSV内容
-            const headers = ['产品代码', '注册数量', '收入金额', '平均价格'];
+            const headers = ['产品代码', '总注册数', '国际注册数', '国内注册数', '美元收入(USD)', '人民币收入(RMB)', '平均价格(USD)', '平均价格(RMB)'];
             const csvContent = [
                 headers.join(','),
-                ...productStats.map(product => [
-                    product._id || product.product_code,
-                    product.count,
-                    product.total || 0,
-                    product.total && product.count ? (product.total / product.count).toFixed(2) : 0
-                ].join(','))
+                ...Object.entries(groupedStats).map(([productCode, stats]) => {
+                    const avgPriceUsd = stats.international_count > 0 
+                        ? (stats.total_usd / stats.international_count).toFixed(2) 
+                        : 0;
+                    const avgPriceRmb = stats.domestic_count > 0 
+                        ? (stats.total_rmb / stats.domestic_count).toFixed(2) 
+                        : 0;
+                    
+                    return [
+                        productCode,
+                        stats.count,
+                        stats.international_count,
+                        stats.domestic_count,
+                        stats.total_usd.toFixed(2),
+                        stats.total_rmb.toFixed(2),
+                        avgPriceUsd,
+                        avgPriceRmb
+                    ].join(',');
+                })
             ].join('\n');
 
             const blob = new Blob(['\ufeff' + csvContent], {

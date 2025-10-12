@@ -874,6 +874,43 @@ class TransferManager extends BaseComponent {
                 </div>
             </div>
 
+            <div class="detail-section">
+                <h4>手续费支付信息</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>支付方式</label>
+                        <span>${transfer.feePaymentMethod === 'international' ? '国际转账 ($100 USD)' : '国内支付 (¥750 RMB)'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>手续费金额</label>
+                        <span>${transfer.feePaymentMethod === 'international' ? '$' + (transfer.feeAmountUsd || '100.00') : '¥' + (transfer.feeAmountRmb || '750.00')}</span>
+                    </div>
+                </div>
+                ${transfer.feePaymentScreenshot ? `
+                <div class="detail-item" style="margin-top: 16px;">
+                    <label>支付凭证截图</label>
+                    <div class="image-preview-container" style="margin-top: 8px;">
+                        <a href="/uploads/${transfer.feePaymentScreenshot}" target="_blank" class="pixel-voyager-link">
+                            <img src="/uploads/${transfer.feePaymentScreenshot}" 
+                                 alt="Payment Screenshot" 
+                                 class="payment-screenshot-preview"
+                                 style="max-width: 300px; max-height: 300px; object-fit: contain; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;"
+                                 onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#3b82f6'; this.style.boxShadow='0 8px 25px rgba(59, 130, 246, 0.15)';"
+                                 onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#e5e7eb'; this.style.boxShadow='none';">
+                        </a>
+                    </div>
+                </div>
+                ` : `
+                <div class="detail-item" style="margin-top: 16px;">
+                    <label>支付凭证截图</label>
+                    <div class="no-image" style="margin-top: 8px; padding: 20px; background: #f9fafb; border: 2px dashed #d1d5db; border-radius: 8px; text-align: center; color: #9ca3af;">
+                        <i class="fas fa-image" style="font-size: 32px; margin-bottom: 8px;"></i>
+                        <p style="margin: 0; font-size: 13px;">未上传支付截图</p>
+                    </div>
+                </div>
+                `}
+            </div>
+
             ${transfer.adminNotes ? `
             <div class="detail-section">
                 <h4>管理员备注</h4>

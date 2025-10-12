@@ -1,7 +1,7 @@
 export const invoiceService = {
   // 获取用户的注册记录（用于发票申请）
   async getRegistrations() {
-    const response = await fetch(`/api/submissions/check-registration`, {
+    const response = await fetch(`/api/invoices/registrations`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -16,21 +16,8 @@ export const invoiceService = {
 
     const data = await response.json();
     
-    // 转换数据格式，使其与发票页面兼容
-    const registrations = [];
-    if (data.success && data.has_submission && data.approved) {
-      registrations.push({
-        id: data.registration_id,
-        name: data.registration_data.name,
-        product_code: data.registration_data.product_code,
-        product_price: data.registration_data.product_price,
-        created_at: new Date().toISOString(), // 临时使用当前时间
-        status: 'approved',
-        invoiceRequests: [] // 暂时为空，后续可以添加
-      });
-    }
-
-    return { registrations };
+    // 服务器返回的数据已经包含了所有已批准的注册记录和对应的发票请求
+    return { registrations: data.registrations || [] };
   },
 
   // 提交发票申请

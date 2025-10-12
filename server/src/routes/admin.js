@@ -357,17 +357,26 @@ router.get('/submissions', requireAdmin, async (req, res) => {
     const { status, search, page = 1, limit = 10 } = req.query;
     
     let where = {};
-    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
-      where.status = status;
+    
+    // 状态筛选：支持 refunded 状态
+    if (status) {
+      if (status === 'refunded') {
+        where.is_refunded = true;
+      } else if (['pending', 'approved', 'rejected'].includes(status)) {
+        where.status = status;
+        // 如果筛选非退款状态，排除已退款的记录
+        where.is_refunded = false;
+      }
     }
 
-    // 搜索功能：支持姓名和邮箱搜索
+    // 搜索功能：支持姓名、邮箱和 Paper ID 搜索
     if (search) {
       const searchTerm = search.trim();
       if (searchTerm) {
         where[Op.or] = [
           { name: { [Op.like]: `%${searchTerm}%` } },
-          { email: { [Op.like]: `%${searchTerm}%` } }
+          { email: { [Op.like]: `%${searchTerm}%` } },
+          { paper_id: { [Op.like]: `%${searchTerm}%` } }
         ];
       }
     }
@@ -778,67 +787,77 @@ router.get('/payments', requireAdmin, async (req, res) => {
     
     // 今日
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayPayment = await RegistrationSubmission.findAll({
-      attributes: [
-        [fn('SUM', col('product_price')), 'total']
-      ],
-      where: {
-        status: 'approved',
-        review_time: {
-          [Op.gte]: todayStart
-        }
-      },
-      raw: true
+    const todayPayment = await sequelize.query(`
+      SELECT 
+        SUM(CASE WHEN payment_method = 'international' THEN total_amount_usd ELSE 0 END) as total_usd,
+        SUM(CASE WHEN payment_method = 'domestic' THEN total_amount_rmb ELSE 0 END) as total_rmb
+      FROM backend_registrationsubmission
+      WHERE status = 'approved'
+        AND review_time >= ?
+        AND (is_refunded IS NULL OR is_refunded = 0)
+    `, {
+      replacements: [todayStart.toISOString()],
+      type: sequelize.QueryTypes.SELECT
     });
 
     // 本周
     const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const weekPayment = await RegistrationSubmission.findAll({
-      attributes: [
-        [fn('SUM', col('product_price')), 'total']
-      ],
-      where: {
-        status: 'approved',
-        review_time: {
-          [Op.gte]: weekStart
-        }
-      },
-      raw: true
+    const weekPayment = await sequelize.query(`
+      SELECT 
+        SUM(CASE WHEN payment_method = 'international' THEN total_amount_usd ELSE 0 END) as total_usd,
+        SUM(CASE WHEN payment_method = 'domestic' THEN total_amount_rmb ELSE 0 END) as total_rmb
+      FROM backend_registrationsubmission
+      WHERE status = 'approved'
+        AND review_time >= ?
+        AND (is_refunded IS NULL OR is_refunded = 0)
+    `, {
+      replacements: [weekStart.toISOString()],
+      type: sequelize.QueryTypes.SELECT
     });
 
     // 本月
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthPayment = await RegistrationSubmission.findAll({
-      attributes: [
-        [fn('SUM', col('product_price')), 'total']
-      ],
-      where: {
-        status: 'approved',
-        review_time: {
-          [Op.gte]: monthStart
-        }
-      },
-      raw: true
+    const monthPayment = await sequelize.query(`
+      SELECT 
+        SUM(CASE WHEN payment_method = 'international' THEN total_amount_usd ELSE 0 END) as total_usd,
+        SUM(CASE WHEN payment_method = 'domestic' THEN total_amount_rmb ELSE 0 END) as total_rmb
+      FROM backend_registrationsubmission
+      WHERE status = 'approved'
+        AND review_time >= ?
+        AND (is_refunded IS NULL OR is_refunded = 0)
+    `, {
+      replacements: [monthStart.toISOString()],
+      type: sequelize.QueryTypes.SELECT
     });
 
     // 总计
-    const totalPayment = await RegistrationSubmission.findAll({
-      attributes: [
-        [fn('SUM', col('product_price')), 'total']
-      ],
-      where: {
-        status: 'approved'
-      },
-      raw: true
+    const totalPayment = await sequelize.query(`
+      SELECT 
+        SUM(CASE WHEN payment_method = 'international' THEN total_amount_usd ELSE 0 END) as total_usd,
+        SUM(CASE WHEN payment_method = 'domestic' THEN total_amount_rmb ELSE 0 END) as total_rmb
+      FROM backend_registrationsubmission
+      WHERE status = 'approved'
+        AND (is_refunded IS NULL OR is_refunded = 0)
+    `, {
+      type: sequelize.QueryTypes.SELECT
     });
 
     res.json({
       success: true,
       data: {
-        today: parseFloat(todayPayment[0]?.total) || 0,
-        week: parseFloat(weekPayment[0]?.total) || 0,
-        month: parseFloat(monthPayment[0]?.total) || 0,
-        total: parseFloat(totalPayment[0]?.total) || 0
+        today_usd: parseFloat(todayPayment[0]?.total_usd) || 0,
+        today_rmb: parseFloat(todayPayment[0]?.total_rmb) || 0,
+        week_usd: parseFloat(weekPayment[0]?.total_usd) || 0,
+        week_rmb: parseFloat(weekPayment[0]?.total_rmb) || 0,
+        month_usd: parseFloat(monthPayment[0]?.total_usd) || 0,
+        month_rmb: parseFloat(monthPayment[0]?.total_rmb) || 0,
+        total_usd: parseFloat(totalPayment[0]?.total_usd) || 0,
+        total_rmb: parseFloat(totalPayment[0]?.total_rmb) || 0,
+        // 兼容旧版本（用美元作为默认）
+        today: parseFloat(todayPayment[0]?.total_usd) || 0,
+        week: parseFloat(weekPayment[0]?.total_usd) || 0,
+        month: parseFloat(monthPayment[0]?.total_usd) || 0,
+        total: parseFloat(totalPayment[0]?.total_usd) || 0
       }
     });
 
@@ -1349,9 +1368,20 @@ router.put('/refund-requests/:id', requireAdmin, async (req, res) => {
     refundRequest.processTime = new Date();
     refundRequest.adminNotes = adminNotes || '';
     
-    if (status === 'processed') {
-      refundRequest.refundMethod = refundMethod || 'bank_transfer';
-      refundRequest.transactionId = transactionId || '';
+    // 根据状态更新注册记录的退款状态
+    const registration = await RegistrationSubmission.findByPk(refundRequest.registrationId);
+    if (registration) {
+      if (status === 'approved') {
+        // 当状态变为 approved（已批准/已退款）时，标记为已退款
+        refundRequest.refundMethod = refundMethod || 'bank_transfer';
+        refundRequest.transactionId = transactionId || '';
+        registration.is_refunded = true;
+        await registration.save();
+      } else if (status === 'rejected') {
+        // 当退款被拒绝时，确保未标记为已退款
+        registration.is_refunded = false;
+        await registration.save();
+      }
     }
 
     await refundRequest.save();

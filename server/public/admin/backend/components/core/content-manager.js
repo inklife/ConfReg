@@ -167,6 +167,7 @@ class ContentManager extends BaseComponent {
             'transfers',
             'refunds',
             'invoices',
+            'vouchers',
             'users',
             'statistics',
             'settings'
@@ -227,6 +228,7 @@ class ContentManager extends BaseComponent {
             'transfers': '签转请求',
             'refunds': '退款管理',
             'invoices': '发票管理',
+            'vouchers': '餐券管理',
             'users': '用户管理',
             'statistics': '统计报告'
         };

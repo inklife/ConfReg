@@ -352,7 +352,7 @@ class RefundManager extends BaseComponent {
                 </td>
                 <td>
                     <span class="amount">
-                        $${parseFloat(refund.refundAmount || 0).toFixed(2)}
+                        ${this.formatRefundAmount(refund.refundAmount, refund.refundCurrency)}
                     </span>
                 </td>
                 <td>
@@ -753,7 +753,7 @@ class RefundManager extends BaseComponent {
                     <div class="detail-item">
                         <div class="detail-label">退款金额</div>
                         <div class="detail-value" style="color: #ef4444; font-family: 'Courier New', monospace;">
-                            $${parseFloat(refund.refundAmount || 0).toFixed(2)}
+                            ${this.formatRefundAmount(refund.refundAmount, refund.refundCurrency)}
                         </div>
                     </div>
 
@@ -761,6 +761,36 @@ class RefundManager extends BaseComponent {
                         <div class="detail-label">退款原因</div>
                         <div class="detail-value">${refund.reason || '未提供'}</div>
                     </div>
+
+                    ${refund.bankInfo ? `
+                        <div class="detail-item" style="grid-column: 1 / -1; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 8px;">
+                            <div class="detail-label" style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">
+                                <i class="fas fa-university" style="color: #3b82f6;"></i> 银行信息
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding: 12px; background: #f9fafb; border-radius: 8px;">
+                                <div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">账户持有人</div>
+                                    <div style="font-weight: 500;">${this.escapeHtml(refund.bankInfo.accountName || '未提供')}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">银行名称</div>
+                                    <div style="font-weight: 500;">${this.escapeHtml(refund.bankInfo.bankName || '未提供')}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">账号</div>
+                                    <div style="font-weight: 500; font-family: 'Courier New', monospace; user-select: all;">${this.escapeHtml(refund.bankInfo.accountNumber || '未提供')}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">SWIFT/BIC Code</div>
+                                    <div style="font-weight: 500; font-family: 'Courier New', monospace; user-select: all;">${this.escapeHtml(refund.bankInfo.swiftCode || '未提供')}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">国家/地区</div>
+                                    <div style="font-weight: 500;">${this.escapeHtml(refund.bankInfo.country || '未提供')}</div>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
 
                     <div class="detail-item">
                         <div class="detail-label">申请时间</div>
@@ -942,6 +972,29 @@ class RefundManager extends BaseComponent {
         } catch (error) {
             return '无效日期';
         }
+    }
+
+    formatRefundAmount(amount, currency) {
+        if (!amount) return '$0.00';
+        const formattedAmount = parseFloat(amount).toFixed(2);
+        const curr = currency || 'USD';
+        if (curr === 'RMB') {
+            return `¥${formattedAmount} RMB`;
+        }
+        return `$${formattedAmount} USD`;
+    }
+
+    maskAccountNumber(accountNumber) {
+        if (!accountNumber || accountNumber === '未提供') return accountNumber;
+        const str = accountNumber.toString();
+        if (str.length <= 8) {
+            return '*'.repeat(str.length);
+        }
+        // 显示前4位和后4位，中间用*代替
+        const start = str.slice(0, 4);
+        const end = str.slice(-4);
+        const maskLength = Math.max(0, str.length - 8);
+        return `${start}${'*'.repeat(maskLength)}${end}`;
     }
 
     escapeHtml(text) {

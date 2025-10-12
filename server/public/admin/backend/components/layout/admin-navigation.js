@@ -14,6 +14,7 @@ class AdminNavigation extends BaseComponent {
             { id: 'transfers', icon: 'swap_horiz', label: '签转请求' },
             { id: 'refunds', icon: 'payment', label: '退款管理' },
             { id: 'invoices', icon: 'receipt', label: '发票管理' },
+            { id: 'vouchers', icon: 'restaurant', label: '餐券管理' },
             { id: 'users', icon: 'people', label: '用户管理' },
             { id: 'statistics', icon: 'analytics', label: '统计报告' },
             { id: 'settings', icon: 'settings', label: '系统管理' }

@@ -34,6 +34,16 @@
             <span slot="title">Profile</span>
           </el-menu-item>
           
+          <el-menu-item index="registrations">
+            <i class="el-icon-user-solid"></i>
+            <span slot="title">Registrations</span>
+          </el-menu-item>
+          
+          <el-menu-item index="vouchers">
+            <i class="el-icon-food"></i>
+            <span slot="title">Meal Vouchers</span>
+          </el-menu-item>
+          
           <el-menu-item index="attendee">
             <i class="el-icon-edit-outline"></i>
             <span slot="title">Attendee Transfer</span>
@@ -60,103 +70,78 @@
       <main class="dashboard-content">
         <!-- 概览信息 -->
         <div v-if="activeMenu === 'overview'" class="overview-section">
-          <!-- 简化的统计信息 - 只在桌面端显示完整版 -->
-          <div class="stats-section desktop-stats">
-            <el-row :gutter="20" class="stats-row">
-              <el-col :md="8" :lg="5" :xl="5">
-                <el-card class="stat-card">
-                  <el-statistic 
-                    title="Approved Registrations" 
-                    :value="registrationStats.approved">
-                    <template slot="prefix">
-                      <i class="el-icon-check" style="color: #67C23A"></i>
-                    </template>
-                  </el-statistic>
+          <!-- 管理模块 - 注册管理和餐券管理 -->
+          <div class="management-section desktop-management">
+            <el-row :gutter="24" class="management-row">
+              <el-col :md="12" :lg="12" :xl="12">
+                <el-card class="management-card" shadow="hover" @click.native="handleMenuSelect('registrations')">
+                  <div class="management-content">
+                    <div class="management-icon">
+                      <i class="el-icon-user-solid"></i>
+                    </div>
+                    <div class="management-info">
+                      <h3>Registrations</h3>
+                      <p>Manage your conference registrations</p>
+                      <div class="management-stats">
+                        <span class="stat-item">
+                          <i class="el-icon-check" style="color: #67C23A"></i>
+                          {{ registrationStats.approved }} Approved
+                        </span>
+                        <span class="stat-item" v-if="registrationStats.pending > 0">
+                          <i class="el-icon-time" style="color: #E6A23C"></i>
+                          {{ registrationStats.pending }} Pending
+                        </span>
+                      </div>
+                    </div>
+                    <div class="management-arrow">
+                      <i class="el-icon-arrow-right"></i>
+                    </div>
+                  </div>
                 </el-card>
               </el-col>
-              <el-col :md="8" :lg="5" :xl="5">
-                <el-card class="stat-card">
-                  <el-statistic 
-                    title="Pending Applications" 
-                    :value="registrationStats.pending">
-                    <template slot="prefix">
-                      <i class="el-icon-time" style="color: #E6A23C"></i>
-                    </template>
-                  </el-statistic>
-                </el-card>
-              </el-col>
-              <el-col :md="8" :lg="5" :xl="5">
-                <el-card class="stat-card">
-                  <el-statistic 
-                    title="Transfer Requests" 
-                    :value="registrationStats.transfers">
-                    <template slot="prefix">
-                      <i class="el-icon-edit" style="color: #409EFF"></i>
-                    </template>
-                  </el-statistic>
-                </el-card>
-              </el-col>
-              <el-col :md="12" :lg="5" :xl="5">
-                <el-card class="stat-card">
-                  <el-statistic 
-                    title="Refund Requests" 
-                    :value="registrationStats.refunds">
-                    <template slot="prefix">
-                      <i class="el-icon-money" style="color: #F56C6C"></i>
-                    </template>
-                  </el-statistic>
-                </el-card>
-              </el-col>
-              <el-col :md="12" :lg="4" :xl="4">
-                <el-card class="stat-card">
-                  <el-statistic 
-                    title="Invoice Requests" 
-                    :value="registrationStats.invoices">
-                    <template slot="prefix">
-                      <i class="el-icon-document-add" style="color: #909399"></i>
-                    </template>
-                  </el-statistic>
+              <el-col :md="12" :lg="12" :xl="12">
+                <el-card class="management-card" shadow="hover" @click.native="handleMenuSelect('vouchers')">
+                  <div class="management-content">
+                    <div class="management-icon">
+                      <i class="el-icon-food"></i>
+                    </div>
+                    <div class="management-info">
+                      <h3>Meal Vouchers</h3>
+                      <p>Purchase and manage meal vouchers</p>
+                      <div class="management-stats">
+                        <span class="price-display">
+                          $150 (RMB 1100) per voucher
+                        </span>
+                      </div>
+                    </div>
+                    <div class="management-arrow">
+                      <i class="el-icon-arrow-right"></i>
+                    </div>
+                  </div>
                 </el-card>
               </el-col>
             </el-row>
           </div>
           
-          <!-- 移动端简化统计信息 -->
-          <div class="stats-section mobile-stats">
-            <div class="mobile-stats-summary">
-              <div class="summary-item important" v-if="registrationStats.approved > 0">
-                <i class="el-icon-check" style="color: #67C23A"></i>
-                <div class="summary-content">
-                  <div class="summary-number">{{ registrationStats.approved }}</div>
-                  <div class="summary-label">Approved</div>
+          <!-- 移动端管理模块 -->
+          <div class="management-section mobile-management">
+            <div class="mobile-management-grid">
+              <div class="mobile-management-item" @click="handleMenuSelect('registrations')">
+                <div class="mobile-mgmt-icon">
+                  <i class="el-icon-user-solid"></i>
+                </div>
+                <div class="mobile-mgmt-info">
+                  <h4>Registrations</h4>
+                  <p>{{ registrationStats.approved }} Approved</p>
                 </div>
               </div>
-              <div class="summary-item important" v-if="registrationStats.pending > 0">
-                <i class="el-icon-time" style="color: #E6A23C"></i>
-                <div class="summary-content">
-                  <div class="summary-number">{{ registrationStats.pending }}</div>
-                  <div class="summary-label">Pending</div>
+              <div class="mobile-management-item" @click="handleMenuSelect('vouchers')">
+                <div class="mobile-mgmt-icon">
+                  <i class="el-icon-food"></i>
                 </div>
-              </div>
-              <div class="summary-item" v-if="registrationStats.transfers > 0">
-                <i class="el-icon-edit" style="color: #409EFF"></i>
-                <div class="summary-content">
-                  <div class="summary-number">{{ registrationStats.transfers }}</div>
-                  <div class="summary-label">Transfers</div>
-                </div>
-              </div>
-              <div class="summary-item" v-if="registrationStats.refunds > 0">
-                <i class="el-icon-money" style="color: #F56C6C"></i>
-                <div class="summary-content">
-                  <div class="summary-number">{{ registrationStats.refunds }}</div>
-                  <div class="summary-label">Refunds</div>
-                </div>
-              </div>
-              <div class="summary-item" v-if="registrationStats.invoices > 0">
-                <i class="el-icon-document-add" style="color: #909399"></i>
-                <div class="summary-content">
-                  <div class="summary-number">{{ registrationStats.invoices }}</div>
-                  <div class="summary-label">Invoices</div>
+                <div class="mobile-mgmt-info">
+                  <h4>Meal Vouchers</h4>
+                  <p>$150 per voucher</p>
                 </div>
               </div>
             </div>
@@ -332,6 +317,8 @@
 import { userService } from '../_services';
 import { sseService } from '../_services/sse.service.js';
 import ProfileManagement from './components/ProfileManagement.vue';
+import RegistrationManagement from './components/RegistrationManagement.vue';
+import MealVoucherManagement from './components/MealVoucherManagement.vue';
 import AttendeeManagement from './components/AttendeeManagement.vue';
 import RefundManagement from './components/RefundManagement.vue';
 import DocumentManagement from './components/DocumentManagement.vue';
@@ -341,6 +328,8 @@ export default {
   name: 'UserDashboard',
   components: {
     ProfileManagement,
+    RegistrationManagement,
+    MealVoucherManagement,
     AttendeeManagement,
     RefundManagement,
     DocumentManagement,
@@ -370,6 +359,8 @@ export default {
       navigationItems: [
         { index: 'overview', title: 'Overview', icon: 'el-icon-pie-chart' },
         { index: 'profile', title: 'Profile', icon: 'el-icon-user' },
+        { index: 'registrations', title: 'Registrations', icon: 'el-icon-user-solid' },
+        { index: 'vouchers', title: 'Vouchers', icon: 'el-icon-food' },
         { index: 'attendee', title: 'Transfer', icon: 'el-icon-edit-outline' },
         { index: 'refund', title: 'Refund', icon: 'el-icon-money' },
         { index: 'invoice', title: 'Invoice', icon: 'el-icon-document-add' },
@@ -381,6 +372,8 @@ export default {
     currentComponent() {
       const componentMap = {
         'profile': 'ProfileManagement',
+        'registrations': 'RegistrationManagement',
+        'vouchers': 'MealVoucherManagement',
         'attendee': 'AttendeeManagement',
         'refund': 'RefundManagement',
         'documents': 'DocumentManagement',
@@ -432,7 +425,7 @@ export default {
     
     // 从URL参数中获取初始页面
     const tab = this.$route.query.tab;
-    if (tab && ['overview', 'profile', 'attendee', 'refund', 'documents', 'invoice'].includes(tab)) {
+    if (tab && ['overview', 'profile', 'registrations', 'vouchers', 'attendee', 'refund', 'documents', 'invoice'].includes(tab)) {
       this.activeMenu = tab;
     }
   },
@@ -461,6 +454,49 @@ export default {
     },
     
     async loadRegistrationStats() {
+      try {
+        // 使用新的API获取所有用户注册记录来计算统计信息
+        const allRegistrations = await userService.getAllUserRegistrations();
+        
+        if (allRegistrations && allRegistrations.data) {
+          const registrations = allRegistrations.data;
+          
+          // 重置统计信息
+          this.registrationStats.approved = 0;
+          this.registrationStats.pending = 0;
+          
+          // 计算各状态的注册数量（排除已退款的注册）
+          registrations.forEach(registration => {
+            // 跳过已退款的注册
+            if (registration.is_refunded) {
+              return;
+            }
+            
+            switch (registration.status) {
+              case 'approved':
+                this.registrationStats.approved++;
+                break;
+              case 'pending':
+                this.registrationStats.pending++;
+                break;
+              default:
+                // 其他状态如rejected等，暂不计入统计
+                break;
+            }
+          });
+          
+          console.log('Registration stats updated:', this.registrationStats);
+        } else {
+          // 如果新API失败，回退到原来的逻辑
+          await this.loadRegistrationStatsLegacy();
+        }
+      } catch (error) {
+        console.error('Failed to load registration stats with new API, falling back to legacy method:', error);
+        await this.loadRegistrationStatsLegacy();
+      }
+    },
+    
+    async loadRegistrationStatsLegacy() {
       try {
         // 加载注册统计信息 - 已批准的注册
         const approvedRegistrations = await userService.getApprovedRegistrations();
@@ -604,8 +640,8 @@ export default {
 
     // 跳转到会议注册页面
     goToConferenceRegistration() {
-      // 跳转到会议注册页面，根据实际路由进行调整
-      this.$router.push('/conference/auto');
+      // 跳转到注册管理页面
+      this.handleMenuSelect('registrations');
     },
 
     // 处理状态卡片点击事件
@@ -1303,6 +1339,101 @@ export default {
   padding: 0;
 }
 
+/* 管理模块样式 */
+.management-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 32px;
+  margin-bottom: 24px;
+}
+
+.management-row {
+  margin-bottom: 0;
+}
+
+.management-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #e5e7eb;
+  height: 140px;
+}
+
+.management-card:hover {
+  transform: translateY(-3px);
+  border-color: #409EFF;
+  box-shadow: 0 6px 20px rgba(64, 158, 255, 0.15);
+}
+
+.management-content {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 16px;
+}
+
+.management-icon {
+  font-size: 40px;
+  color: #409EFF;
+  margin-right: 20px;
+  flex-shrink: 0;
+}
+
+.management-info {
+  flex-grow: 1;
+}
+
+.management-info h3 {
+  color: #303133;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+}
+
+.management-info p {
+  color: #909399;
+  font-size: 14px;
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+.management-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #606266;
+}
+
+.stat-item i {
+  font-size: 14px;
+}
+
+.price-display {
+  color: #E6A23C;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.management-arrow {
+  font-size: 20px;
+  color: #C0C4CC;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.management-card:hover .management-arrow {
+  color: #409EFF;
+  transform: translateX(4px);
+}
+
 .stats-section {
   background: white;
   border-radius: 8px;
@@ -1311,7 +1442,7 @@ export default {
   margin-bottom: 24px;
 }
 
-/* 移动端和桌面端统计显示控制 */
+/* 移动端和桌面端显示控制 */
 .mobile-stats {
   display: none;
 }
@@ -1320,64 +1451,63 @@ export default {
   display: block;
 }
 
-/* 移动端简化统计样式 */
-.mobile-stats-summary {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 8px 2px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.mobile-stats-summary::-webkit-scrollbar {
+.mobile-management {
   display: none;
 }
 
-.summary-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.desktop-management {
+  display: block;
+}
+
+/* 移动端管理模块样式 */
+.mobile-management-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mobile-management-item {
   background: #f8f9fa;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  color: #606266;
   border: 1px solid #e4e7ed;
-  flex-shrink: 0;
-  min-width: 80px;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.summary-item.important {
-  background: #f8f9fa;
-  border-color: #e4e7ed;
-  border-width: 1px;
-  color: #606266;
+.mobile-management-item:hover {
+  background: #ecf5ff;
+  border-color: #409EFF;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
 }
 
-.summary-item i {
-  font-size: 16px;
+.mobile-mgmt-icon {
+  font-size: 24px;
+  color: #409EFF;
   flex-shrink: 0;
 }
 
-.summary-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.mobile-mgmt-info {
+  flex-grow: 1;
 }
 
-.summary-number {
-  font-size: 16px;
+.mobile-mgmt-info h4 {
+  color: #303133;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
 }
 
-.summary-label {
+.mobile-mgmt-info p {
+  color: #909399;
   font-size: 11px;
-  opacity: 0.8;
-  line-height: 1;
-  margin-top: 2px;
+  margin: 0;
+  line-height: 1.3;
 }
 
 /* 桌面端和移动端操作显示控制 */
@@ -1679,7 +1809,8 @@ export default {
   }
   
   .stats-section,
-  .quick-actions {
+  .quick-actions,
+  .management-section {
     padding: 20px;
   }
   
@@ -1719,12 +1850,12 @@ export default {
     max-width: 100%;
   }
   
-  /* 移动端隐藏桌面版统计，显示简化版 */
-  .desktop-stats {
+  /* 移动端隐藏桌面版管理模块，显示简化版 */
+  .desktop-management {
     display: none;
   }
   
-  .mobile-stats {
+  .mobile-management {
     display: block;
   }
   
@@ -1738,7 +1869,8 @@ export default {
   }
   
   .stats-section,
-  .quick-actions {
+  .quick-actions,
+  .management-section {
     padding: 16px;
   }
   
@@ -1804,7 +1936,8 @@ export default {
   }
   
   .stats-section,
-  .quick-actions {
+  .quick-actions,
+  .management-section {
     padding: 12px;
   }
   
@@ -1912,6 +2045,14 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 管理卡片的全局样式 */
+.management-card.el-card .el-card__body {
+  padding: 0 !important;
+  height: 140px;
+  display: flex;
+  align-items: center;
 }
 
 /* 移动端统计卡片样式优化 */

@@ -40,19 +40,28 @@
               
               <div class="request-details">
                 <el-row :gutter="20">
-                  <el-col :span="8">
-                    <p><strong>Invoice Type:</strong> {{ request.invoiceType === 'electronic' ? 'Electronic' : 'Paper' }}</p>
-                    <p><strong>Amount:</strong> ${{ request.amount }}</p>
+                  <el-col :xs="24" :sm="12" :md="8">
+                    <p><strong>Invoice Type / 发票类型:</strong> 
+                      {{ request.invoiceType === 'electronic' ? 'Electronic / 电子' : 'Paper / 纸质' }}
+                    </p>
+                    <p><strong>Invoice Category / 类别:</strong> 
+                      {{ request.invoiceCategory === 'vat' ? 'VAT / 专票' : 'Normal / 普票' }}
+                    </p>
+                    <p><strong>Invoice Amount / 金额:</strong> {{ formatRequestAmount(request) }}</p>
+                    <p v-if="request.registrationSystemNo"><strong>System No / 系统编号:</strong> {{ request.registrationSystemNo }}</p>
                   </el-col>
-                  <el-col :span="8">
-                    <p><strong>Request Date:</strong> {{ formatDate(request.created_at) }}</p>
-                    <p><strong>Content:</strong> {{ request.content }}</p>
+                  <el-col :xs="24" :sm="12" :md="8">
+                    <p><strong>Request Date / 申请日期:</strong> {{ formatDate(request.created_at) }}</p>
+                    <p><strong>Content / 内容:</strong> {{ request.content || '会议注册费' }}</p>
+                    <p v-if="request.taxNumber"><strong>Tax Number / 税号:</strong> {{ request.taxNumber }}</p>
+                    <p v-if="request.contactName"><strong>Contact / 联系人:</strong> {{ request.contactName }}</p>
                   </el-col>
-                  <el-col :span="8">
-                    <p v-if="request.taxNumber"><strong>Tax Number:</strong> {{ request.taxNumber }}</p>
-                    <p v-if="request.processingNote"><strong>Note:</strong> {{ request.processingNote }}</p>
+                  <el-col :xs="24" :sm="24" :md="8">
+                    <p v-if="request.contactPhone"><strong>Phone / 电话:</strong> {{ request.contactPhone }}</p>
+                    <p v-if="request.contactEmail"><strong>Email / 邮箱:</strong> {{ request.contactEmail }}</p>
+                    <p v-if="request.processingNote"><strong>Note / 备注:</strong> {{ request.processingNote }}</p>
                     <p v-if="request.files && request.files.length > 0" class="files-info">
-                      <strong>Files:</strong> 
+                      <strong>Files / 文件:</strong> 
                       <el-tag size="small" type="success">{{ request.files.length }} file(s)</el-tag>
                     </p>
                   </el-col>
@@ -170,13 +179,13 @@
                      @click="selectRegistration(registration)">
                   <div class="card-header">
                     <h4>{{ registration.name || 'Registration Record' }}</h4>
-                    <span class="price">${{ registration.product_price }}</span>
+                    <span class="price">{{ formatAmount(registration) }}</span>
                   </div>
                   <div class="card-body">
                     <p><strong>Product Code:</strong> {{ registration.product_code }}</p>
-                    <p><strong>Registration Date:</strong> {{ formatDate(registration.created_at) }}</p>
+                    <p><strong>Registration Date:</strong> {{ formatDate(registration.submission_time) }}</p>
                     <p><strong>Status:</strong> 
-                      <el-tag type="success" size="small">{{ registration.status }}</el-tag>
+                      <el-tag type="success" size="small">{{ getStatusText(registration.status) }}</el-tag>
                     </p>
                   </div>
                   <div v-if="registration.invoiceRequests && registration.invoiceRequests.length > 0" class="invoice-history">
@@ -185,7 +194,7 @@
                       <el-tag :type="getInvoiceTagType(request.status)" size="small">
                         {{ getStatusText(request.status) }}
                       </el-tag>
-                      <span class="date">{{ formatDate(request.created_at) }}</span>
+                      <span class="date">{{ formatDate(request.requestedAt || request.created_at) }}</span>
                     </div>
                   </div>
                   <div v-if="hasActivePendingRequest(registration)" class="pending-notice">
@@ -208,63 +217,124 @@
             <div v-if="step === 2" class="step-panel">
               <h3>Invoice Information</h3>
               
-              <el-form :model="form" label-width="140px" class="invoice-form">
-                <el-form-item label="Invoice Type">
-                  <el-radio-group v-model="form.invoiceType">
-                    <el-radio label="electronic">Electronic Invoice</el-radio>
-                    <el-radio label="paper">Paper Invoice</el-radio>
+              <el-form :model="form" label-width="240px" class="invoice-form">
+                <!-- 发票类型：仅支持电子发票 -->
+                <el-form-item label="Delivery Method">
+                  <el-tag type="success">Electronic Invoice (电子发票)</el-tag>
+                  <div style="margin-top: 8px; color: #909399; font-size: 12px;">
+                    Only electronic invoices are supported
+                  </div>
+                </el-form-item>
+
+                <!-- 发票类别：普通发票或增值税专用发票 -->
+                <el-form-item label="Invoice Category" required>
+                  <el-radio-group v-model="form.invoiceCategory">
+                    <el-radio label="normal">Normal Invoice (普通发票)</el-radio>
+                    <el-radio label="vat">VAT Special Invoice (增值税专用发票)</el-radio>
                   </el-radio-group>
+                  <div style="font-size: 12px; color: #909399; margin-top: 5px;">
+                    <span v-if="form.invoiceCategory === 'normal'">普通发票适用于个人或一般企业</span>
+                    <span v-if="form.invoiceCategory === 'vat'">增值税专用发票适用于一般纳税人企业（需提供更多信息）</span>
+                  </div>
                 </el-form-item>
 
-                <el-form-item label="Invoice Title" required>
-                  <el-input v-model="form.invoiceTitle" placeholder="Please enter invoice title"></el-input>
+                <!-- 购方名称（抬头） - 所有发票都需要 -->
+                <el-form-item label="Invoice Title (抬头)" required>
+                  <el-input v-model="form.invoiceTitle" placeholder="Please enter invoice title / 请输入发票抬头"></el-input>
                 </el-form-item>
 
-                <el-form-item label="Invoice Content">
-                  <el-input v-model="form.content" placeholder="Conference Registration Fee"></el-input>
+                <!-- 购方税号 - 所有发票都需要 -->
+                <el-form-item label="Tax Number (税号)" required>
+                  <el-input v-model="form.taxNumber" placeholder="Enter tax ID number / 请输入纳税人识别号"></el-input>
                 </el-form-item>
 
-                <el-form-item label="Tax Number">
-                  <el-input v-model="form.taxNumber" placeholder="Enter tax ID number (required for corporate invoices)"></el-input>
-                </el-form-item>
-
-                <div v-if="form.taxNumber" class="corporate-info">
-                  <el-form-item label="Bank Name">
-                    <el-input v-model="form.bankName" placeholder="Enter bank name"></el-input>
+                <!-- 增值税专用发票额外字段 -->
+                <div v-if="form.invoiceCategory === 'vat'" class="vat-info">
+                  <el-form-item label="Registered Address (注册地址)" required>
+                    <el-input v-model="form.registeredAddress" 
+                              placeholder="Enter company registered address / 请输入单位注册地址"></el-input>
                   </el-form-item>
 
-                  <el-form-item label="Bank Account">
-                    <el-input v-model="form.bankAccount" placeholder="Enter bank account number"></el-input>
+                  <el-form-item label="Registered Phone (注册电话)" required>
+                    <el-input v-model="form.registeredPhone" 
+                              placeholder="Enter company registered phone / 请输入单位注册电话"></el-input>
                   </el-form-item>
 
-                  <el-form-item label="Registered Address">
-                    <el-input v-model="form.registeredAddress" placeholder="Enter company registered address"></el-input>
+                  <el-form-item label="Bank Name (开户行)" required>
+                    <el-input v-model="form.bankName" 
+                              placeholder="Enter bank name / 请输入开户银行名称"></el-input>
                   </el-form-item>
 
-                  <el-form-item label="Registered Phone">
-                    <el-input v-model="form.registeredPhone" placeholder="Enter company registered phone"></el-input>
+                  <el-form-item label="Bank Account (银行账号)" required>
+                    <el-input v-model="form.bankAccount" 
+                              placeholder="Enter bank account number / 请输入银行账号"></el-input>
                   </el-form-item>
                 </div>
 
-                <div v-if="form.invoiceType === 'paper'" class="mailing-info">
-                  <h4>Mailing Information</h4>
-                  <el-form-item label="Mailing Address" required>
-                    <el-input type="textarea" :rows="3" v-model="form.mailingAddress" 
-                              placeholder="Please enter detailed mailing address"></el-input>
+                <!-- 开票金额和货币 -->
+                <div class="amount-info">
+                  <h4>Invoice Amount (开票金额)</h4>
+                  
+                  <el-form-item label="Currency (货币)" required>
+                    <el-select v-model="form.invoiceCurrency" placeholder="Select currency / 选择货币" style="width: 100%">
+                      <el-option label="USD (美元)" value="USD"></el-option>
+                      <el-option label="RMB (人民币)" value="RMB"></el-option>
+                    </el-select>
+                    <div style="font-size: 12px; color: #909399; margin-top: 5px;">
+                      Auto-filled based on registration / 根据注册记录自动填充
+                    </div>
                   </el-form-item>
 
-                  <el-form-item label="Recipient" required>
-                    <el-input v-model="form.recipient" placeholder="Enter recipient name"></el-input>
-                  </el-form-item>
-
-                  <el-form-item label="Recipient Phone" required>
-                    <el-input v-model="form.recipientPhone" placeholder="Enter recipient phone number"></el-input>
+                  <el-form-item label="Amount (金额)" required>
+                    <el-input-number 
+                      v-model="form.invoiceAmount" 
+                      :precision="2"
+                      :step="0.01"
+                      :min="0.01"
+                      :max="getMaxAmount()"
+                      style="width: 100%"
+                      placeholder="Enter invoice amount / 请输入开票金额">
+                    </el-input-number>
+                    <div style="font-size: 12px; color: #909399; margin-top: 5px;">
+                      Maximum amount: {{ form.invoiceCurrency === 'RMB' ? '¥' : '$' }}{{ getMaxAmount() }} / 最大金额: {{ form.invoiceCurrency === 'RMB' ? '¥' : '$' }}{{ getMaxAmount() }}
+                    </div>
                   </el-form-item>
                 </div>
 
-                <el-form-item label="Notes">
+                <!-- 联系信息 - 所有发票都需要 -->
+                <div class="contact-info">
+                  <h4>Contact Information (联系信息)</h4>
+                  
+                  <el-form-item label="Registration ID (注册ID)">
+                    <el-input v-model="form.registrationSystemNo" 
+                              disabled
+                              placeholder="Auto-filled with registration ID / 自动填充注册ID"></el-input>
+
+                  </el-form-item>
+
+                  <el-form-item label="Contact Name (联系人)" required>
+                    <el-input v-model="form.contactName" placeholder="Enter contact person name / 请输入联系人姓名"></el-input>
+                  </el-form-item>
+
+                  <el-form-item label="Contact Phone (联系电话)" required>
+                    <el-input v-model="form.contactPhone" placeholder="Enter contact phone number / 请输入联系电话"></el-input>
+                  </el-form-item>
+
+                  <el-form-item label="Contact Email (联系邮箱)" required>
+                    <el-input v-model="form.contactEmail" type="email" 
+                              placeholder="Enter contact email address / 请输入联系邮箱"></el-input>
+                  </el-form-item>
+                </div>
+
+                <!-- 发票内容 -->
+                <el-form-item label="Invoice Content" required>
+                  <el-input v-model="form.content" placeholder="Please enter invoice content / 请输入发票内容"></el-input>
+                </el-form-item>
+
+                <!-- 备注 -->
+                <el-form-item label="Notes (备注)">
                   <el-input type="textarea" :rows="3" v-model="form.notes" 
-                            placeholder="Please enter notes (optional)"></el-input>
+                            placeholder="Please enter notes (optional) / 请输入备注（可选）"></el-input>
                 </el-form-item>
               </el-form>
 
@@ -276,40 +346,50 @@
 
             <!-- Step 3: Confirm Submission -->
             <div v-if="step === 3" class="step-panel">
-              <h3>Confirm Request Information</h3>
+              <h3>Confirm Request Information / 确认申请信息</h3>
               
               <div class="confirmation-content">
                 <el-row :gutter="20">
                   <el-col :span="12">
                     <div class="info-section">
-                      <h4>Registration Information</h4>
-                      <p><strong>Name:</strong> {{ selectedRegistration.name }}</p>
-                      <p><strong>Product:</strong> {{ selectedRegistration.product_code }}</p>
-                      <p><strong>Amount:</strong> ${{ selectedRegistration.product_price }}</p>
+                      <h4>Registration Information / 注册信息</h4>
+                      <p><strong>Name / 姓名:</strong> {{ selectedRegistration.name }}</p>
+                      <p><strong>Product / 产品:</strong> {{ selectedRegistration.product_code }}</p>
+                      <p><strong>Amount / 金额:</strong> {{ formatAmount(selectedRegistration) }}</p>
                     </div>
                   </el-col>
                   <el-col :span="12">
                     <div class="info-section">
-                      <h4>Invoice Information</h4>
-                      <p><strong>Type:</strong> {{ form.invoiceType === 'electronic' ? 'Electronic Invoice' : 'Paper Invoice' }}</p>
-                      <p><strong>Header:</strong> {{ form.invoiceTitle }}</p>
-                      <p><strong>Content:</strong> {{ form.content || 'Conference Registration Fee' }}</p>
+                      <h4>Invoice Basic Information / 发票基本信息</h4>
+                      <p><strong>Delivery Method / 交付方式:</strong> Electronic Invoice / 电子发票</p>
+                      <p><strong>Invoice Category / 发票类别:</strong> {{ form.invoiceCategory === 'normal' ? 'Normal Invoice / 普通发票' : 'VAT Special Invoice / 增值税专用发票' }}</p>
+                      <p><strong>Invoice Title / 发票抬头:</strong> {{ form.invoiceTitle }}</p>
+                      <p><strong>Tax Number / 税号:</strong> {{ form.taxNumber }}</p>
+                      <p><strong>Invoice Amount / 开票金额:</strong> {{ form.invoiceCurrency === 'RMB' ? '¥' : '$' }}{{ form.invoiceAmount }}</p>
+                      <p><strong>Content / 内容:</strong> {{ form.content }}</p>
                     </div>
                   </el-col>
                 </el-row>
                 
-                <div v-if="form.taxNumber" class="info-section">
-                  <h4>Corporate Information</h4>
-                  <p><strong>Tax ID Number:</strong> {{ form.taxNumber }}</p>
-                  <p v-if="form.bankName"><strong>Bank Name:</strong> {{ form.bankName }}</p>
-                  <p v-if="form.bankAccount"><strong>Bank Account:</strong> {{ form.bankAccount }}</p>
+                <div v-if="form.invoiceCategory === 'vat'" class="info-section">
+                  <h4>VAT Invoice Information / 增值税专用发票信息</h4>
+                  <p><strong>Registered Address / 注册地址:</strong> {{ form.registeredAddress }}</p>
+                  <p><strong>Registered Phone / 注册电话:</strong> {{ form.registeredPhone }}</p>
+                  <p><strong>Bank Name / 开户行:</strong> {{ form.bankName }}</p>
+                  <p><strong>Bank Account / 银行账号:</strong> {{ form.bankAccount }}</p>
                 </div>
                 
-                <div v-if="form.invoiceType === 'paper'" class="info-section">
-                  <h4>Mailing Information</h4>
-                  <p><strong>Address:</strong> {{ form.mailingAddress }}</p>
-                  <p><strong>Recipient:</strong> {{ form.recipient }}</p>
-                  <p><strong>Phone:</strong> {{ form.recipientPhone }}</p>
+                <div class="info-section">
+                  <h4>Contact Information / 联系信息</h4>
+                  <p><strong>Registration ID / 注册ID:</strong> {{ form.registrationSystemNo }}</p>
+                  <p><strong>Contact Name / 联系人:</strong> {{ form.contactName }}</p>
+                  <p><strong>Contact Phone / 联系电话:</strong> {{ form.contactPhone }}</p>
+                  <p><strong>Contact Email / 联系邮箱:</strong> {{ form.contactEmail }}</p>
+                </div>
+                
+                <div v-if="form.notes" class="info-section">
+                  <h4>Notes / 备注</h4>
+                  <p>{{ form.notes }}</p>
                 </div>
               </div>
 
@@ -363,17 +443,21 @@ export default {
       selectedRegistration: null,
       form: {
         invoiceType: 'electronic',
+        invoiceCategory: 'normal', // 新增：普通发票或增值税专用发票
         invoiceTitle: '',
         taxNumber: '',
-        bankName: '',
-        bankAccount: '',
-        registeredAddress: '',
-        registeredPhone: '',
-        mailingAddress: '',
-        recipient: '',
-        recipientPhone: '',
+        bankName: '', // 开户行名称
+        bankAccount: '', // 银行账号
+        registeredAddress: '', // 单位注册地址
+        registeredPhone: '', // 单位注册电话
+        registrationSystemNo: '', // 新增：注册系统编号
+        contactName: '', // 新增：联系人姓名
+        contactPhone: '', // 新增：联系电话
+        contactEmail: '', // 新增：联系邮箱
+        invoiceAmount: 0, // 新增：开票金额
+        invoiceCurrency: 'RMB', // 新增：货币单位，默认 RMB（大部分电子发票用户是国内人士）
         notes: '',
-        content: 'Conference Registration Fee'
+        content: '' // 发票内容，由用户填写
       }
     };
   },
@@ -491,6 +575,40 @@ export default {
       }
       
       this.selectedRegistration = registration;
+      // 自动填充注册ID到注册系统编号字段
+      this.form.registrationSystemNo = registration.id.toString();
+      
+      // 自动填充开票金额和货币单位（默认人民币，因为大部分电子发票用户是国内人士）
+      const paymentMethod = registration.payment_method;
+      const totalAmountRmb = registration.total_amount_rmb;
+      const totalAmountUsd = registration.total_amount_usd;
+      
+      // 根据支付方式决定默认货币和金额
+      if (paymentMethod && paymentMethod !== 'international') {
+        // 国内支付，使用人民币
+        if (totalAmountRmb) {
+          this.form.invoiceAmount = totalAmountRmb;
+          this.form.invoiceCurrency = 'RMB';
+        } else if (totalAmountUsd) {
+          this.form.invoiceAmount = totalAmountUsd;
+          this.form.invoiceCurrency = 'USD';
+        } else if (registration.product_price) {
+          this.form.invoiceAmount = registration.product_price;
+          this.form.invoiceCurrency = 'RMB'; // 默认人民币
+        }
+      } else {
+        // 国际支付，也优先尝试人民币（如果有的话）
+        if (totalAmountRmb) {
+          this.form.invoiceAmount = totalAmountRmb;
+          this.form.invoiceCurrency = 'RMB';
+        } else if (totalAmountUsd) {
+          this.form.invoiceAmount = totalAmountUsd;
+          this.form.invoiceCurrency = 'USD';
+        } else if (registration.product_price) {
+          this.form.invoiceAmount = registration.product_price;
+          this.form.invoiceCurrency = 'RMB'; // 默认人民币
+        }
+      }
     },
 
     async downloadInvoice(request) {
@@ -682,28 +800,208 @@ export default {
         `;
       }
 
-      this.$alert(`
-        <div>
-          <p><strong>Request ID:</strong> ${request.id}</p>
-          <p><strong>Invoice Title:</strong> ${request.invoiceTitle}</p>
-          <p><strong>Invoice Type:</strong> ${request.invoiceType === 'electronic' ? 'Electronic' : 'Paper'}</p>
-          <p><strong>Amount:</strong> $${request.amount}</p>
-          <p><strong>Status:</strong> ${this.getStatusText(request.status)}</p>
-          <p><strong>Request Date:</strong> ${this.formatDate(request.created_at)}</p>
-          ${request.processingNote ? `<p><strong>Processing Note:</strong> ${request.processingNote}</p>` : ''}
-          ${request.taxNumber ? `<p><strong>Tax Number:</strong> ${request.taxNumber}</p>` : ''}
+      const amountDisplay = this.formatRequestAmount(request);
+      const invoiceTypeText = request.invoiceType === 'electronic' ? 'Electronic Invoice / 电子发票' : 'Paper Invoice / 纸质发票';
+      const invoiceCategoryText = request.invoiceCategory === 'vat' ? 'VAT Special Invoice / 增值税专用发票' : 'Normal Invoice / 普通发票';
+      
+      // 构建详细信息HTML - 文件信息放在最上面
+      let detailsHtml = `
+        <div style="max-height: 600px; overflow-y: auto;">
           ${filesHtml}
-        </div>
-      `, 'Request Details', {
+          
+          <h3 style="margin-top: ${filesHtml ? '20px' : '0'}; color: #409EFF; border-bottom: 2px solid #409EFF; padding-bottom: 10px;">Basic Information / 基本信息</h3>
+          <p><strong>Request ID / 申请编号:</strong> ${request.id}</p>
+          <p><strong>Registration System No / 注册系统编号:</strong> ${request.registrationSystemNo || 'N/A'}</p>
+          <p><strong>Status / 状态:</strong> ${this.getStatusText(request.status)}</p>
+          <p><strong>Request Date / 申请日期:</strong> ${this.formatDate(request.created_at)}</p>
+          ${request.processedAt ? `<p><strong>Processed Date / 处理日期:</strong> ${this.formatDate(request.processedAt)}</p>` : ''}
+          
+          <h3 style="margin-top: 20px; color: #409EFF; border-bottom: 2px solid #409EFF; padding-bottom: 10px;">Invoice Information / 发票信息</h3>
+          <p><strong>Invoice Type / 发票类型:</strong> ${invoiceTypeText}</p>
+          <p><strong>Invoice Category / 发票类别:</strong> ${invoiceCategoryText}</p>
+          <p><strong>Invoice Title / 发票抬头:</strong> ${request.invoiceTitle}</p>
+          <p><strong>Tax Number / 纳税人识别号:</strong> ${request.taxNumber || 'N/A'}</p>
+          <p><strong>Invoice Content / 发票内容:</strong> ${request.content || '会议注册费'}</p>
+          <p><strong>Invoice Amount / 开票金额:</strong> ${amountDisplay}</p>
+      `;
+      
+      // 如果是增值税专用发票，显示额外信息
+      if (request.invoiceCategory === 'vat') {
+        detailsHtml += `
+          <h3 style="margin-top: 20px; color: #409EFF; border-bottom: 2px solid #409EFF; padding-bottom: 10px;">Company Information / 单位信息（增值税专用发票）</h3>
+          ${request.registeredAddress ? `<p><strong>Registered Address / 注册地址:</strong> ${request.registeredAddress}</p>` : ''}
+          ${request.registeredPhone ? `<p><strong>Registered Phone / 注册电话:</strong> ${request.registeredPhone}</p>` : ''}
+          ${request.bankName ? `<p><strong>Bank Name / 开户银行:</strong> ${request.bankName}</p>` : ''}
+          ${request.bankAccount ? `<p><strong>Bank Account / 银行账号:</strong> ${request.bankAccount}</p>` : ''}
+        `;
+      }
+      
+      // 如果是纸质发票，显示邮寄信息
+      if (request.invoiceType === 'paper') {
+        detailsHtml += `
+          <h3 style="margin-top: 20px; color: #409EFF; border-bottom: 2px solid #409EFF; padding-bottom: 10px;">Mailing Information / 邮寄信息（纸质发票）</h3>
+          ${request.mailingAddress ? `<p><strong>Mailing Address / 邮寄地址:</strong> ${request.mailingAddress}</p>` : ''}
+          ${request.recipient ? `<p><strong>Recipient / 收件人:</strong> ${request.recipient}</p>` : ''}
+          ${request.recipientPhone ? `<p><strong>Recipient Phone / 收件人电话:</strong> ${request.recipientPhone}</p>` : ''}
+        `;
+      }
+      
+      // 联系信息
+      detailsHtml += `
+        <h3 style="margin-top: 20px; color: #409EFF; border-bottom: 2px solid #409EFF; padding-bottom: 10px;">Contact Information / 联系信息</h3>
+        ${request.contactName ? `<p><strong>Contact Name / 联系人姓名:</strong> ${request.contactName}</p>` : ''}
+        ${request.contactPhone ? `<p><strong>Contact Phone / 联系电话:</strong> ${request.contactPhone}</p>` : ''}
+        ${request.contactEmail ? `<p><strong>Contact Email / 联系邮箱:</strong> ${request.contactEmail}</p>` : ''}
+      `;
+      
+      // 备注信息
+      if (request.notes || request.adminNotes || request.processingNote) {
+        detailsHtml += `
+          <h3 style="margin-top: 20px; color: #409EFF; border-bottom: 2px solid #409EFF; padding-bottom: 10px;">Notes / 备注信息</h3>
+          ${request.notes ? `<p><strong>User Notes / 用户备注:</strong> ${request.notes}</p>` : ''}
+          ${request.processingNote ? `<p><strong>Processing Note / 处理备注:</strong> ${request.processingNote}</p>` : ''}
+          ${request.adminNotes ? `<p><strong>Admin Notes / 管理员备注:</strong> ${request.adminNotes}</p>` : ''}
+        `;
+      }
+      
+      detailsHtml += `</div>`;
+      
+      this.$alert(detailsHtml, 'Invoice Request Details / 发票申请详情', {
         dangerouslyUseHTMLString: true,
-        confirmButtonText: 'Close'
+        confirmButtonText: 'Close / 关闭',
+        customClass: 'invoice-details-dialog'
       });
     },
     
     nextStep() {
+      // 在第二步时验证表单
+      if (this.step === 2) {
+        if (!this.validateInvoiceForm()) {
+          return;
+        }
+      }
+      
       if (this.step < 3) {
         this.step++;
       }
+    },
+    
+    validateInvoiceForm() {
+      // 验证必填字段
+      if (!this.form.invoiceCategory) {
+        this.$message.error('Please select invoice category / 请选择发票类别');
+        return false;
+      }
+      
+      if (!this.form.invoiceTitle) {
+        this.$message.error('Please enter invoice title / 请输入发票抬头');
+        return false;
+      }
+      
+      if (!this.form.taxNumber) {
+        this.$message.error('Please enter tax number / 请输入税号');
+        return false;
+      }
+      
+      // 增值税专用发票额外验证
+      if (this.form.invoiceCategory === 'vat') {
+        if (!this.form.registeredAddress) {
+          this.$message.error('Please enter registered address / 请输入单位注册地址');
+          return false;
+        }
+        
+        if (!this.form.registeredPhone) {
+          this.$message.error('Please enter registered phone / 请输入单位注册电话');
+          return false;
+        }
+        
+        if (!this.form.bankName) {
+          this.$message.error('Please enter bank name / 请输入开户行名称');
+          return false;
+        }
+        
+        if (!this.form.bankAccount) {
+          this.$message.error('Please enter bank account number / 请输入银行账号');
+          return false;
+        }
+      }
+      
+      // 验证开票金额
+      if (!this.form.invoiceCurrency) {
+        this.$message.error('Please select currency / 请选择货币');
+        return false;
+      }
+      
+      if (!this.form.invoiceAmount || this.form.invoiceAmount <= 0) {
+        this.$message.error('Please enter valid invoice amount / 请输入有效的开票金额');
+        return false;
+      }
+      
+      const maxAmount = this.getMaxAmount();
+      if (this.form.invoiceAmount > maxAmount) {
+        this.$message.error(`Invoice amount cannot exceed ${this.form.invoiceCurrency === 'RMB' ? '¥' : '$'}${maxAmount} / 开票金额不能超过 ${this.form.invoiceCurrency === 'RMB' ? '¥' : '$'}${maxAmount}`);
+        return false;
+      }
+      
+      // 验证联系信息
+      if (!this.form.registrationSystemNo) {
+        this.$message.error('Please enter registration system number / 请输入注册系统编号');
+        return false;
+      }
+      
+      if (!this.form.contactName) {
+        this.$message.error('Please enter contact name / 请输入联系人姓名');
+        return false;
+      }
+      
+      if (!this.form.contactPhone) {
+        this.$message.error('Please enter contact phone / 请输入联系电话');
+        return false;
+      }
+      
+      if (!this.form.contactEmail) {
+        this.$message.error('Please enter contact email / 请输入联系邮箱');
+        return false;
+      }
+      
+      // 验证邮箱格式
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(this.form.contactEmail)) {
+        this.$message.error('Please enter a valid email address / 请输入有效的邮箱地址');
+        return false;
+      }
+      
+      // 验证发票内容
+      if (!this.form.content || !this.form.content.trim()) {
+        this.$message.error('Please enter invoice content / 请输入发票内容');
+        return false;
+      }
+      
+      return true;
+    },
+    
+    getMaxAmount() {
+      // 获取所选注册记录对应货币的最大金额
+      if (!this.selectedRegistration) {
+        return 0;
+      }
+      
+      if (this.form.invoiceCurrency === 'RMB') {
+        return this.selectedRegistration.total_amount_rmb || 0;
+      } else {
+        return this.selectedRegistration.total_amount_usd || this.selectedRegistration.product_price || 0;
+      }
+    },
+    
+    formatRequestAmount(request) {
+      // 格式化发票请求的金额显示
+      if (request.invoiceAmount !== null && request.invoiceAmount !== undefined) {
+        const currency = request.invoiceCurrency || 'USD';
+        const symbol = currency === 'RMB' ? '¥' : '$';
+        return `${symbol}${request.invoiceAmount}`;
+      }
+      // 兼容旧数据，使用 amount 字段
+      return `$${request.amount || 0}`;
     },
     
     prevStep() {
@@ -755,17 +1053,21 @@ export default {
     resetForm() {
       this.form = {
         invoiceType: 'electronic',
+        invoiceCategory: 'normal',
         invoiceTitle: '',
         taxNumber: '',
         bankName: '',
         bankAccount: '',
         registeredAddress: '',
         registeredPhone: '',
-        mailingAddress: '',
-        recipient: '',
-        recipientPhone: '',
+        registrationSystemNo: '',
+        contactName: '',
+        contactPhone: '',
+        contactEmail: '',
+        invoiceAmount: 0,
+        invoiceCurrency: 'RMB', // 默认人民币
         notes: '',
-        content: 'Conference Registration Fee'
+        content: '' // 发票内容，由用户填写
       };
     },
     
@@ -774,13 +1076,42 @@ export default {
       return new Date(dateString).toLocaleDateString('en-US');
     },
     
+    formatAmount(registration) {
+      // 检查支付方式，如果是国内支付（非 international），优先显示人民币
+      const paymentMethod = registration.payment_method;
+      
+      // 获取金额数据（直接从顶层字段获取）
+      const totalAmountRmb = registration.total_amount_rmb;
+      const totalAmountUsd = registration.total_amount_usd;
+      
+      // 如果支付方式不是 international，优先显示人民币
+      if (paymentMethod && paymentMethod !== 'international') {
+        if (totalAmountRmb) {
+          return `¥${totalAmountRmb}`;
+        }
+      }
+      
+      // 否则显示美元
+      if (totalAmountUsd) {
+        return `$${totalAmountUsd}`;
+      }
+      
+      // 最后使用 product_price 作为后备
+      if (registration.product_price) {
+        return `$${registration.product_price}`;
+      }
+      
+      return '$0';
+    },
+    
     getStatusText(status) {
       const statusMap = {
         pending: 'Pending',
         processing: 'Processing',
         completed: 'Completed',
         rejected: 'Rejected',
-        cancelled: 'Cancelled'
+        cancelled: 'Cancelled',
+        approved: 'Approved'
       };
       return statusMap[status] || status;
     },
@@ -995,12 +1326,16 @@ export default {
 }
 
 .corporate-info,
-.mailing-info {
+.mailing-info,
+.amount-info,
+.contact-info {
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid #e4e7ed;
 }
 
+.amount-info h4,
+.contact-info h4,
 .mailing-info h4 {
   margin-bottom: 16px;
   color: #303133;
@@ -1424,6 +1759,56 @@ export default {
   
   .empty-state small {
     font-size: 12px;
+  }
+}
+</style>
+
+<style>
+/* Global styles for invoice details dialog */
+.invoice-details-dialog {
+  width: 80% !important;
+  max-width: 900px !important;
+}
+
+.invoice-details-dialog .el-message-box__message {
+  padding: 0 !important;
+}
+
+.invoice-details-dialog .el-message-box__message p {
+  margin: 8px 0;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.invoice-details-dialog .el-message-box__message h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 16px 0 12px 0;
+}
+
+.invoice-details-dialog .el-message-box__message strong {
+  color: #606266;
+  font-weight: 600;
+  display: inline-block;
+  min-width: 180px;
+}
+
+@media (max-width: 768px) {
+  .invoice-details-dialog {
+    width: 95% !important;
+  }
+  
+  .invoice-details-dialog .el-message-box__message strong {
+    min-width: 120px;
+    font-size: 13px;
+  }
+  
+  .invoice-details-dialog .el-message-box__message p {
+    font-size: 13px;
+  }
+  
+  .invoice-details-dialog .el-message-box__message h3 {
+    font-size: 14px;
   }
 }
 </style>

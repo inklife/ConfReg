@@ -17,6 +17,7 @@ export const userService = {
     checkTransferStatus, // Add new method
     // Refund related methods
     getApprovedRegistrations,
+    getAllUserRegistrations,
     checkRefundEligibility,
     submitRefundRequest,
     getRefundHistory,
@@ -353,8 +354,14 @@ function checkTransferStatus() {
 }
 
 // Get user's approved registrations (使用users/approved-registrations端点)
-function getApprovedRegistrations() {
+function getApprovedRegistrations(excludeRefunded = false) {
+    const params = {};
+    if (excludeRefunded) {
+        params.excludeRefunded = 'true';
+    }
+    
     return axios.get('/api/users/approved-registrations', {
+        params: params,
         withCredentials: true,
         headers: { 'Content-Type': 'application/json' }
     })
@@ -373,6 +380,31 @@ function getApprovedRegistrations() {
             throw 'Network error: Unable to connect to server';
         } else {
             throw error.message || 'Failed to get approved registrations';
+        }
+    });
+}
+
+// Get all user registrations (all statuses)
+function getAllUserRegistrations() {
+    return axios.get('/api/submissions/user-registrations', {
+        withCredentials: true,
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => {
+        if (response.data.success) {
+            return response.data;
+        } else {
+            throw response.data.message || 'Failed to get all user registrations';
+        }
+    })
+    .catch(error => {
+        console.error('Get all user registrations error:', error);
+        if (error.response) {
+            throw error.response.data.message || error.response.statusText;
+        } else if (error.request) {
+            throw 'Network error: Unable to connect to server';
+        } else {
+            throw error.message || 'Failed to get all user registrations';
         }
     });
 }

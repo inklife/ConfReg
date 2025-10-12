@@ -45,6 +45,7 @@ router.post('/request', requireAuth, async (req, res) => {
     const {
       registrationId,
       invoiceType,
+      invoiceCategory,
       invoiceTitle,
       taxNumber,
       bankName,
@@ -55,7 +56,13 @@ router.post('/request', requireAuth, async (req, res) => {
       recipient,
       recipientPhone,
       notes,
-      content
+      content,
+      registrationSystemNo,
+      contactName,
+      contactPhone,
+      contactEmail,
+      invoiceAmount,
+      invoiceCurrency
     } = req.body;
 
     // 验证注册记录是否存在且属于当前用户
@@ -69,6 +76,13 @@ router.post('/request', requireAuth, async (req, res) => {
     if (!registration) {
       return res.status(404).json({
         error: '注册记录不存在或不属于当前用户'
+      });
+    }
+
+    // 检查注册是否已退款
+    if (registration.is_refunded) {
+      return res.status(400).json({
+        error: 'Cannot request invoice for refunded registration / 已退款的注册无法申请发票'
       });
     }
 
@@ -86,11 +100,30 @@ router.post('/request', requireAuth, async (req, res) => {
       });
     }
 
+    // 验证开票金额
+    if (!invoiceAmount || invoiceAmount <= 0) {
+      return res.status(400).json({
+        error: 'Invalid invoice amount / 无效的开票金额'
+      });
+    }
+
+    // 验证开票金额不超过注册记录的金额
+    const maxAmount = invoiceCurrency === 'RMB' 
+      ? registration.total_amount_rmb 
+      : (registration.total_amount_usd || registration.product_price);
+    
+    if (invoiceAmount > maxAmount) {
+      return res.status(400).json({
+        error: `Invoice amount cannot exceed ${invoiceCurrency === 'RMB' ? '¥' : '$'}${maxAmount} / 开票金额不能超过 ${invoiceCurrency === 'RMB' ? '¥' : '$'}${maxAmount}`
+      });
+    }
+
     // 创建发票申请
     const invoiceRequest = await InvoiceRequest.create({
       userId: req.session.userId,
       registrationId: registrationId,
       invoiceType: invoiceType || 'electronic',
+      invoiceCategory: invoiceCategory || 'normal',
       invoiceTitle,
       taxNumber,
       bankName,
@@ -101,7 +134,13 @@ router.post('/request', requireAuth, async (req, res) => {
       recipient,
       recipientPhone,
       notes,
-      content: content || 'Conference Registration Fee',
+      content,
+      registrationSystemNo,
+      contactName,
+      contactPhone,
+      contactEmail,
+      invoiceAmount: invoiceAmount,
+      invoiceCurrency: invoiceCurrency || 'RMB', // 默认人民币
       status: 'pending',
       amount: registration.product_price
     });
@@ -289,14 +328,30 @@ router.get('/registrations', requireAuth, async (req, res) => {
     const registrations = await RegistrationSubmission.findAll({
       where: {
         userId: req.session.userId,
-        status: 'approved' // 只有已批准的注册才能申请发票
+        status: 'approved', // 只有已批准的注册才能申请发票
+        is_refunded: false // 过滤掉已退款的注册
       },
-      attributes: ['id', 'name', 'product_code', 'product_price', 'submission_time'],
+      attributes: [
+        'id', 
+        'name', 
+        'product_code', 
+        'product_price',
+        'product_price_rmb',
+        'total_amount_usd',
+        'total_amount_rmb',
+        'extra_page_fee_usd',
+        'extra_page_fee_rmb',
+        'payment_method',
+        'registration_category',
+        'submission_time',
+        'status',
+        'is_refunded'
+      ],
       include: [
         {
           model: InvoiceRequest,
           as: 'invoiceRequests',
-          attributes: ['id', 'status'],
+          attributes: ['id', 'status', 'requestedAt'],
           required: false
         }
       ],

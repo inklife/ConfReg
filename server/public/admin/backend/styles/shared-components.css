@@ -344,9 +344,14 @@
     color: #991b1b;
 }
 
-.status-processed, .status-paid {
+.status-processed {
     background: #dbeafe;
     color: #1e40af;
+}
+
+.status-refunded {
+    background: #f3e8ff;
+    color: #6b21a8;
 }
 
 /* =============================================================================

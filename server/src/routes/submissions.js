@@ -96,8 +96,32 @@ router.post('/submit', requireAuth, upload.fields([
       });
     }
 
-    const { name, phone = '', affiliation = '', paper_id = '', productCode, productPrice } = req.body;
+    const { 
+      name, 
+      phone = '', 
+      affiliation = '', 
+      paper_id = '', 
+      paper_pages = '', 
+      productCode, 
+      productPrice, 
+      productPriceRMB = '',
+      totalAmountUSD = '',
+      totalAmountRMB = '',
+      extraPageFeeUSD = '',
+      extraPageFeeRMB = '',
+      registrationCategory = 'full', 
+      paymentMethod = 'international' 
+    } = req.body;
     const email = currentUser.email; // 使用当前用户的email
+
+    // Validate paper_pages format (must be numeric between 1-10 if provided)
+    if (paper_pages && paper_pages.trim() !== '' && (!/^\d+$/.test(paper_pages.trim()) || parseInt(paper_pages) < 1 || parseInt(paper_pages) > 10)) {
+      return res.status(400).json({
+        status: 6,
+        success: false,
+        message: 'Paper pages must be a number between 1 and 10'
+      });
+    }
 
     // Check for required files
     if (!req.files || !req.files.screenshot) {
@@ -110,20 +134,46 @@ router.post('/submit', requireAuth, upload.fields([
     const screenshot = req.files.screenshot[0];
     const proof = req.files.proof ? req.files.proof[0] : null;
 
-    // Check if user already has a submission
-    let submission = await RegistrationSubmission.findOne({ 
-      where: { userId: req.session.userId } 
-    });
+    // Check if there's an edit mode ID in the request
+    const editId = req.body.editId;
+    let submission = null;
+
+    if (editId) {
+      // If editId is provided, find the specific submission to update
+      submission = await RegistrationSubmission.findOne({ 
+        where: { 
+          id: editId,
+          userId: req.session.userId 
+        } 
+      });
+    }
 
     if (submission) {
+      // Check if this registration has been refunded
+      if (submission.is_refunded) {
+        return res.status(400).json({
+          status: 3,
+          success: false,
+          message: 'This registration has been refunded and cannot be modified.'
+        });
+      }
+      
       // Update existing submission
       submission.name = name;
       submission.email = email;
       submission.phone = phone;
       submission.affiliation = affiliation;
       submission.paper_id = paper_id;
+      submission.paper_pages = paper_pages ? parseInt(paper_pages) : 0;
       submission.product_code = productCode;
       submission.product_price = parseFloat(productPrice);
+      submission.product_price_rmb = productPriceRMB ? parseFloat(productPriceRMB) : null;
+      submission.total_amount_usd = totalAmountUSD ? parseFloat(totalAmountUSD) : parseFloat(productPrice);
+      submission.total_amount_rmb = totalAmountRMB ? parseFloat(totalAmountRMB) : (productPriceRMB ? parseFloat(productPriceRMB) : null);
+      submission.extra_page_fee_usd = extraPageFeeUSD ? parseFloat(extraPageFeeUSD) : 0;
+      submission.extra_page_fee_rmb = extraPageFeeRMB ? parseFloat(extraPageFeeRMB) : 0;
+      submission.registration_category = registrationCategory;
+      submission.payment_method = paymentMethod;
       
       // Delete old files if new ones are uploaded
       if (screenshot) {
@@ -152,7 +202,7 @@ router.post('/submit', requireAuth, upload.fields([
       console.log('Update successful, returning response with receiptNumber:', receiptNumber);
       return apiResponse(res, true, { id: receiptNumber }, 'Update success');
     } else {
-      // Create new submission
+      // Always create new submission when no editId or submission not found
       submission = await RegistrationSubmission.create({
         userId: req.session.userId,
         name,
@@ -160,8 +210,16 @@ router.post('/submit', requireAuth, upload.fields([
         phone,
         affiliation,
         paper_id,
+        paper_pages: paper_pages ? parseInt(paper_pages) : 0,
         product_code: productCode,
         product_price: parseFloat(productPrice),
+        product_price_rmb: productPriceRMB ? parseFloat(productPriceRMB) : null,
+        total_amount_usd: totalAmountUSD ? parseFloat(totalAmountUSD) : parseFloat(productPrice),
+        total_amount_rmb: totalAmountRMB ? parseFloat(totalAmountRMB) : (productPriceRMB ? parseFloat(productPriceRMB) : null),
+        extra_page_fee_usd: extraPageFeeUSD ? parseFloat(extraPageFeeUSD) : 0,
+        extra_page_fee_rmb: extraPageFeeRMB ? parseFloat(extraPageFeeRMB) : 0,
+        registration_category: registrationCategory,
+        payment_method: paymentMethod,
         screenshot: screenshot.filename,
         proof: proof ? proof.filename : '',
         status: 'pending',
@@ -176,6 +234,78 @@ router.post('/submit', requireAuth, upload.fields([
   } catch (error) {
     console.error('Submission error:', error);
     return apiResponse(res, false, null, `Wrong: ${error.message}`, 500);
+  }
+});
+
+// Get all user registrations
+router.get('/user-registrations', requireAuth, async (req, res) => {
+  try {
+    console.log('=== Get User Registrations - 开始获取 ===');
+    console.log('Session userId:', req.session.userId);
+    
+    // Get all submissions for user, ordered by submission time desc
+    const userSubmissions = await RegistrationSubmission.findAll({ 
+      where: { userId: req.session.userId },
+      order: [['submission_time', 'DESC']]
+    });
+
+    console.log('查询到的用户注册记录数量:', userSubmissions.length);
+
+    const registrations = userSubmissions.map(submission => {
+      // 准备图片信息
+      const images = {};
+      if (submission.screenshot) {
+        images.screenshot = `/uploads/${submission.screenshot}`;
+      }
+      if (submission.proof) {
+        images.proof = `/uploads/${submission.proof}`;
+      }
+
+      return {
+        id: submission.id,
+        attendee_name: submission.name,
+        attendee_email: submission.email,
+        registration_type: submission.product_code,
+        registration_category: submission.registration_category,
+        payment_method: submission.payment_method,
+        payment_amount: submission.product_price,
+        created_at: submission.submission_time,
+        status: submission.status,
+        review_notes: submission.review_notes,
+        review_time: submission.review_time,
+        is_refunded: submission.is_refunded || false, // 添加退款状态
+        registration_data: {
+          name: submission.name,
+          email: submission.email,
+          phone: submission.phone,
+          affiliation: submission.affiliation,
+          paper_id: submission.paper_id,
+          paper_pages: submission.paper_pages,
+          product_code: submission.product_code,
+          product_price: submission.product_price,
+          product_price_rmb: submission.product_price_rmb,
+          total_amount_usd: submission.total_amount_usd,
+          total_amount_rmb: submission.total_amount_rmb,
+          extra_page_fee_usd: submission.extra_page_fee_usd,
+          extra_page_fee_rmb: submission.extra_page_fee_rmb,
+          registration_category: submission.registration_category,
+          payment_method: submission.payment_method
+        },
+        images: images
+      };
+    });
+
+    res.json({
+      success: true,
+      data: registrations
+    });
+
+  } catch (error) {
+    console.error('Get user registrations error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 
@@ -221,14 +351,26 @@ router.get('/check-registration', requireAuth, async (req, res) => {
           has_submission: true,
           submission_id: latestSubmission.id,
           registration_id: latestSubmission.id,
+          status: latestSubmission.status,
+          review_notes: latestSubmission.review_notes || null,
+          review_time: latestSubmission.reviewed_at || null,
           registration_data: {
             name: latestSubmission.name,
             email: latestSubmission.email,
             phone: latestSubmission.phone,
             affiliation: latestSubmission.affiliation,
             paper_id: latestSubmission.paper_id,
+            paper_pages: latestSubmission.paper_pages,
             product_code: latestSubmission.product_code,
-            product_price: latestSubmission.product_price
+            product_price: latestSubmission.product_price,
+            product_price_rmb: latestSubmission.product_price_rmb,
+            total_amount_usd: latestSubmission.total_amount_usd,
+            total_amount_rmb: latestSubmission.total_amount_rmb,
+            extra_page_fee_usd: latestSubmission.extra_page_fee_usd,
+            extra_page_fee_rmb: latestSubmission.extra_page_fee_rmb,
+            registration_category: latestSubmission.registration_category,
+            payment_method: latestSubmission.payment_method,
+            is_refunded: latestSubmission.is_refunded
           },
           images: images
         };
@@ -241,14 +383,26 @@ router.get('/check-registration', requireAuth, async (req, res) => {
           has_submission: true,
           submission_id: latestSubmission.id,
           registration_id: latestSubmission.id,
+          status: latestSubmission.status,
+          review_notes: latestSubmission.review_notes || null,
+          review_time: latestSubmission.reviewed_at || null,
           registration_data: {
             name: latestSubmission.name,
             email: latestSubmission.email,
             phone: latestSubmission.phone,
             affiliation: latestSubmission.affiliation,
             paper_id: latestSubmission.paper_id,
+            paper_pages: latestSubmission.paper_pages,
             product_code: latestSubmission.product_code,
-            product_price: latestSubmission.product_price
+            product_price: latestSubmission.product_price,
+            product_price_rmb: latestSubmission.product_price_rmb,
+            total_amount_usd: latestSubmission.total_amount_usd,
+            total_amount_rmb: latestSubmission.total_amount_rmb,
+            extra_page_fee_usd: latestSubmission.extra_page_fee_usd,
+            extra_page_fee_rmb: latestSubmission.extra_page_fee_rmb,
+            registration_category: latestSubmission.registration_category,
+            payment_method: latestSubmission.payment_method,
+            is_refunded: latestSubmission.is_refunded
           },
           images: images
         };
@@ -280,22 +434,47 @@ router.get('/check-registration', requireAuth, async (req, res) => {
 // 异步生成收据PDF - 第一步：开始生成
 router.post('/generate_receipt', pdfDownloadLimiter, memoryMonitor, requireAuth, async (req, res) => {
   try {
-    // Find approved submission for user
+    // 构建查询条件
+    const whereCondition = {
+      userId: req.session.userId,
+      status: 'approved',
+      // 排除已退款的注册
+      [require('sequelize').Op.or]: [
+        { is_refunded: false },
+        { is_refunded: null }
+      ]
+    };
+    
+    // 如果提供了 registrationId，则查询特定的注册记录
+    if (req.body.registrationId) {
+      whereCondition.id = req.body.registrationId;
+    }
+    
+    // Find approved submission for user (最新的未退款的)
     const submission = await RegistrationSubmission.findOne({
-      where: {
-        userId: req.session.userId,
-        status: 'approved'
-      },
+      where: whereCondition,
       include: [{
         model: User,
         as: 'user'
-      }]
+      }],
+      // 按提交时间降序排序，确保获取最新的注册记录
+      order: [['submission_time', 'DESC']]
     });
 
     if (!submission) {
       return res.status(404).json({
         success: false,
-        message: 'No approved registration found'
+        message: req.body.registrationId 
+          ? `No approved registration found with ID ${req.body.registrationId}` 
+          : 'No approved registration found'
+      });
+    }
+
+    // 检查是否已退款
+    if (submission.is_refunded) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot generate receipt for refunded registration'
       });
     }
 
@@ -501,16 +680,23 @@ router.get('/download_pdf/:taskId', requireAuth, async (req, res) => {
 // 异步生成确认函PDF
 router.post('/generate_confirmation', pdfDownloadLimiter, memoryMonitor, requireAuth, async (req, res) => {
   try {
-    // Find approved submission for user
+    // Find approved submission for user (最新的未退款的)
     const submission = await RegistrationSubmission.findOne({
       where: {
         userId: req.session.userId,
-        status: 'approved'
+        status: 'approved',
+        // 排除已退款的注册
+        [require('sequelize').Op.or]: [
+          { is_refunded: false },
+          { is_refunded: null }
+        ]
       },
       include: [{
         model: User,
         as: 'user'
-      }]
+      }],
+      // 按提交时间降序排序，确保获取最新的注册记录
+      order: [['submission_time', 'DESC']]
     });
 
     if (!submission) {
@@ -585,16 +771,23 @@ router.post('/generate_confirmation', pdfDownloadLimiter, memoryMonitor, require
 // 异步生成注册信息PDF
 router.post('/generate_registration', pdfDownloadLimiter, memoryMonitor, requireAuth, async (req, res) => {
   try {
-    // Find approved submission for user
+    // Find approved submission for user (最新的未退款的)
     const submission = await RegistrationSubmission.findOne({
       where: {
         userId: req.session.userId,
-        status: 'approved'
+        status: 'approved',
+        // 排除已退款的注册
+        [require('sequelize').Op.or]: [
+          { is_refunded: false },
+          { is_refunded: null }
+        ]
       },
       include: [{
         model: User,
         as: 'user'
-      }]
+      }],
+      // 按提交时间降序排序，确保获取最新的注册记录
+      order: [['submission_time', 'DESC']]
     });
 
     if (!submission) {
@@ -768,6 +961,7 @@ router.get('/refund-history', requireAuth, async (req, res) => {
       },
       reason: refund.reason,
       refundAmount: refund.refundAmount,
+      refundCurrency: refund.refundCurrency || 'USD', // 添加货币字段
       bankInfo: refund.bankInfo,
       requestTime: refund.requestTime,
       status: refund.status,
@@ -819,9 +1013,74 @@ router.get('/refund-eligibility/:registrationId', requireAuth, async (req, res) 
 router.post('/refund-request', requireAuth, [
   body('registrationId').isInt().withMessage('Registration ID must be a valid integer'),
   body('reason').isLength({ min: 10, max: 1000 }).withMessage('Reason must be between 10 and 1000 characters'),
-  body('bankInfo.accountName').optional().isLength({ min: 2, max: 100 }).withMessage('Account name must be between 2 and 100 characters'),
-  body('bankInfo.bankName').optional().isLength({ min: 2, max: 100 }).withMessage('Bank name must be between 2 and 100 characters'),
-  body('bankInfo.accountNumber').optional().isLength({ min: 5, max: 50 }).withMessage('Account number must be between 5 and 50 characters')
+  // 银行类型
+  body('bankInfo.bankType').optional({ checkFalsy: true }).isIn(['international', 'domestic', '']).withMessage('Bank type must be international or domestic'),
+  // 通用字段 - 使用 custom 校验器，只在有实际内容时校验
+  body('bankInfo.accountName').custom((value) => {
+    // 跳过 undefined, null, 空字符串
+    if (!value || (typeof value === 'string' && value.trim().length === 0)) {
+      return true;
+    }
+    if (value.trim().length < 2 || value.trim().length > 100) {
+      throw new Error('Account name must be between 2 and 100 characters');
+    }
+    return true;
+  }),
+  body('bankInfo.bankName').custom((value) => {
+    if (!value || (typeof value === 'string' && value.trim().length === 0)) {
+      return true;
+    }
+    if (value.trim().length < 2 || value.trim().length > 100) {
+      throw new Error('Bank name must be between 2 and 100 characters');
+    }
+    return true;
+  }),
+  body('bankInfo.accountNumber').custom((value) => {
+    if (!value || (typeof value === 'string' && value.trim().length === 0)) {
+      return true;
+    }
+    if (value.trim().length < 5 || value.trim().length > 50) {
+      throw new Error('Account number must be between 5 and 50 characters');
+    }
+    return true;
+  }),
+  // 国际银行字段
+  body('bankInfo.beneficiaryAddress').custom((value) => {
+    if (!value || (typeof value === 'string' && value.trim().length === 0)) {
+      return true;
+    }
+    if (value.trim().length < 10 || value.trim().length > 500) {
+      throw new Error('Beneficiary address must be between 10 and 500 characters');
+    }
+    return true;
+  }),
+  body('bankInfo.country').custom((value) => {
+    if (!value || (typeof value === 'string' && value.trim().length === 0)) {
+      return true;
+    }
+    if (value.trim().length < 2 || value.trim().length > 100) {
+      throw new Error('Country must be between 2 and 100 characters');
+    }
+    return true;
+  }),
+  body('bankInfo.swiftCode').custom((value) => {
+    if (!value || (typeof value === 'string' && value.trim().length === 0)) {
+      return true;
+    }
+    if (value.trim().length < 8 || value.trim().length > 11) {
+      throw new Error('SWIFT code must be between 8 and 11 characters');
+    }
+    return true;
+  }),
+  body('bankInfo.bankAddress').custom((value) => {
+    if (!value || (typeof value === 'string' && value.trim().length === 0)) {
+      return true;
+    }
+    if (value.trim().length < 10 || value.trim().length > 500) {
+      throw new Error('Bank address must be between 10 and 500 characters');
+    }
+    return true;
+  })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -845,12 +1104,21 @@ router.post('/refund-request', requireAuth, [
       });
     }
 
+    // 确定退款金额和货币
+    const registration = eligibilityCheck.registration;
+    const isDomestic = registration.payment_method === 'domestic';
+    const refundCurrency = isDomestic ? 'RMB' : 'USD';
+    
+    // 计算实际退款金额（已扣除手续费）
+    const actualRefundAmount = eligibilityCheck.actualRefundAmount;
+    
     // 创建退款申请
     const refundRequest = await RefundRequest.create({
       registrationId: parseInt(registrationId),
       userId: userId,
       reason: reason,
-      refundAmount: eligibilityCheck.registration.product_price,
+      refundAmount: actualRefundAmount,
+      refundCurrency: refundCurrency,
       bankInfo: bankInfo || null,
       requestTime: new Date()
     });
@@ -962,6 +1230,179 @@ router.get('/pending_tasks', requireAuth, async (req, res) => {
       success: false,
       message: '获取pending任务失败',
       error: error.message
+    });
+  }
+});
+
+// 通过ID获取指定的注册信息
+router.get('/registration/:id', requireAuth, async (req, res) => {
+  try {
+    const registrationId = req.params.id;
+    const userId = req.session.userId;
+    
+    // 查找指定ID的注册记录，确保是当前用户的
+    const registration = await RegistrationSubmission.findOne({
+      where: {
+        id: registrationId,
+        userId: userId
+      }
+    });
+    
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: 'Registration not found or access denied'
+      });
+    }
+    
+    // 构造返回数据，格式与check-registration保持一致
+    const responseData = {
+      success: true,
+      has_submission: true,
+      approved: registration.status === 'approved',
+      registration_id: registration.id,
+      registration_data: {
+        name: registration.name,
+        email: registration.email,
+        phone: registration.phone,
+        affiliation: registration.affiliation,
+        country: registration.country,
+        product_code: registration.product_code,
+        product_price: registration.product_price,
+        product_price_rmb: registration.product_price_rmb,
+        total_amount_usd: registration.total_amount_usd,
+        total_amount_rmb: registration.total_amount_rmb,
+        extra_page_fee_usd: registration.extra_page_fee_usd,
+        extra_page_fee_rmb: registration.extra_page_fee_rmb,
+        paper_id: registration.paper_id,
+        paper_pages: registration.paper_pages,
+        payment_method: registration.payment_method,
+        registration_category: registration.registration_category,
+        is_refunded: registration.is_refunded
+      },
+      status: registration.status,
+      review_notes: registration.review_notes || null,
+      review_time: registration.reviewed_at || null,
+      created_at: registration.created_at,
+      updated_at: registration.updated_at
+    };
+    
+    // 添加图片信息
+    if (registration.proof_of_payment_image) {
+      responseData.images = {
+        screenshot: registration.proof_of_payment_image
+      };
+    }
+    
+    if (registration.ieee_membership_proof) {
+      if (!responseData.images) responseData.images = {};
+      responseData.images.proof = registration.ieee_membership_proof;
+    }
+    
+    res.json(responseData);
+    
+  } catch (error) {
+    console.error('获取注册详情失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取注册详情失败',
+      error: error.message
+    });
+  }
+});
+
+// Generate meal voucher PDF
+router.post('/generate_meal_voucher', pdfDownloadLimiter, memoryMonitor, requireAuth, async (req, res) => {
+  try {
+    const { MealVoucher } = require('../models');
+    
+    // 构建查询条件
+    const whereCondition = {
+      userId: req.session.userId,
+      status: 'approved'
+    };
+    
+    // 如果提供了 voucherId，则查询特定的餐券记录
+    if (req.body.voucherId) {
+      whereCondition.id = req.body.voucherId;
+    }
+    
+    // Find approved meal voucher for user
+    const mealVoucher = await MealVoucher.findOne({
+      where: whereCondition,
+      include: [{
+        model: User,
+        as: 'user'
+      }]
+    });
+
+    if (!mealVoucher) {
+      return res.status(404).json({
+        success: false,
+        message: req.body.voucherId 
+          ? `No approved meal voucher found with ID ${req.body.voucherId}` 
+          : 'No approved meal voucher found'
+      });
+    }
+
+    // 解析PDF选项
+    const marginMode = req.body.marginMode || 'standard';
+    let pdfOptions = {};
+    
+    switch (marginMode) {
+      case 'minimal':
+        pdfOptions = {
+          margin: {
+            top: '2mm',
+            bottom: '2mm',
+            left: '2mm', 
+            right: '2mm'
+          }
+        };
+        break;
+      case 'none':
+        pdfOptions = {
+          margin: {
+            top: '0mm',
+            bottom: '0mm',
+            left: '0mm',
+            right: '0mm'
+          }
+        };
+        break;
+      default: // 'standard'
+        pdfOptions = {
+          margin: {
+            top: '5mm',
+            bottom: '5mm',
+            left: '5mm',
+            right: '5mm'
+          }
+        };
+    }
+
+    // 开始异步PDF生成
+    const result = await asyncPDFManager.startPDFGeneration('meal-voucher', mealVoucher, pdfOptions);
+
+    // 检查是否是重复任务
+    if (result.error) {
+      return res.status(409).json({
+        success: false,
+        ...result
+      });
+    }
+
+    res.json({
+      success: true,
+      taskId: result,
+      message: 'Meal voucher generation started'
+    });
+
+  } catch (error) {
+    console.error('Meal voucher generation start error:', error);
+    res.status(500).json({
+      success: false,
+      message: `Error starting meal voucher generation: ${error.message}`
     });
   }
 });

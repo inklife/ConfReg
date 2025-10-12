@@ -261,6 +261,18 @@ class AdminApp extends BaseComponent {
             const { page, params } = e.detail;
             this.handleNavigation(page, params);
         });
+
+        // 监听浏览器hash变化，支持前进/后退和直接输入URL
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.slice(1);
+            const validTabs = ['dashboard', 'submissions', 'transfers', 'refunds', 'invoices', 'vouchers', 'users', 'statistics', 'settings'];
+            
+            if (hash && validTabs.includes(hash)) {
+                console.log(`Hash changed to: ${hash}`);
+                this.components.navigation.setTab(hash);
+                this.components.contentManager.showTab(hash);
+            }
+        });
     }
 
     initializeDashboard() {
@@ -279,6 +291,7 @@ class AdminApp extends BaseComponent {
             'transfers': 'transfer-manager',
             'refunds': 'refund-manager',
             'invoices': 'invoice-manager',
+            'vouchers': 'voucher-manager',
             'statistics': 'statistics-manager',
             'settings': 'settings-manager'
         };
@@ -325,6 +338,7 @@ class AdminApp extends BaseComponent {
             'transfer-manager': 'transfers',
             'refund-manager': 'refunds',
             'invoice-manager': 'invoices',
+            'voucher-manager': 'vouchers',
             'statistics-manager': 'statistics',
             'settings-manager': 'settings'
         };
@@ -437,6 +451,10 @@ class AdminApp extends BaseComponent {
                     content = await this.loadInvoicesContent();
                     break;
 
+                case 'vouchers':
+                    content = await this.loadVouchersContent();
+                    break;
+
                 case 'users':
                     content = await this.loadUsersContent();
                     break;
@@ -535,6 +553,25 @@ class AdminApp extends BaseComponent {
         } catch (error) {
             console.error('Failed to load invoice manager:', error);
             return this.createPlaceholderContent('发票管理', 'fas fa-file-invoice');
+        }
+    }
+
+    async loadVouchersContent() {
+        // 动态导入餐券管理组件
+        try {
+            const { default: VoucherManager } = await import('../pages/voucher-manager.js');
+            
+            // 注册组件（如果尚未注册）
+            if (!customElements.get('voucher-manager')) {
+                customElements.define('voucher-manager', VoucherManager);
+            }
+            
+            // 创建组件实例
+            const voucherManager = document.createElement('voucher-manager');
+            return voucherManager;
+        } catch (error) {
+            console.error('Failed to load voucher manager:', error);
+            return this.createPlaceholderContent('餐券管理', 'fas fa-ticket-alt');
         }
     }
 
@@ -697,7 +734,7 @@ class AdminApp extends BaseComponent {
         // 延迟执行，确保所有组件都已初始化完成
         setTimeout(() => {
             const hash = window.location.hash.slice(1);
-            const validTabs = ['dashboard', 'submissions', 'transfers', 'refunds', 'invoices', 'users', 'statistics', 'settings'];
+            const validTabs = ['dashboard', 'submissions', 'transfers', 'refunds', 'invoices', 'vouchers', 'users', 'statistics', 'settings'];
             
             if (hash && validTabs.includes(hash)) {
                 // 如果有有效的hash，设置对应的标签页

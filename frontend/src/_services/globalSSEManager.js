@@ -76,10 +76,11 @@ class GlobalSSEManager {
     // 同时更新内存中的映射
     this.taskOwners.set(taskId, componentId);
     
-    // 30秒后清理所有权，防止内存泄漏
+    // 5分钟后清理所有权（作为安全保障，防止内存泄漏）
+    // 正常情况下应该在任务完成时清理
     setTimeout(() => {
       this.cleanupTaskOwnership(taskId, componentId);
-    }, 30000);
+    }, 300000); // 改为5分钟
   }
 
   // 清理任务所有权
@@ -227,11 +228,17 @@ class GlobalSSEManager {
 
   // 触发自动下载逻辑
   triggerAutoDownload(data) {
+    console.log(`🚀 triggerAutoDownload called with data:`, data);
+    
     // 导入并检查用户设置（这里的逻辑根据实际需求调整）
     const { taskId, downloadUrl } = data;
     
+    console.log(`📋 taskId: ${taskId}, downloadUrl: ${downloadUrl}`);
+    
     // 检查是否启用自动下载（从localStorage或store获取设置）
     const autoDownloadEnabled = localStorage.getItem('autoDownload') !== 'false'; // 默认开启
+    
+    console.log(`⚙️ autoDownloadEnabled: ${autoDownloadEnabled}`);
     
     if (!autoDownloadEnabled) {
       console.log(`⚙️ 自动下载已禁用，任务 ${taskId} 将显示手动下载按钮`);
@@ -259,65 +266,6 @@ class GlobalSSEManager {
     
     // 这里调用下载管理器的下载逻辑
     // 注意：需要确保下载管理器可以在全局范围内访问
-    this.performDownload(data).then(() => {
-      console.log(`✅ 下载任务完成: ${downloadKey}`);
-      
-      // 清除下载标记
-      this.handledTasks.delete(downloadKey);
-      if (store) {
-        store.dispatch('tasks/finishDownload', downloadKey);
-      }
-      
-      // 通知其他标签页下载已完成
-      this.notifyDownloadCompleted(taskId, data.documentType);
-      
-      // 清理任务所有权
-      this.cleanupTaskOwnership(taskId);
-      
-    }).catch((error) => {
-      console.error(`❌ 下载任务失败: ${downloadKey}`, error);
-      
-      // 清除下载标记
-      this.handledTasks.delete(downloadKey);
-      if (store) {
-        store.dispatch('tasks/finishDownload', downloadKey);
-      }
-    });
-  }
-
-  // 触发自动下载逻辑
-  triggerAutoDownload(data) {
-    // 导入并检查用户设置（这里的逻辑根据实际需求调整）
-    const { taskId, downloadUrl } = data;
-    
-    // 检查是否启用自动下载（从localStorage或store获取设置）
-    const autoDownloadEnabled = localStorage.getItem('autoDownload') !== 'false'; // 默认开启
-    
-    if (!autoDownloadEnabled) {
-      console.log(`⚙️ 自动下载已禁用，任务 ${taskId} 将显示手动下载按钮`);
-      return;
-    }
-    
-    // 检查是否已经在下载中，避免重复下载
-    const downloadKey = `download_${taskId}`;
-    if (this.handledTasks.has(downloadKey)) {
-      console.log(`⚠️ 任务 ${taskId} 正在下载中，跳过重复下载`);
-      return;
-    }
-    
-    // 标记为下载中
-    this.handledTasks.add(downloadKey);
-    
-    // 获取store引用来管理下载状态
-    const store = window.Vue?.$store || window.$nuxt?.$store;
-    if (store) {
-      store.dispatch('tasks/startDownload', downloadKey);
-    }
-    
-    // 触发自动下载（使用现有的下载管理器）
-    console.log(`📥 开始下载任务: ${downloadKey}`);
-    
-    // 这里调用下载管理器的下载逻辑
     this.performDownload(data).then(() => {
       console.log(`✅ 下载任务完成: ${downloadKey}`);
       

@@ -62,17 +62,41 @@ export { clearAllUserData };
 const router = new Router({
   mode: 'history',
   routes: [
-    { path: '/', component: HomePage }, // 使用HomePage组件，让路由守卫处理逻辑
-    { path: '/home', redirect: '/' }, // 修改：保持向后兼容
-    { path: '/registration', redirect: '/' }, // 修改：保持向后兼容
+    { path: '/', redirect: to => {
+      // 如果用户已登录，重定向到dashboard
+      const loggedIn = localStorage.getItem('user');
+      return loggedIn ? '/dashboard' : '/login';
+    }},
+    { path: '/home', redirect: '/' },
+    { path: '/registration', redirect: '/' },
     
-    // 新的步骤化注册流程
-    { path: '/conference', redirect: '/conference/step1' },
-    { path: '/conference/step1', component: Step1ProductSelection },
-    { path: '/conference/step2', component: Step2PersonalInfo },
-    { path: '/conference/step3', component: Step3Payment },
-    { path: '/conference/step4', component: Step4Confirmation },
-    { path: '/conference/step5', component: Step5Receipt },
+    // 新的步骤化注册流程 - 不带ID的路由重定向到dashboard
+    { path: '/conference', redirect: '/dashboard?tab=registrations' },
+    { path: '/conference/step1', redirect: '/dashboard?tab=registrations' },
+    { path: '/conference/step2', redirect: '/dashboard?tab=registrations' },
+    { path: '/conference/step3', redirect: '/dashboard?tab=registrations' },
+    { path: '/conference/step4', redirect: '/dashboard?tab=registrations' },
+    { path: '/conference/step5', redirect: '/dashboard?tab=registrations' },
+    
+    // 支持ID参数的注册详情路由
+    // 特殊路由：new 用于新建注册
+    { path: '/conference/new', component: Step1ProductSelection, props: { newMode: true } },
+    { path: '/conference/new/step1', component: Step1ProductSelection, props: { id: 'new' } },
+    { path: '/conference/new/step2', component: Step2PersonalInfo, props: { id: 'new' } },
+    { path: '/conference/new/step3', component: Step3Payment, props: { id: 'new' } },
+    { path: '/conference/new/step4', component: Step4Confirmation, props: { id: 'new' } },
+    { path: '/conference/new/step5', component: Step5Receipt, props: { id: 'new' } },
+    // 旧路由兼容：auto 重定向到 new
+    { path: '/conference/auto', redirect: '/conference/new' },
+    // 动态ID路由：必须是数字ID
+    { path: '/conference/:id(\\d+)', component: Step5Receipt, props: true },
+    { path: '/conference/:id(\\d+)/step1', component: Step1ProductSelection, props: true },
+    { path: '/conference/:id(\\d+)/step2', component: Step2PersonalInfo, props: true },
+    { path: '/conference/:id(\\d+)/step3', component: Step3Payment, props: true },
+    { path: '/conference/:id(\\d+)/step4', component: Step4Confirmation, props: true },
+    { path: '/conference/:id(\\d+)/step5', component: Step5Receipt, props: true },
+    // 不匹配任何已知模式的conference路由，重定向到dashboard
+    { path: '/conference/:invalidPath(.*)', redirect: '/dashboard?tab=registrations' },
     
     { path: '/dashboard', component: UserDashboard },
     { path: '/user/dashboard', component: UserDashboard },
@@ -106,69 +130,16 @@ router.beforeEach(async (to, from, next) => {
     return next('/login');
   }
 
-  // 如果用户已登录且正在访问根路径或登录页面，先验证认证状态
-  if (loggedIn && (to.path === '/' || to.path === '/login')) {
+  // 如果用户已登录且正在访问登录页面，重定向到dashboard
+  if (loggedIn && to.path === '/login') {
     // 检查是否是管理员跳转中，如果是则不处理
     if (sessionStorage.getItem('adminRedirect') === 'true') {
       console.log('Router - Admin redirect in progress, skipping normal flow');
       return next();
     }
     
-    console.log('Router - LocalStorage shows user logged in, verifying with backend...');
-    try {
-      // 先验证认证状态，而不是直接跳转
-      const axios = (await import('axios')).default;
-      const authResponse = await axios.get('/api/auth/me', {
-        withCredentials: true
-      });
-      
-      if (authResponse.data.success) {
-        console.log('Router - Backend auth verified, checking registration status...');
-        
-        // 对普通用户检查注册状态，决定跳转目标
-        try {
-          const registrationResponse = await axios.get('/api/submissions/check-registration', {
-            withCredentials: true
-          });
-          
-          if (registrationResponse.data.approved) {
-            // 用户注册已批准
-            if (to.path === '/' && from.path === '/dashboard') {
-              // 如果是从dashboard点击首页，让用户进入会议注册编辑模式
-              console.log('Router - User navigating from dashboard to home, redirecting to conference step5 for editing');
-              return next('/conference/step5');
-            } else {
-              // 其他情况跳转到用户面板
-              console.log('Router - User registration approved, redirecting to dashboard');
-              return next('/dashboard');
-            }
-          } else if (registrationResponse.data.has_submission) {
-            console.log('Router - User has pending registration, redirecting to step5');
-            return next('/conference/step5');
-          } else {
-            console.log('Router - User needs to register, redirecting to conference');
-            return next('/conference/step1');
-          }
-        } catch (regError) {
-          console.error('Router - Registration check failed, defaulting to conference:', regError);
-          return next('/conference/step1');
-        }
-      } else {
-        console.log('Router - Backend auth failed, clearing localStorage and staying on login');
-        clearAllUserData();
-        if (to.path === '/') {
-          return next('/login');
-        }
-        // 如果已经在登录页面，继续
-      }
-    } catch (error) {
-      console.error('Router - Auth verification failed:', error);
-      clearAllUserData();
-      if (to.path === '/') {
-        return next('/login');
-      }
-      // 如果已经在登录页面，继续
-    }
+    console.log('Router - User already logged in, redirecting to dashboard');
+    return next('/dashboard');
   }
 
   // 检查会议注册状态 - 只在从登录页或根路径进入会议流程时检查
@@ -210,7 +181,7 @@ router.beforeEach(async (to, from, next) => {
 // 判断是否是从外部进入会议流程
 function isEnteringConferenceFlow(to, from) {
   const conferenceRoutes = ['/conference/step1', '/conference/step2', '/conference/step3', '/conference/step4'];
-  const isToConference = conferenceRoutes.includes(to.path) || to.path === '/conference' || to.path === '/';
+  const isToConference = conferenceRoutes.includes(to.path) || to.path === '/conference';
   
   // 更精确的"外部进入"判断
   // 如果是从dashboard进入conference，说明用户想要修改注册信息，应该允许
@@ -273,9 +244,16 @@ async function saveBackendDataToLocalStorage(backendData, userId) {
   
   const regData = backendData.registration_data;
   const images = backendData.images || {};
+  const registrationId = backendData.registration_id || backendData.submission_id;
   
   try {
-    const getStorageKey = (baseName) => `${baseName}_${userId}`;
+    // 生成带用户ID和注册记录ID的存储键名
+    const getStorageKey = (baseName) => {
+      if (registrationId) {
+        return `${baseName}_${userId}_${registrationId}`;
+      }
+      return `${baseName}_${userId}`;
+    };
     
     // 保存产品选择数据
     const productData = {
@@ -319,14 +297,52 @@ async function saveBackendDataToLocalStorage(backendData, userId) {
 
 function getProductDescription(productCode) {
   const products = [
-    { code: 'IEEE Member Registration', description: 'For IEEE members with valid membership' },
-    { code: 'Non-Member Registration', description: 'For non-IEEE members' },
-    { code: 'Student-member Registration', description: 'For students with IEEE membership' },
-    { code: 'Student-non-member Registration', description: 'For students without IEEE membership' }
+    { code: 'IEEE Member', description: 'For IEEE members' },
+    { code: 'Non-IEEE Member', description: 'For non-IEEE members' },
+    { code: 'Life Member', description: 'For IEEE life members' },
+    { code: 'Student - IEEE Member', description: 'For students with IEEE membership' },
+    { code: 'Student - Non-IEEE Member', description: 'For students without IEEE membership' }
   ];
   
   const product = products.find(p => p.code === productCode);
   return product ? product.description : '';
+}
+
+
+
+// 检查localStorage可用空间
+function checkStorageQuota(data) {
+  const testKey = '_storage_test_';
+  try {
+    localStorage.setItem(testKey, data);
+    localStorage.removeItem(testKey);
+    return true;
+  } catch (e) {
+    console.warn('Storage quota exceeded, attempting cleanup...');
+    return false;
+  }
+}
+
+// 清理旧的localStorage数据
+function cleanupOldStorageData() {
+  try {
+    const keys = Object.keys(localStorage);
+    const cleanupPatterns = [
+      /^conference.*_\d+$/, // 旧的用户相关数据
+      /^documentTasks/, // 文档任务数据
+      /temp_/, // 临时数据
+    ];
+    
+    keys.forEach(key => {
+      const shouldCleanup = cleanupPatterns.some(pattern => pattern.test(key));
+      if (shouldCleanup) {
+        console.log(`Cleaning up old storage data: ${key}`);
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (error) {
+    console.warn('Failed to cleanup old storage data:', error);
+  }
 }
 
 async function loadAndSaveImage(imageUrl, storageKey) {
@@ -338,7 +354,6 @@ async function loadAndSaveImage(imageUrl, storageKey) {
     }
     
     const axios = (await import('axios')).default;
-    const config = (await import('config')).default;
     
     // 动态构建图片URL
     let fullUrl;
@@ -346,8 +361,6 @@ async function loadAndSaveImage(imageUrl, storageKey) {
       fullUrl = imageUrl;
     } else {
       // 直接从浏览器地址栏推断 baseUrl
-      // 比如 http://localhost:3000/admin/#submissions
-      // 获得 baseUrl = http://localhost:3000
       const baseUrl = window.location.origin;
       const cleanPath = imageUrl.startsWith('/uploads/') ? imageUrl : `/uploads/${imageUrl}`;
       fullUrl = `${baseUrl}${cleanPath}`;
@@ -361,21 +374,52 @@ async function loadAndSaveImage(imageUrl, storageKey) {
     });
     
     const blob = response.data;
+    
+    // 检查文件大小，超过2MB的不存储到localStorage
+    const MAX_STORAGE_SIZE = 2 * 1024 * 1024; // 2MB
+    if (blob.size > MAX_STORAGE_SIZE) {
+      console.log(`Router - Image too large (${Math.round(blob.size / 1024)}KB), skipping localStorage storage`);
+      return; // 跳过存储，不阻塞流程
+    }
+    
     const reader = new FileReader();
     
     return new Promise((resolve, reject) => {
       reader.onload = () => {
         const base64Data = reader.result;
-        localStorage.setItem(storageKey, base64Data);
-        console.log(`Router - Image loaded and saved to localStorage: ${storageKey}`);
-        resolve();
+        
+        // 检查存储空间
+        if (!checkStorageQuota(base64Data)) {
+          console.log('Router - Storage quota exceeded, cleaning up old data...');
+          cleanupOldStorageData();
+          
+          // 再次尝试存储
+          if (!checkStorageQuota(base64Data)) {
+            console.warn(`Router - Cannot save image to localStorage due to quota limits: ${storageKey}`);
+            resolve(); // 继续执行，不阻塞流程
+            return;
+          }
+        }
+        
+        try {
+          localStorage.setItem(storageKey, base64Data);
+          console.log(`Router - Image loaded and saved to localStorage: ${storageKey}`);
+          resolve();
+        } catch (storageError) {
+          console.warn(`Router - Failed to save image to localStorage: ${storageKey}`, storageError);
+          resolve(); // 不阻塞流程
+        }
       };
-      reader.onerror = reject;
+      reader.onerror = () => {
+        console.warn(`Router - Failed to read image file: ${storageKey}`);
+        resolve(); // 不阻塞流程
+      };
       reader.readAsDataURL(blob);
     });
     
   } catch (error) {
     console.warn(`Router - Failed to load image ${imageUrl}:`, error);
+    // 不阻塞流程，继续执行
   }
 }
 

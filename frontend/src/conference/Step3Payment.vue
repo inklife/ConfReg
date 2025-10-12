@@ -33,8 +33,19 @@
           <strong>{{ selectedProduct && selectedProduct.code || 'Not selected' }}</strong>
         </div>
         <div class="summary-row">
-          <span>Amount:</span>
-          <strong class="price">${{ selectedProduct && selectedProduct.price || 0 }} USD</strong>
+          <span>Base Registration Fee:</span>
+          <strong>${{ selectedProduct && selectedProduct.price || 0 }} USD</strong>
+        </div>
+        <div v-if="userInfo.paperPages && parseInt(userInfo.paperPages) > 8" class="summary-row">
+          <span>Extra Page Fee ({{ parseInt(userInfo.paperPages) - 8 }} pages):</span>
+          <strong>${{ extraPageFee }} USD</strong>
+        </div>
+        <div class="summary-row total-row">
+          <span>Total Amount:</span>
+          <div>
+            <strong class="price">${{ totalAmount }} USD</strong>
+            <div v-if="selectedMethod === 'domestic'" class="rmb-price">¥{{ totalAmountDomesticRMB }} RMB</div>
+          </div>
         </div>
       </div>
 
@@ -58,26 +69,74 @@
 
       <!-- 支付详情 -->
       <div v-if="selectedMethod" class="payment-details">
-        <div v-if="selectedMethod === 'domestic'" class="qr-payment">
-          <h3>WeChat Pay</h3>
-          <div class="qr-container">
-            <img src="@img/payment.png" alt="WeChat Pay QR Code" class="qr-code">
-          </div>
-          <p class="qr-instruction">
-            Open WeChat and scan the QR code to complete payment
-          </p>
-        </div>
-
         <div v-if="selectedMethod === 'international'" class="bank-payment">
-          <h3>Bank Transfer</h3>
+          <h3>International Bank Transfer</h3>
           <div class="bank-info">
-            <p><strong>Bank Name:</strong> Example Bank</p>
-            <p><strong>Account Number:</strong> 1234567890</p>
-            <p><strong>Swift Code:</strong> EXAMPLESWIFT</p>
-            <p><strong>Reference:</strong> ICPADS2025-{{ userInfo.name }}</p>
+            <div class="info-section">
+              <h4>Beneficiary's Details</h4>
+              <p><strong>Account Number:</strong> 01266320164304</p>
+              <p><strong>Name:</strong> YUAN LONGZHI</p>
+              <p><strong>Address:</strong></p>
+              <p class="address-line">ROOM G7751, YEUNGKIN MAN BUILD.</p>
+              <p class="address-line">CITY UNIVERSITY OF HONG KONG</p>
+              <p class="address-line">83,TAT CHEE AVENUE, KLN HONG KONG</p>
+            </div>
+            
+            <div class="info-section">
+              <h4>Beneficiary's Bank Details</h4>
+              <p><strong>Country / Region:</strong> Hong Kong</p>
+              <p><strong>SWIFT Code:</strong> BKCHHKHHXXX</p>
+              <p><strong>Bank Name:</strong> Bank of China (Hong Kong) Limited</p>
+              <p><strong>Bank Address:</strong> 1 Garden Road,Central, Hong Kong</p>
+            </div>
+            
+            <div class="info-section">
+              <p><strong>Reference:</strong> Name+ICPADS 2025+PaperID</p>
+            </div>
+          </div>
+          <div class="reference-box">
+            <div class="ref-title">Transfer reference</div>
+            <div class="ref-format">Format: <code>Name+ICPADS 2025+PaperID</code></div>
+            <div class="ref-copy">
+              <el-input :value="transferReferenceFilled" readonly size="small" class="ref-input"></el-input>
+              <el-button size="small" @click="copyReference(transferReferenceFilled)"><i class="el-icon-document-copy"></i> Copy</el-button>
+            </div>
           </div>
           <div class="note">
-            Please include your name and "ICPADS2025" in the transfer reference.
+            After successful transfer, please submit the transfer receipt in <strong>Step 4</strong>.
+          </div>
+        </div>
+
+        <div v-if="selectedMethod === 'domestic'" class="qr-payment">
+          <h3>Domestic Payment</h3>
+          <div class="amount-display">
+            <div class="amount-row">
+              <span>Amount to Pay:</span>
+              <strong class="rmb-amount">¥{{ totalAmountDomesticRMB }} RMB</strong>
+            </div>
+          </div>
+          <div class="bank-info domestic-bank">
+            <p><strong>账户名称：</strong>合肥博研会议会务服务有限公司</p>
+            <p><strong>开户行：</strong>中国邮政储蓄银行股份有限公司安徽自贸试验区合肥片区支行</p>
+            <p><strong>账户号码：</strong>934012013000728814</p>
+            <p><strong>转账附言：</strong> Name+ICPADS 2025+PaperID</p>
+          </div>
+          <!-- <div class="qr-container">
+            <img src="@img/payment.png" alt="Payment QR Code" class="qr-code" @click="openQrPreview">
+          </div>
+          <p class="qr-instruction">
+            扫描二维码（点击可全屏查看）完成支付 或 通过银行转账到上述账户
+          </p> -->
+          <div class="reference-box cn">
+            <div class="ref-title">转账附言</div>
+            <div class="ref-format">格式：<code>Name+ICPADS 2025+PaperID</code></div>
+            <div class="ref-copy">
+              <el-input :value="transferReferenceFilled" readonly size="small" class="ref-input"></el-input>
+              <el-button size="small" @click="copyReference(transferReferenceFilled)"><i class="el-icon-document-copy"></i> 复制</el-button>
+            </div>
+          </div>
+          <div class="note">
+            转账成功需要提交转账成功回执（请在<strong>第四步</strong>上传）。
           </div>
         </div>
       </div>
@@ -98,12 +157,26 @@
     <div class="scroll-hint" v-if="showScrollHint">
       <i class="el-icon-arrow-down"></i> Scroll down
     </div>
+
+    <!-- 二维码全屏预览 -->
+    <div v-if="qrPreviewVisible" class="qr-overlay" @click.self="closeQrPreview">
+      <div class="qr-dialog">
+        <img src="@img/payment.png" alt="Payment QR Code" class="qr-large" />
+        <button class="qr-close" @click="closeQrPreview"><i class="el-icon-close"></i></button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 export default {
   name: 'Step3Payment',
+  props: {
+    id: {
+      type: String,
+      default: null
+    }
+  },
   data() {
     return {
       selectedMethod: null,
@@ -111,18 +184,20 @@ export default {
       showScrollHint: false,
       initialScrollTop: 0,
       hasScrolled: false,
+      qrPreviewVisible: false,
+      editMode: false,
       paymentMethods: [
         {
-          id: 'domestic',
-          name: 'WeChat Pay',
-          description: 'For domestic users',
-          icon: 'el-icon-chat-round'
+          id: 'international',
+          name: 'International Payment',
+          description: 'Bank transfer for international users',
+          icon: 'el-icon-bank-card'
         },
         {
-          id: 'international',
-          name: 'Bank Transfer',
-          description: 'For international users',
-          icon: 'el-icon-bank-card'
+          id: 'domestic',
+          name: 'China Mainland Payment',
+          description: 'QR code payment for China users',
+          icon: 'el-icon-chat-round'
         }
       ]
     }
@@ -138,17 +213,97 @@ export default {
       const saved = localStorage.getItem(this.getStorageKey('conferenceUserInfo'));
       return saved ? JSON.parse(saved) : {};
     },
+    // 计算超页费用
+    extraPageFee() {
+      if (!this.userInfo.paperPages) return 0;
+      const pages = parseInt(this.userInfo.paperPages);
+      if (pages > 8) {
+        // 第9-10页每页收费$80
+        return (pages - 8) * 80;
+      }
+      return 0;
+    },
+    // 超页页数（用于人民币计算）
+    extraPagesCount() {
+      if (!this.userInfo.paperPages) return 0;
+      const pages = parseInt(this.userInfo.paperPages);
+      return pages > 8 ? (pages - 8) : 0;
+    },
+    // 计算总价格
+    totalAmount() {
+      const basePrice = this.selectedProduct ? this.selectedProduct.price : 0;
+      return basePrice + this.extraPageFee;
+    },
+    // 计算人民币金额（不按汇率，使用固定价格）
+    totalAmountDomesticRMB() {
+      if (!this.selectedProduct) return 0;
+      
+      // 有则用本地保存的 priceRMB，缺失时根据产品代码回退到固定人民币价目
+      let baseRMB = 0;
+      if (this.selectedProduct.priceRMB != null) {
+        baseRMB = this.selectedProduct.priceRMB;
+      } else {
+        const code = this.selectedProduct.code;
+        const priceMapRMB = {
+          'IEEE Member': 5000,
+          'Non-IEEE Member': 6000,
+          'Life Member': 3600,
+          'Student - IEEE Member': 3600,
+          'Student - Non-IEEE Member': 4400
+        };
+        baseRMB = priceMapRMB[code] || 0;
+      }
+      
+      const extraRMB = this.extraPagesCount * 600; // 超页每页600元
+      return baseRMB + extraRMB;
+    },
     canProceed() {
       return !!this.selectedMethod;
+    },
+    // 自动填充的附言字符串（用于复制）
+    transferReferenceFilled() {
+      const name = (this.userInfo && this.userInfo.name) ? this.userInfo.name : 'Name';
+      const pid = (this.userInfo && this.userInfo.paperId) ? this.userInfo.paperId : 'PaperID';
+      return `${name}+ICPADS 2025+${pid}`;
     }
   },
   mounted() {
     this.initializeUserData();
+    
+    // 检测编辑模式
+    if (this.id && this.id !== 'new') {
+      this.editMode = true;
+      console.log('Step3 - Edit mode detected, registration ID:', this.id);
+    }
+    
     this.checkScrollHint();
     window.addEventListener('scroll', this.handleScroll);
     window.addEventListener('resize', this.checkScrollHint);
   },
   methods: {
+    openQrPreview() {
+      this.qrPreviewVisible = true;
+    },
+    closeQrPreview() {
+      this.qrPreviewVisible = false;
+    },
+    async copyReference(text) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const input = document.createElement('input');
+          input.value = text;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand('copy');
+          document.body.removeChild(input);
+        }
+        this.$message.success('Copied');
+      } catch (e) {
+        this.$message.error('Copy failed');
+      }
+    },
     checkScrollHint() {
       if (window.innerWidth <= 768 && !this.hasScrolled) {
         // 检查是否需要显示下滑提示
@@ -183,7 +338,7 @@ export default {
       }
     },
 
-    initializeUserData() {
+    async initializeUserData() {
       // 获取当前登录用户信息
       const currentUser = this.$store.state.account.user;
       if (!currentUser || !currentUser.id) {
@@ -193,11 +348,73 @@ export default {
       }
 
       this.currentUserId = currentUser.id;
+      
+      // 如果是编辑模式，先尝试从后端加载特定注册记录的数据
+      if (this.editMode && this.id && this.id !== 'new') {
+        await this.loadBackendRegistrationData();
+      }
+      
       this.loadPaymentMethod();
     },
 
     getStorageKey(baseName) {
+      // 生成带用户ID和注册记录ID的存储键名
+      // 如果有注册记录ID（编辑模式），包含在键名中以区分不同注册记录
+      if (this.id && this.id !== 'new') {
+        return `${baseName}_${this.currentUserId}_${this.id}`;
+      }
+      // 新建注册时，只用用户ID
       return `${baseName}_${this.currentUserId}`;
+    },
+
+    async loadBackendRegistrationData() {
+      try {
+        console.log('Step3 - Loading backend registration data for ID:', this.id);
+        
+        // 验证ID格式
+        if (!/^\d+$/.test(this.id)) {
+          console.warn('Step3 - Invalid registration ID format:', this.id);
+          this.$message.warning('Invalid registration ID');
+          this.$router.push('/dashboard?tab=registrations');
+          return;
+        }
+        
+        const axios = (await import('axios')).default;
+        
+        const response = await axios.get(`/api/submissions/registration/${this.id}`, {
+          withCredentials: true
+        });
+        
+        console.log('Step3 - Backend registration response:', response.data);
+        
+        if (response.data.success && response.data.registration_data) {
+          const regData = response.data.registration_data;
+          
+          // 保存支付方式到 localStorage
+          if (regData.payment_method) {
+            localStorage.setItem(
+              this.getStorageKey('conferencePaymentMethod'), 
+              regData.payment_method
+            );
+          }
+          
+          console.log('Step3 - Backend data saved to localStorage');
+        } else {
+          // 注册记录不存在
+          console.warn('Step3 - Registration not found for ID:', this.id);
+          this.$message.warning('Registration not found');
+          this.$router.push('/dashboard?tab=registrations');
+        }
+      } catch (error) {
+        console.error('Step3 - Failed to load backend registration data:', error);
+        
+        // 如果是404错误，说明ID不存在
+        if (error.response && error.response.status === 404) {
+          this.$message.warning('Registration not found');
+          this.$router.push('/dashboard?tab=registrations');
+        }
+        // 其他错误不阻塞流程
+      }
     },
 
     loadPaymentMethod() {
@@ -231,11 +448,24 @@ export default {
       this.$emit('step-complete', { 
         paymentMethod: this.selectedMethod 
       });
-      this.$router.push('/conference/step4');
+      
+      if (this.id === 'new') {
+        this.$router.push('/conference/new/step4');
+      } else if (this.editMode && this.id) {
+        this.$router.push(`/conference/${this.id}/step4`);
+      } else {
+        this.$router.push('/conference/new/step4');
+      }
     },
 
     goBack() {
-      this.$router.push('/conference/step2');
+      if (this.id === 'new') {
+        this.$router.push('/conference/new/step2');
+      } else if (this.editMode && this.id) {
+        this.$router.push(`/conference/${this.id}/step2`);
+      } else {
+        this.$router.push('/conference/new/step2');
+      }
     }
   },
 
@@ -344,6 +574,55 @@ export default {
   font-size: 19px;
 }
 
+.total-row {
+  border-top: 1px solid #e0e0e0;
+  margin-top: 8px;
+  padding-top: 12px;
+  font-weight: bold;
+}
+
+.total-row .price {
+  font-size: 21px;
+}
+
+.rmb-price {
+  font-size: 14px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.amount-display {
+  background: #f0f7ff;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #409EFF;
+}
+
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rmb-amount {
+  color: #f56c6c;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.domestic-bank {
+  background: #f9f9f9;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.domestic-bank p {
+  margin: 8px 0;
+  font-size: 15px;
+}
+
 .payment-methods {
   background: white;
   padding: 20px;
@@ -433,6 +712,7 @@ export default {
   width: 160px;
   height: 160px;
   object-fit: contain;
+  cursor: zoom-in;
 }
 
 .qr-instruction {
@@ -455,9 +735,32 @@ export default {
   margin-bottom: 16px;
 }
 
+.bank-info .info-section {
+  margin-bottom: 20px;
+}
+
+.bank-info .info-section:last-child {
+  margin-bottom: 0;
+}
+
+.bank-info h4 {
+  color: #409EFF;
+  font-size: 16px;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+  border-bottom: 2px solid #409EFF;
+  padding-bottom: 6px;
+}
+
 .bank-info p {
   margin: 6px 0;
   font-size: 15px;
+}
+
+.bank-info .address-line {
+  margin: 3px 0 3px 20px;
+  font-size: 14px;
+  color: #666;
 }
 
 .note {
@@ -467,6 +770,34 @@ export default {
   padding: 12px;
   border-radius: 8px;
   font-size: 14px;
+}
+
+.reference-box {
+  background: #f0f7ff;
+  border: 1px solid #cfe5ff;
+  color: #1a5fb4;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin: 12px 0;
+}
+.reference-box .ref-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.reference-box .ref-format code {
+  background: #e8f2ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.reference-box .ref-copy {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.reference-box .ref-input >>> .el-input__inner {
+  color: #1a5fb4;
 }
 
 .actions {
@@ -568,6 +899,35 @@ export default {
 
   .summary-row .price {
     font-size: 17px;
+  }
+
+  .total-row .price {
+    font-size: 18px;
+  }
+
+  .rmb-price {
+    font-size: 12px;
+  }
+
+  .amount-display {
+    padding: 12px;
+  }
+
+  .rmb-amount {
+    font-size: 18px;
+  }
+
+  .amount-row {
+    font-size: 14px;
+  }
+
+  .domestic-bank {
+    padding: 12px;
+  }
+
+  .domestic-bank p {
+    font-size: 13px;
+    margin: 6px 0;
   }
 
   .method-grid {
@@ -687,5 +1047,43 @@ export default {
     padding: 10px 16px;
     font-size: 14px;
   }
+}
+
+/* 二维码全屏预览 */
+.qr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.qr-dialog {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+.qr-large {
+  max-width: 80vw;
+  max-height: 80vh;
+  display: block;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.qr-close {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 </style>

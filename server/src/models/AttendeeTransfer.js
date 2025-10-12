@@ -71,6 +71,32 @@ const AttendeeTransfer = sequelize.define('AttendeeTransfer', {
     allowNull: true,
     field: 'admin_notes',
     comment: 'Notes from admin about the transfer decision'
+  },
+  feeAmountUsd: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 100.00,
+    field: 'fee_amount_usd',
+    comment: 'Transfer fee in USD'
+  },
+  feeAmountRmb: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 750.00,
+    field: 'fee_amount_rmb',
+    comment: 'Transfer fee in RMB'
+  },
+  feePaymentMethod: {
+    type: DataTypes.ENUM('international', 'domestic'),
+    allowNull: false,
+    field: 'fee_payment_method',
+    comment: 'Payment method for transfer fee: international or domestic'
+  },
+  feePaymentScreenshot: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'fee_payment_screenshot',
+    comment: 'Path to the payment screenshot image'
   }
 }, {
   tableName: 'attendee_transfers',

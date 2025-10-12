@@ -24,6 +24,8 @@ const adminRoutes = require('./routes/admin');
 const invoiceRoutes = require('./routes/invoices');
 const emailRoutes = require('./routes/email');
 const backupEmailRoutes = require('./routes/backup-email');
+const voucherRoutes = require('./routes/vouchers');
+const adminVoucherRoutes = require('./routes/admin-vouchers');
 
 const app = express();
 const PORT = process.env.CONFREG_BE_PORT || 3000;
@@ -171,9 +173,11 @@ app.use('/api/users', userRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/backup-email', backupEmailRoutes);
+app.use('/api/vouchers', voucherRoutes);
 
 // 统一的管理员路由 - 包含发票、转账等所有管理员功能
 app.use('/admin', adminRoutes);
+app.use('/admin/vouchers', adminVoucherRoutes);
 
 // Admin panel route
 // app.get('/admin', (req, res) => {

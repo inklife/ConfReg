@@ -8,8 +8,51 @@ const emailVerificationCache = require('../utils/cache/emailVerificationCache');
 const emailService = require('../utils/emailService');
 const { validateUsername, generateUsernameSuggestions } = require('../utils/usernameValidator');
 const { getSaltRounds } = require('../config/crypto');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs').promises;
+const { v4: uuidv4 } = require('uuid');
 
 const router = express.Router();
+
+// 配置转让手续费支付截图上传
+const transferUploadDir = path.join(__dirname, '../../uploads/transfers');
+
+// 确保上传目录存在
+const ensureTransferUploadDir = async () => {
+  try {
+    await fs.access(transferUploadDir);
+  } catch {
+    await fs.mkdir(transferUploadDir, { recursive: true });
+  }
+};
+
+const transferStorage = multer.diskStorage({
+  destination: async function (req, file, cb) {
+    await ensureTransferUploadDir();
+    cb(null, transferUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const filename = `transfer_fee_${uuidv4()}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const transferUpload = multer({
+  storage: transferStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    // Allow images only
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 // Get current user profile
 router.get('/profile', requireAuth, async (req, res) => {
@@ -143,53 +186,104 @@ router.put('/change-password', requireAuth, [
 });
 
 // Change attendee information for registration
-router.post('/transfer-registration', requireAuth, [
-  body('newAttendee.name').trim().notEmpty().withMessage('New attendee name is required'),
-  body('newAttendee.email').isEmail().withMessage('Valid email is required'),
-  body('newAttendee.phone').optional().trim(),
-  body('newAttendee.affiliation').optional().trim(),
-  body('reason').trim().notEmpty().withMessage('Transfer reason is required')
-], async (req, res) => {
+router.post('/transfer-registration', requireAuth, transferUpload.single('feePaymentScreenshot'), async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    const { registrationId, newAttendee: newAttendeeStr, reason, feePaymentMethod } = req.body;
+    
+    // 验证必填字段
+    if (!registrationId || !newAttendeeStr || !reason || !feePaymentMethod) {
       return res.status(400).json({
         success: false,
-        message: 'Validation failed',
-        errors: errors.array()
+        message: 'Missing required fields'
       });
     }
 
-    const { newAttendee, reason } = req.body;
+    // 验证支付截图
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment screenshot is required'
+      });
+    }
+
+    // 解析JSON字符串
+    let newAttendee;
+    try {
+      newAttendee = JSON.parse(newAttendeeStr);
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid newAttendee data format'
+      });
+    }
+
+    // 验证newAttendee字段
+    if (!newAttendee.name || !newAttendee.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'New attendee name and email are required'
+      });
+    }
+
+    // 验证email格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newAttendee.email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format'
+      });
+    }
+
+    // 验证支付方式
+    if (!['international', 'domestic'].includes(feePaymentMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid payment method'
+      });
+    }
     
-    // Check if user has an approved registration
+    // Check if the specified registration exists and belongs to the user
     const submission = await RegistrationSubmission.findOne({
       where: { 
+        id: registrationId,
         userId: req.session.userId,
         status: 'approved'
-      },
-      order: [['id', 'DESC']]
+      }
     });
 
     if (!submission) {
       return res.status(400).json({
         success: false,
-        message: 'No approved registration found for attendee change'
+        message: 'Specified registration not found or not approved'
       });
     }
 
-    // Check if there's already a pending transfer request for this registration
+    // 方案A: 检查是否已存在任何签转记录（pending 或 approved）
+    // 每个注册只允许签转一次
     const existingTransfer = await AttendeeTransfer.findOne({
       where: {
         registrationId: submission.id,
-        status: 'pending'
+        status: ['pending', 'approved']
       }
     });
 
     if (existingTransfer) {
+      let message = 'This registration has already been transferred and cannot be transferred again';
+      if (existingTransfer.status === 'pending') {
+        message = 'There is already a pending attendee transfer request for this registration';
+      } else if (existingTransfer.status === 'approved') {
+        message = 'This registration has already been transferred and cannot be transferred again';
+      }
+      
       return res.status(400).json({
         success: false,
-        message: 'There is already a pending attendee change request for this registration'
+        message: message,
+        existingTransfer: {
+          status: existingTransfer.status,
+          requestTime: existingTransfer.requestTime,
+          processTime: existingTransfer.processTime,
+          newAttendee: existingTransfer.newAttendee
+        }
       });
     }
 
@@ -200,6 +294,10 @@ router.post('/transfer-registration', requireAuth, [
       phone: submission.phone || '',
       affiliation: submission.affiliation || ''
     };
+
+    // 计算手续费金额
+    const feeAmountUsd = 100.00;
+    const feeAmountRmb = 750.00;
 
     // Create transfer record
     const transfer = await AttendeeTransfer.create({
@@ -213,7 +311,11 @@ router.post('/transfer-registration', requireAuth, [
       },
       reason,
       requestedBy: req.session.userId,
-      status: 'pending'
+      status: 'pending',
+      feeAmountUsd,
+      feeAmountRmb,
+      feePaymentMethod,
+      feePaymentScreenshot: req.file ? `transfers/${req.file.filename}` : null
     });
 
     res.json({
@@ -229,6 +331,9 @@ router.post('/transfer-registration', requireAuth, [
           phone: newAttendee.phone || '',
           affiliation: newAttendee.affiliation || ''
         },
+        feePaymentMethod,
+        feeAmountUsd,
+        feeAmountRmb,
         status: 'pending'
       }
     });
@@ -285,6 +390,10 @@ router.get('/transfer-history', requireAuth, async (req, res) => {
       newAttendee: transfer.newAttendee,
       reason: transfer.reason,
       transferStatus: transfer.status,
+      feePaymentMethod: transfer.feePaymentMethod,
+      feeAmountUsd: transfer.feeAmountUsd,
+      feeAmountRmb: transfer.feeAmountRmb,
+      feePaymentScreenshot: transfer.feePaymentScreenshot,
       requestTime: transfer.requestTime,
       processTime: transfer.processTime,
       processor: transfer.processor ? {
@@ -308,66 +417,133 @@ router.get('/transfer-history', requireAuth, async (req, res) => {
   }
 });
 
-// Check if user can request attendee change
+// Check if user can request attendee change (supports multiple registrations)
 router.get('/transfer-status', requireAuth, async (req, res) => {
   try {
-    // Check if user has an approved registration
-    const submission = await RegistrationSubmission.findOne({
+    // Get all approved registrations for the user
+    const approvedRegistrations = await RegistrationSubmission.findAll({
       where: { 
         userId: req.session.userId,
         status: 'approved'
       },
-      order: [['id', 'DESC']]
+      attributes: [
+        'id', 'name', 'email', 'phone', 'affiliation', 'product_code', 
+        'submission_time', 'paper_id', 'payment_method', 
+        'paper_pages',
+        'product_price', 'product_price_rmb',
+        'total_amount_usd', 'total_amount_rmb',
+        'extra_page_fee_usd', 'extra_page_fee_rmb',
+        'is_refunded'
+      ],
+      order: [['submission_time', 'DESC']]
     });
 
-    if (!submission) {
+    if (!approvedRegistrations || approvedRegistrations.length === 0) {
       return res.json({
         success: true,
         data: {
-          canTransfer: false,
-          reason: 'No approved registration found',
-          hasApprovedRegistration: false
+          hasApprovedRegistration: false,
+          approvedRegistrations: [],
+          message: 'No approved registration found'
         }
       });
     }
 
-    // Check if there's already a pending transfer request
-    const pendingTransfer = await AttendeeTransfer.findOne({
+    // Get all transfer requests for these registrations (any status)
+    // 方案A: 禁止重复签转 - 检查所有状态的签转记录
+    const registrationIds = approvedRegistrations.map(reg => reg.id);
+    const allTransfers = await AttendeeTransfer.findAll({
       where: {
-        registrationId: submission.id,
-        status: 'pending'
-      }
+        registrationId: registrationIds
+      },
+      order: [['requestTime', 'DESC']]
     });
 
-    if (pendingTransfer) {
-      return res.json({
-        success: true,
-        data: {
-          canTransfer: false,
-          reason: 'There is already a pending attendee change request',
-          hasApprovedRegistration: true,
-          pendingTransfer: {
-            id: pendingTransfer.id,
-            requestTime: pendingTransfer.requestTime,
-            newAttendee: pendingTransfer.newAttendee,
-            reason: pendingTransfer.reason
-          }
-        }
-      });
-    }
+    // Create maps for different transfer statuses
+    const transfersByRegistration = {};
+    allTransfers.forEach(transfer => {
+      if (!transfersByRegistration[transfer.registrationId]) {
+        transfersByRegistration[transfer.registrationId] = [];
+      }
+      transfersByRegistration[transfer.registrationId].push(transfer);
+    });
+
+    // For each registration, determine if it can be transferred
+    // canTransfer = false if there's any approved or pending transfer OR if the registration is refunded
+    const transferStatusMap = {};
+    Object.keys(transfersByRegistration).forEach(regId => {
+      const transfers = transfersByRegistration[regId];
+      const approvedTransfer = transfers.find(t => t.status === 'approved');
+      const pendingTransfer = transfers.find(t => t.status === 'pending');
+      
+      // Find the registration to check if it's refunded
+      const registration = approvedRegistrations.find(reg => reg.id == regId);
+      const isRefunded = registration ? registration.is_refunded : false;
+      
+      transferStatusMap[regId] = {
+        canTransfer: !approvedTransfer && !pendingTransfer && !isRefunded,
+        latestTransfer: transfers[0], // Most recent transfer
+        approvedTransfer: approvedTransfer || null,
+        pendingTransfer: pendingTransfer || null,
+        isRefunded: isRefunded
+      };
+    });
+
+    // Build registration list with transfer status
+    const registrationsWithStatus = approvedRegistrations.map(reg => {
+      const transferStatus = transferStatusMap[reg.id] || { 
+        canTransfer: !reg.is_refunded, // If no transfer records, check refund status
+        latestTransfer: null, 
+        approvedTransfer: null, 
+        pendingTransfer: null,
+        isRefunded: reg.is_refunded
+      };
+      
+      return {
+        id: reg.id,
+        name: reg.name,
+        email: reg.email,
+        phone: reg.phone,
+        affiliation: reg.affiliation,
+        productCode: reg.product_code,
+        productPriceUsd: reg.product_price,
+        productPriceRmb: reg.product_price_rmb,
+        totalAmountUsd: reg.total_amount_usd,
+        totalAmountRmb: reg.total_amount_rmb,
+        extraPageFeeUsd: reg.extra_page_fee_usd || 0,
+        extraPageFeeRmb: reg.extra_page_fee_rmb || 0,
+        paperPages: reg.paper_pages || 0,
+        submissionTime: reg.submission_time,
+        paperId: reg.paper_id,
+        paymentMethod: reg.payment_method,
+        isRefunded: reg.is_refunded || false,
+        canTransfer: transferStatus.canTransfer,
+        pendingTransfer: transferStatus.pendingTransfer ? {
+          id: transferStatus.pendingTransfer.id,
+          requestTime: transferStatus.pendingTransfer.requestTime,
+          newAttendee: transferStatus.pendingTransfer.newAttendee,
+          reason: transferStatus.pendingTransfer.reason
+        } : null,
+        approvedTransfer: transferStatus.approvedTransfer ? {
+          id: transferStatus.approvedTransfer.id,
+          requestTime: transferStatus.approvedTransfer.requestTime,
+          processTime: transferStatus.approvedTransfer.processTime,
+          newAttendee: transferStatus.approvedTransfer.newAttendee,
+          originalAttendee: transferStatus.approvedTransfer.originalAttendee,
+          reason: transferStatus.approvedTransfer.reason
+        } : null
+      };
+    });
 
     res.json({
       success: true,
       data: {
-        canTransfer: true,
         hasApprovedRegistration: true,
-        currentRegistration: {
-          id: submission.id,
-          name: submission.name,
-          email: submission.email,
-          phone: submission.phone,
-          affiliation: submission.affiliation
-        }
+        approvedRegistrations: registrationsWithStatus,
+        totalCount: registrationsWithStatus.length,
+        canTransferCount: registrationsWithStatus.filter(r => r.canTransfer).length,
+        pendingCount: registrationsWithStatus.filter(r => r.pendingTransfer !== null).length,
+        approvedCount: registrationsWithStatus.filter(r => r.approvedTransfer !== null).length
       }
     });
 
@@ -401,62 +577,6 @@ router.get('/refund-eligibility/:registrationId', requireAuth, async (req, res) 
   }
 });
 
-// Submit refund request
-router.post('/refund-request', requireAuth, [
-  body('registrationId').isInt().withMessage('Registration ID must be a valid integer'),
-  body('reason').isLength({ min: 10, max: 1000 }).withMessage('Reason must be between 10 and 1000 characters'),
-  body('bankInfo.accountName').optional().isLength({ min: 2, max: 100 }).withMessage('Account name must be between 2 and 100 characters'),
-  body('bankInfo.bankName').optional().isLength({ min: 2, max: 100 }).withMessage('Bank name must be between 2 and 100 characters'),
-  body('bankInfo.accountNumber').optional().isLength({ min: 5, max: 50 }).withMessage('Account number must be between 5 and 50 characters')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation errors',
-        errors: errors.array()
-      });
-    }
-
-    const { registrationId, reason, bankInfo } = req.body;
-    const userId = req.session.userId;
-
-    // 检查退款资格
-    const eligibilityCheck = await RefundRequest.checkRefundEligibility(userId, registrationId);
-    if (!eligibilityCheck.eligible) {
-      return res.status(400).json({
-        success: false,
-        message: eligibilityCheck.reason
-      });
-    }
-
-    // 创建退款申请
-    const refundRequest = await RefundRequest.create({
-      registrationId: parseInt(registrationId),
-      userId: userId,
-      reason: reason,
-      refundAmount: eligibilityCheck.registration.product_price,
-      bankInfo: bankInfo || null,
-      requestTime: new Date()
-    });
-
-    res.json({
-      success: true,
-      data: {
-        id: refundRequest.id,
-        message: 'Refund request submitted successfully'
-      }
-    });
-  } catch (error) {
-    console.error('Submit refund request error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
 // Get user's refund history
 router.get('/refund-history', requireAuth, async (req, res) => {
   try {
@@ -476,6 +596,7 @@ router.get('/refund-history', requireAuth, async (req, res) => {
       },
       reason: refund.reason,
       refundAmount: refund.refundAmount,
+      refundCurrency: refund.refundCurrency || 'USD', // 添加货币字段
       bankInfo: refund.bankInfo,
       requestTime: refund.requestTime,
       status: refund.status,
@@ -507,12 +628,26 @@ router.get('/approved-registrations', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     
+    // 可选参数：是否排除已退款的注册，默认为false（不排除）
+    const excludeRefunded = req.query.excludeRefunded === 'true';
+    
+    const whereCondition = {
+      userId: userId,
+      status: 'approved'
+    };
+    
+    // 如果需要排除已退款的注册，添加条件
+    if (excludeRefunded) {
+      whereCondition.is_refunded = false;
+    }
+    
     const approvedRegistrations = await RegistrationSubmission.findAll({
-      where: {
-        userId: userId,
-        status: 'approved'
-      },
-      attributes: ['id', 'name', 'email', 'product_code', 'product_price', 'submission_time', 'review_time'],
+      where: whereCondition,
+      attributes: [
+        'id', 'name', 'email', 'product_code', 'product_price', 'product_price_rmb',
+        'total_amount_usd', 'total_amount_rmb', 'payment_method',
+        'submission_time', 'review_time', 'is_refunded', 'paper_id'  // 添加退款状态字段和paper_id
+      ],
       order: [['submission_time', 'DESC']]
     });
 
@@ -526,8 +661,14 @@ router.get('/approved-registrations', requireAuth, async (req, res) => {
           email: registration.email,
           productCode: registration.product_code,
           productPrice: registration.product_price,
+          productPriceRMB: registration.product_price_rmb,
+          totalAmountUSD: registration.total_amount_usd,
+          totalAmountRMB: registration.total_amount_rmb,
+          paymentMethod: registration.payment_method,
           submissionTime: registration.submission_time,
           reviewTime: registration.review_time,
+          paper_id: registration.paper_id,
+          isRefunded: registration.is_refunded, // 添加退款状态字段
           refundEligible: eligibilityCheck.eligible,
           refundIneligibleReason: eligibilityCheck.reason || null
         };

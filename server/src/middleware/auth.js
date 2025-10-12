@@ -34,6 +34,9 @@ const requireAuth = async (req, res, next) => {
         code: 'ACCOUNT_SUSPENDED'
       });
     }
+    
+    // 将用户对象附加到 req.user，供后续中间件使用
+    req.user = user;
   } catch (error) {
     console.error('RequireAuth database check error:', error);
     // 如果数据库检查失败，允许继续但记录错误
@@ -74,6 +77,9 @@ const requireAdmin = async (req, res, next) => {
           code: 'ACCOUNT_SUSPENDED'
         });
       }
+      
+      // 将用户对象附加到 req.user
+      req.user = user;
     } catch (error) {
       console.error('RequireAdmin database check error:', error);
       // 如果数据库检查失败，允许继续但记录错误
@@ -129,6 +135,9 @@ const requireAdmin = async (req, res, next) => {
         message: 'Admin access required'
       });
     }
+    
+    // 将用户对象附加到 req.user
+    req.user = user;
     
     console.log('RequireAdmin successful for regular user with admin privileges:', user.username);
     next();

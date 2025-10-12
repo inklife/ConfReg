@@ -32,6 +32,13 @@ const InvoiceRequest = sequelize.define('InvoiceRequest', {
     defaultValue: 'electronic',
     field: 'invoice_type'
   },
+  // 发票类别：normal(普通发票) 或 vat(增值税专用发票)
+  invoiceCategory: {
+    type: DataTypes.ENUM('normal', 'vat'),
+    allowNull: false,
+    defaultValue: 'normal',
+    field: 'invoice_category'
+  },
   // 发票抬头
   invoiceTitle: {
     type: DataTypes.STRING(200),
@@ -85,6 +92,30 @@ const InvoiceRequest = sequelize.define('InvoiceRequest', {
     allowNull: true,
     field: 'recipient_phone'
   },
+  // 注册系统编号
+  registrationSystemNo: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    field: 'registration_system_no'
+  },
+  // 联系人姓名
+  contactName: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    field: 'contact_name'
+  },
+  // 联系电话
+  contactPhone: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    field: 'contact_phone'
+  },
+  // 联系邮箱
+  contactEmail: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    field: 'contact_email'
+  },
   // 申请状态：pending(待处理)、processing(处理中)、completed(已完成)、rejected(已拒绝)
   status: {
     type: DataTypes.ENUM('pending', 'processing', 'completed', 'rejected'),
@@ -102,10 +133,23 @@ const InvoiceRequest = sequelize.define('InvoiceRequest', {
     allowNull: true,
     field: 'admin_notes'
   },
-  // 发票金额
+  // 发票金额（原有字段，用于兼容）
   amount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
+  },
+  // 开票金额（用户指定的金额）
+  invoiceAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    field: 'invoice_amount'
+  },
+  // 开票货币（USD 或 RMB）- 默认 RMB，因为大部分电子发票用户是国内人士
+  invoiceCurrency: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    defaultValue: 'RMB',
+    field: 'invoice_currency'
   },
   // 发票内容
   content: {

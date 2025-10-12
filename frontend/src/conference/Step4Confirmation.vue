@@ -34,12 +34,44 @@
         <div class="info-section">
           <h4>Registration Details</h4>
           <div class="info-row">
-            <span>Registration Type:</span>
+            <span>Registration Category:</span>
+            <strong>{{ getRegistrationCategory() }}</strong>
+          </div>
+          <div class="info-row">
+            <span>Membership Type:</span>
             <strong>{{ selectedProduct ? selectedProduct.code : 'Not selected' }}</strong>
           </div>
           <div class="info-row">
-            <span>Amount:</span>
-            <strong class="price">${{ selectedProduct ? selectedProduct.price : 0 }} USD</strong>
+            <span>Base Registration Fee:</span>
+            <div class="price-display">
+              <strong class="price" v-if="isInternational">${{ basePriceUSD }} USD</strong>
+              <strong class="price-rmb" v-if="isDomestic">¥{{ basePriceRMB }} RMB</strong>
+            </div>
+          </div>
+          <div class="info-row" v-if="extraPagesCount > 0">
+            <span>Extra Page Fee ({{ extraPagesCount }} pages):</span>
+            <div class="price-display">
+              <strong class="price" v-if="isInternational">${{ extraPageFeeUSD }} USD</strong>
+              <strong class="price-rmb" v-if="isDomestic">¥{{ extraPageFeeRMB }} RMB</strong>
+            </div>
+          </div>
+          <div class="info-row" v-if="userInfo.paperId">
+            <span>Paper ID:</span>
+            <strong>{{ userInfo.paperId }}</strong>
+          </div>
+          <div class="info-row" v-if="userInfo.paperPages">
+            <span>Paper Pages:</span>
+            <strong>{{ userInfo.paperPages }}</strong>
+            <span v-if="parseInt(userInfo.paperPages) > 8" class="extra-fee-note">
+              (Extra page fee applies: $80 / RMB 600)
+            </span>
+          </div>
+          <div class="info-row">
+            <span>Total Amount:</span>
+            <div class="price-display">
+              <strong class="price" v-if="isInternational">${{ totalUSD }} USD</strong>
+              <strong class="price-rmb" v-if="isDomestic">¥{{ totalRMB }} RMB</strong>
+            </div>
           </div>
         </div>
 
@@ -57,10 +89,6 @@
           <div class="info-row">
             <span>Institution:</span>
             <strong>{{ userInfo.affiliation || 'Not provided' }}</strong>
-          </div>
-          <div class="info-row">
-            <span>Paper Title:</span>
-            <strong>{{ userInfo.paperTitle || 'Not provided' }}</strong>
           </div>
         </div>
 
@@ -154,22 +182,29 @@
     <div v-if="showConfirmDialog" class="custom-dialog-overlay" @click="handleOverlayClick">
       <div class="custom-dialog" @click.stop>
         <div class="dialog-header">
-          <h3>Re-submission Confirmation</h3>
+          <h3><i class="el-icon-warning"></i> Warning: Approved Registration Will Be Overwritten</h3>
         </div>
         <div class="dialog-content">
           <div class="dialog-icon">
-            <i class="el-icon-warning"></i>
+            <i class="el-icon-warning-outline"></i>
           </div>
           <div class="dialog-message">
-            You already have an approved registration. Re-submitting will cause your registration to return to pending review status. Are you sure you want to continue?
+            <p class="warning-title">Your current registration has been approved.</p>
+            <p class="warning-details">If you submit this form, it will:</p>
+            <ul class="warning-list">
+              <li><strong>Overwrite</strong> your existing approved registration data</li>
+              <li><strong>Reset</strong> your registration status to "Pending Review"</li>
+              <li><strong>Require</strong> administrator approval again</li>
+            </ul>
+            <p class="warning-question">Are you sure you want to continue?</p>
           </div>
         </div>
         <div class="dialog-actions">
           <button class="dialog-btn cancel-btn" @click="cancelSubmission">
-            Cancel Submission
+            <i class="el-icon-close"></i> Cancel
           </button>
           <button class="dialog-btn confirm-btn" @click="confirmSubmission">
-            Confirm Continue
+            <i class="el-icon-check"></i> Yes, Overwrite and Resubmit
           </button>
         </div>
       </div>
@@ -180,13 +215,20 @@
 <script>
 export default {
   name: 'Step4Confirmation',
+  props: {
+    id: {
+      type: String,
+      default: null
+    }
+  },
   data() {
     return {
       uploadedProof: null,
       paymentFile: null, // 存储实际文件对象
       isSubmitting: false,
       currentUserId: null,
-      showConfirmDialog: false // 自定义确认对话框显示状态
+      showConfirmDialog: false, // 自定义确认对话框显示状态
+      editMode: false // 是否处于编辑模式
     }
   },
   computed: {
@@ -219,11 +261,53 @@ export default {
       return localStorage.getItem(this.getStorageKey('conferencePaymentMethod'));
     },
     paymentMethodName() {
+      // 与第三步展示的名称保持一致
       const methods = {
-        'domestic': 'WeChat Pay',
-        'international': 'Bank Transfer'
+        'international': 'International Bank Transfer',
+        'domestic': 'China Mainland Payment'
       };
       return methods[this.paymentMethod] || 'Not selected';
+    },
+    isDomestic() {
+      return this.paymentMethod === 'domestic';
+    },
+    isInternational() {
+      return this.paymentMethod === 'international';
+    },
+    // 计算超页和金额（与第三步逻辑一致）
+    extraPagesCount() {
+      if (!this.userInfo.paperPages) return 0;
+      const pages = parseInt(this.userInfo.paperPages);
+      return pages > 8 ? (pages - 8) : 0;
+    },
+    basePriceUSD() {
+      return this.selectedProduct ? (this.selectedProduct.price || 0) : 0;
+    },
+    basePriceRMB() {
+      if (!this.selectedProduct) return 0;
+      // 有则用本地保存的 priceRMB，缺失时根据产品代码回退到固定人民币价目
+      if (this.selectedProduct.priceRMB != null) return this.selectedProduct.priceRMB;
+      const code = this.selectedProduct.code;
+      const priceMapRMB = {
+        'IEEE Member': 5000,
+        'Non-IEEE Member': 6000,
+        'Life Member': 3600,
+        'Student - IEEE Member': 3600,
+        'Student - Non-IEEE Member': 4400
+      };
+      return priceMapRMB[code] || 0;
+    },
+    extraPageFeeUSD() {
+      return this.extraPagesCount * 80; // 每超1页 $80
+    },
+    extraPageFeeRMB() {
+      return this.extraPagesCount * 600; // 每超1页 ¥600
+    },
+    totalUSD() {
+      return this.basePriceUSD + this.extraPageFeeUSD;
+    },
+    totalRMB() {
+      return this.basePriceRMB + this.extraPageFeeRMB;
     },
     canSubmit() {
       // Email不再需要检查，因为它会自动从用户账户中获取
@@ -236,8 +320,26 @@ export default {
   },
   mounted() {
     this.initializeUserData();
+    
+    // 检测是否处于编辑模式
+    if (this.id && this.id !== 'new') {
+      this.editMode = true;
+      console.log('Step4 - Edit mode detected, registration ID:', this.id);
+    }
   },
   methods: {
+    getRegistrationCategory() {
+      if (!this.selectedProduct) return 'Not selected';
+      
+      const productCode = this.selectedProduct.code;
+      
+      // 根据产品代码判断是全额注册还是学生注册
+      if (productCode.includes('Student')) {
+        return 'Student Registration';
+      } else {
+        return 'Full Registration';
+      }
+    },
     async initializeUserData() {
       // 获取当前登录用户信息
       const currentUser = this.$store.state.account.user;
@@ -258,6 +360,12 @@ export default {
     },
 
     getStorageKey(baseName) {
+      // 生成带用户ID和注册记录ID的存储键名
+      // 如果有注册记录ID（编辑模式），包含在键名中以区分不同注册记录
+      if (this.id && this.id !== 'new') {
+        return `${baseName}_${this.currentUserId}_${this.id}`;
+      }
+      // 新建注册时，只用用户ID
       return `${baseName}_${this.currentUserId}`;
     },
 
@@ -304,20 +412,54 @@ export default {
         // 调用后端API获取注册数据
         const axios = (await import('axios')).default;
         
-        // 使用完整路径
-        const response = await axios.get('/api/submissions/check-registration', {
-          withCredentials: true
-        });
+        let apiUrl;
+        let response;
+        
+        // 如果有 ID 参数（编辑模式），获取特定的注册记录
+        if (this.id && this.id !== 'new') {
+          console.log('Step4 - Loading specific registration:', this.id);
+          
+          // 验证ID格式
+          if (!/^\d+$/.test(this.id)) {
+            console.warn('Step4 - Invalid registration ID format:', this.id);
+            this.$message.warning('Invalid registration ID');
+            this.$router.push('/dashboard?tab=registrations');
+            return;
+          }
+          
+          apiUrl = `/api/submissions/registration/${this.id}`;
+          response = await axios.get(apiUrl, {
+            withCredentials: true
+          });
+        } else {
+          // 否则获取最新的注册记录
+          console.log('Step4 - Loading latest registration');
+          apiUrl = '/api/submissions/check-registration';
+          response = await axios.get(apiUrl, {
+            withCredentials: true
+          });
+        }
         
         console.log('Step4 - Backend registration data:', response.data);
         
-        if (response.data.success && response.data.has_submission) {
+        if (response.data.success && (response.data.has_submission || response.data.registration_data)) {
           await this.saveBackendDataToLocalStorage(response.data);
+        } else if (this.id && this.id !== 'new') {
+          // 如果是编辑模式但没有找到数据，说明ID不存在
+          console.warn('Step4 - Registration not found for ID:', this.id);
+          this.$message.warning('Registration not found');
+          this.$router.push('/dashboard?tab=registrations');
         }
         
       } catch (error) {
         console.error('Failed to load backend data:', error);
-        // 后端数据加载失败不影响正常流程
+        
+        // 如果是404错误且在编辑模式，说明ID不存在
+        if (this.id && this.id !== 'new' && error.response && error.response.status === 404) {
+          this.$message.warning('Registration not found');
+          this.$router.push('/dashboard?tab=registrations');
+        }
+        // 其他错误不阻塞流程
       }
     },
 
@@ -350,7 +492,7 @@ export default {
             email: regData.email,
             phone: regData.phone,
             affiliation: regData.affiliation,
-            paperTitle: regData.paper_id
+            paperId: regData.paper_id
           };
           localStorage.setItem(
             this.getStorageKey('conferenceUserInfo'), 
@@ -368,6 +510,11 @@ export default {
           await this.loadAndSaveImage(images.screenshot, 'conferencePaymentProof');
         }
         
+        // 保存支付方式信息（如果本地没有）
+        if (regData.payment_method && !localStorage.getItem(this.getStorageKey('conferencePaymentMethod'))) {
+          localStorage.setItem(this.getStorageKey('conferencePaymentMethod'), regData.payment_method);
+        }
+        
         console.log('Step4 - Backend data saved to localStorage');
         
       } catch (error) {
@@ -378,23 +525,33 @@ export default {
     getProductDescription(productCode) {
       const products = [
         { 
-          code: 'IEEE Member Registration', 
-          price: 700, 
-          description: 'For IEEE members with valid membership'
+          code: 'IEEE Member', 
+          price: 700,
+          priceRMB: 5000,
+          description: 'For IEEE members'
         },
         { 
-          code: 'Non-IEEE Member Registration', 
-          price: 840, 
+          code: 'Non-IEEE Member', 
+          price: 840,
+          priceRMB: 6000,
           description: 'For non-IEEE members'
         },
         { 
-          code: 'IEEE Student/Life Member Registration', 
-          price: 500, 
+          code: 'Life Member', 
+          price: 500,
+          priceRMB: 3600,
+          description: 'For IEEE life members'
+        },
+        { 
+          code: 'Student - IEEE Member', 
+          price: 500,
+          priceRMB: 3600,
           description: 'For students with IEEE membership'
         },
         { 
-          code: 'Non-IEEE Student Member Registration', 
-          price: 610, 
+          code: 'Student - Non-IEEE Member', 
+          price: 610,
+          priceRMB: 4400,
           description: 'For students without IEEE membership'
         }
       ];
@@ -407,9 +564,7 @@ export default {
       try {
         // 从后端加载图片
         const axios = (await import('axios')).default;
-        const config = (await import('config')).default;
         
-
         let fullUrl;
         if (imageUrl.startsWith('http')) {
           fullUrl = imageUrl;
@@ -425,29 +580,78 @@ export default {
           withCredentials: true
         });
         
-        // 将blob转换为base64
         const blob = response.data;
+        
+        // 检查文件大小，超过2MB的不存储到localStorage
+        const MAX_STORAGE_SIZE = 2 * 1024 * 1024; // 2MB
+        const shouldStore = blob.size <= MAX_STORAGE_SIZE;
+        
+        if (!shouldStore) {
+          console.log(`Step4 - Backend image too large (${Math.round(blob.size / 1024)}KB), skipping localStorage storage`);
+          // 如果是支付截图，仍然需要从后端加载并显示，只是不存本地
+          if (storageKey === 'conferencePaymentProof') {
+            const reader = new FileReader();
+            reader.onload = () => {
+              this.uploadedProof = reader.result;
+              console.log(`Step4 - Large backend image loaded for display only: ${storageKey}`);
+            };
+            reader.readAsDataURL(blob);
+          }
+          return; // 跳过localStorage存储
+        }
+        
         const reader = new FileReader();
         
         return new Promise((resolve, reject) => {
           reader.onload = () => {
             const base64Data = reader.result;
-            localStorage.setItem(this.getStorageKey(storageKey), base64Data);
-            console.log(`Step4 - Image loaded and saved to localStorage: ${storageKey}`);
             
-            // 如果是支付截图，同时更新当前组件的状态
-            if (storageKey === 'conferencePaymentProof') {
-              this.uploadedProof = base64Data;
+            // 检查存储空间
+            if (!this.checkStorageQuota(base64Data)) {
+              console.log('Step4 - Storage quota exceeded for backend image, cleaning up...');
+              this.cleanupOldStorageData();
+              
+              // 再次尝试
+              if (!this.checkStorageQuota(base64Data)) {
+                console.warn(`Step4 - Cannot save backend image to localStorage due to quota: ${storageKey}`);
+                // 如果是支付截图，仍然显示但不存储
+                if (storageKey === 'conferencePaymentProof') {
+                  this.uploadedProof = base64Data;
+                }
+                resolve(); // 不阻塞流程
+                return;
+              }
             }
             
-            resolve();
+            try {
+              localStorage.setItem(this.getStorageKey(storageKey), base64Data);
+              console.log(`Step4 - Image loaded and saved to localStorage: ${storageKey}`);
+              
+              // 如果是支付截图，同时更新当前组件的状态
+              if (storageKey === 'conferencePaymentProof') {
+                this.uploadedProof = base64Data;
+              }
+              
+              resolve();
+            } catch (storageError) {
+              console.warn(`Step4 - Failed to save backend image to localStorage: ${storageKey}`, storageError);
+              // 如果是支付截图，仍然显示但不存储
+              if (storageKey === 'conferencePaymentProof') {
+                this.uploadedProof = base64Data;
+              }
+              resolve(); // 不阻塞流程
+            }
           };
-          reader.onerror = reject;
+          reader.onerror = () => {
+            console.warn(`Step4 - Failed to read backend image: ${storageKey}`);
+            resolve(); // 不阻塞流程
+          };
           reader.readAsDataURL(blob);
         });
         
       } catch (error) {
         console.warn(`Step4 - Failed to load image ${imageUrl}:`, error);
+        // 不阻塞流程
       }
     },
 
@@ -493,6 +697,41 @@ export default {
       }
     },
 
+
+
+    // 检查localStorage可用空间
+    checkStorageQuota(data) {
+      const testKey = '_storage_test_';
+      try {
+        localStorage.setItem(testKey, data);
+        localStorage.removeItem(testKey);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    // 清理旧的localStorage数据
+    cleanupOldStorageData() {
+      try {
+        const keys = Object.keys(localStorage);
+        const cleanupPatterns = [
+          /temp_/,
+          /^documentTasks/,
+        ];
+        
+        keys.forEach(key => {
+          const shouldCleanup = cleanupPatterns.some(pattern => pattern.test(key));
+          if (shouldCleanup) {
+            console.log(`Step4 - Cleaning up old storage data: ${key}`);
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (error) {
+        console.warn('Step4 - Failed to cleanup old storage data:', error);
+      }
+    },
+
     handleFileChange(file) {
       const isImage = file.raw.type.indexOf('image/') === 0;
       const isLt5M = file.raw.size / 1024 / 1024 < 5;
@@ -506,16 +745,53 @@ export default {
         return;
       }
 
+      // 检查文件大小，超过2MB的不存储到localStorage
+      const MAX_STORAGE_SIZE = 2 * 1024 * 1024; // 2MB
+      const shouldStore = file.raw.size <= MAX_STORAGE_SIZE;
+      
+      if (!shouldStore) {
+        console.log(`Step4 - File too large (${Math.round(file.raw.size / 1024)}KB), skipping localStorage storage`);
+        this.$message.info(`Image size: ${Math.round(file.raw.size / 1024)}KB. Large images won't be cached locally.`);
+      }
+
       // 读取文件并创建预览
       const reader = new FileReader();
       reader.onload = (e) => {
-        this.uploadedProof = e.target.result;
-        this.paymentFile = file.raw; // 保存实际文件对象
-        if (this.currentUserId) {
-          localStorage.setItem(this.getStorageKey('conferencePaymentProof'), this.uploadedProof);
+        const base64Data = e.target.result;
+        
+        this.uploadedProof = base64Data;
+        this.paymentFile = file.raw; // 保存原始文件对象
+        
+        // 只有小文件才存储到localStorage
+        if (shouldStore && this.currentUserId) {
+          try {
+            // 检查存储空间
+            if (!this.checkStorageQuota(base64Data)) {
+              console.log('Step4 - Storage quota exceeded, cleaning up...');
+              this.cleanupOldStorageData();
+              
+              // 再次检查，如果还是不行就跳过存储
+              if (!this.checkStorageQuota(base64Data)) {
+                console.warn('Step4 - Storage quota still exceeded, skipping localStorage');
+              } else {
+                localStorage.setItem(this.getStorageKey('conferencePaymentProof'), base64Data);
+              }
+            } else {
+              localStorage.setItem(this.getStorageKey('conferencePaymentProof'), base64Data);
+            }
+          } catch (storageError) {
+            console.warn('Step4 - Failed to save to localStorage:', storageError);
+            // 不显示错误消息，因为不存储到localStorage不影响功能
+          }
         }
+        
         this.$message.success('Payment proof uploaded successfully!');
       };
+      
+      reader.onerror = () => {
+        this.$message.error('Failed to read image file');
+      };
+      
       reader.readAsDataURL(file.raw);
     },
 
@@ -534,32 +810,73 @@ export default {
         return;
       }
 
+      console.log('🔍 Step4: 开始提交注册...');
+      
       // Check if there's an approved submission
       const hasApprovedSubmission = await this.checkApprovedSubmission();
+      
+      console.log('🔍 Step4: 检查结果 hasApprovedSubmission =', hasApprovedSubmission);
+      
       if (hasApprovedSubmission) {
         // 显示自定义确认对话框
+        console.log('⚠️ Step4: 发现已批准的注册，显示确认对话框');
         this.showConfirmDialog = true;
+        console.log('⚠️ Step4: showConfirmDialog =', this.showConfirmDialog);
       } else {
         // No approved submission, submit directly
+        console.log('✅ Step4: 无已批准注册，直接提交');
         this.performSubmission();
       }
     },
 
     async checkApprovedSubmission() {
       try {
-        const axios = (await import('axios')).default;
-        const response = await axios.get('/api/submissions/check-registration', {
-          withCredentials: true
-        });
-
-        console.log('Check approved submission response:', response.data);
+        console.log('🔍 Step4: 调用 API 检查已批准的注册...');
+        console.log('🔍 Step4: 当前编辑模式 editMode =', this.editMode);
+        console.log('🔍 Step4: 当前注册ID this.id =', this.id);
         
-        if (response.data.success && response.data.has_submission && response.data.approved) {
-          return true;
+        // 如果是新建注册（id='new' 或没有 id），不需要检查，直接提交
+        if (!this.id || this.id === 'new') {
+          console.log('✅ Step4: 新建注册模式，无需检查已批准状态');
+          return false;
         }
+        
+        const axios = (await import('axios')).default;
+        
+        let apiUrl;
+        let response;
+        
+        // 如果是编辑模式且有具体的ID，检查这个特定的注册记录
+        if (this.editMode && this.id && this.id !== 'new') {
+          console.log('🔍 Step4: 编辑模式 - 检查特定注册记录 ID:', this.id);
+          apiUrl = `/api/submissions/registration/${this.id}`;
+          response = await axios.get(apiUrl, {
+            withCredentials: true
+          });
+          
+          console.log('🔍 Step4: 特定注册记录 API 响应:', response.data);
+          
+          // 检查这个特定注册是否已批准
+          if (response.data.success && response.data.registration_data) {
+            const status = response.data.status || 
+                          (response.data.registration_data && response.data.registration_data.status);
+            const approved = response.data.approved === true || status === 'approved';
+            
+            console.log('🔍 Step4: 特定注册状态 status =', status);
+            console.log('🔍 Step4: 特定注册是否批准 approved =', approved);
+            
+            if (approved) {
+              console.log('⚠️ Step4: 当前编辑的注册已被批准！');
+              return true;
+            }
+          }
+        }
+        
+        console.log('ℹ️ Step4: 未发现已批准的注册');
         return false;
       } catch (error) {
-        console.warn('Failed to check approved submission:', error);
+        console.error('❌ Step4: 检查已批准注册失败:', error);
+        console.error('❌ Step4: 错误详情:', error.response?.data || error.message);
         // Continue with normal flow if check fails
         return false;
       }
@@ -576,11 +893,33 @@ export default {
         formData.append('name', this.userInfo.name || '');
         formData.append('phone', this.userInfo.phone || '');
         formData.append('affiliation', this.userInfo.affiliation || '');
-        formData.append('paper_id', this.userInfo.paperTitle || '');
+        formData.append('paper_id', this.userInfo.paperId || '');
+        formData.append('paper_pages', this.userInfo.paperPages || '');
         
         // 添加产品信息
         formData.append('productCode', this.selectedProduct.code || '');
         formData.append('productPrice', this.selectedProduct.price || '');
+        formData.append('productPriceRMB', this.selectedProduct.priceRMB || '');
+        
+        // 添加总金额（包含超页费）
+        formData.append('totalAmountUSD', this.totalUSD);
+        formData.append('totalAmountRMB', this.totalRMB);
+        
+        // 添加超页费信息
+        formData.append('extraPageFeeUSD', this.extraPageFeeUSD);
+        formData.append('extraPageFeeRMB', this.extraPageFeeRMB);
+        
+        // 添加注册类别信息
+        const registrationCategory = this.selectedProduct.code && this.selectedProduct.code.includes('Student') ? 'student' : 'full';
+        formData.append('registrationCategory', registrationCategory);
+        
+        // 添加支付方式信息
+        formData.append('paymentMethod', this.paymentMethod || 'international');
+        
+        // 如果处于编辑模式，添加editId
+        if (this.editMode && this.id) {
+          formData.append('editId', this.id);
+        }
         
         // 处理支付截图文件
         let screenshotFileToUpload = this.paymentFile;
@@ -673,7 +1012,13 @@ export default {
           localStorage.setItem(this.getStorageKey('conferenceRegistrationId'), registrationData.registrationId);
           
           // 跳转到收据页面
-          this.$router.push('/conference/step5');
+          if (this.id === 'new') {
+            this.$router.push('/conference/new/step5');
+          } else if (this.editMode && this.id) {
+            this.$router.push(`/conference/${this.id}/step5`);
+          } else {
+            this.$router.push('/conference/new/step5');
+          }
         } else {
           this.$message.error(response.data.message || 'Submission failed. Please try again.');
         }
@@ -709,7 +1054,13 @@ export default {
     },
 
     goBack() {
-      this.$router.push('/conference/step3');
+      if (this.id === 'new') {
+        this.$router.push('/conference/new/step3');
+      } else if (this.editMode && this.id) {
+        this.$router.push(`/conference/${this.id}/step3`);
+      } else {
+        this.$router.push('/conference/new/step3');
+      }
     }
   }
 }
@@ -831,9 +1182,28 @@ export default {
   color: #666;
 }
 
+.extra-fee-note {
+  color: #f56c6c !important;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+.price-display {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .info-row .price {
   color: #f56c6c;
   font-size: 16px;
+}
+
+.info-row .price-rmb {
+  color: #909399;
+  font-size: 14px;
+  font-weight: normal;
 }
 
 .payment-proof {
@@ -1041,36 +1411,101 @@ export default {
 }
 
 .dialog-header {
-  padding: 20px 20px 0;
+  padding: 20px 20px 15px;
   text-align: center;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border-bottom: 2px solid #ff9800;
+  border-radius: 12px 12px 0 0;
 }
 
 .dialog-header h3 {
   margin: 0;
-  color: #333;
-  font-size: 18px;
-  font-weight: 600;
+  color: #e65100;
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.dialog-header h3 i {
+  font-size: 24px;
+  color: #f57c00;
 }
 
 .dialog-content {
-  padding: 20px;
-  text-align: center;
+  padding: 24px;
+  text-align: left;
 }
 
 .dialog-icon {
+  text-align: center;
   margin-bottom: 16px;
 }
 
 .dialog-icon i {
-  font-size: 48px;
+  font-size: 56px;
   color: #ff9800;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
 }
 
 .dialog-message {
   color: #666;
   font-size: 15px;
-  line-height: 1.5;
-  margin-bottom: 0;
+  line-height: 1.6;
+}
+
+.dialog-message .warning-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e65100;
+  margin: 0 0 12px 0;
+}
+
+.dialog-message .warning-details {
+  font-weight: 500;
+  color: #555;
+  margin: 12px 0 8px 0;
+}
+
+.dialog-message .warning-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 16px 0;
+}
+
+.dialog-message .warning-list li {
+  padding: 8px 12px;
+  margin: 6px 0;
+  background: #fff8e1;
+  border-left: 4px solid #ff9800;
+  border-radius: 4px;
+  color: #555;
+}
+
+.dialog-message .warning-list li strong {
+  color: #e65100;
+  font-weight: 600;
+}
+
+.dialog-message .warning-question {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin: 16px 0 0 0;
+  text-align: center;
 }
 
 .dialog-actions {
@@ -1082,44 +1517,57 @@ export default {
 
 .dialog-btn {
   flex: 1;
-  padding: 12px 24px;
+  padding: 14px 24px;
   border: none;
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-height: 44px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.dialog-btn i {
+  font-size: 16px;
 }
 
 .cancel-btn {
-  background-color: #4caf50;
+  background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
   color: white;
 }
 
 .cancel-btn:hover {
-  background-color: #45a049;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
 .cancel-btn:active {
-  background-color: #3d8b40;
+  background: linear-gradient(135deg, #43a047 0%, #388e3c 100%);
   transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(76, 175, 80, 0.2);
 }
 
 .confirm-btn {
-  background-color: #ff9800;
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
   color: white;
 }
 
 .confirm-btn:hover {
-  background-color: #ffb74d;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #ffb74d 0%, #ff9800 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
 }
 
 .confirm-btn:active {
-  background-color: #f57c00;
+  background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);
   transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(255, 152, 0, 0.3);
 }
 
 .el-button {

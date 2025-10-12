@@ -148,7 +148,8 @@ class AsyncPDFManager {
     const typeNames = {
       'receipt': '收据',
       'confirmation-letter': '确认函',
-      'registration-info': '注册信息'
+      'registration-info': '注册信息',
+      'meal-voucher': '餐券'
     };
     return typeNames[type] || type;
   }

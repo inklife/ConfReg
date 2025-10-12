@@ -20,7 +20,7 @@
       <!-- 无已批准注册的状态 -->
       <div v-if="!hasApprovedRegistration" class="empty-state">
         <el-empty description="You need to have approved registrations before downloading related documents">
-          <el-button type="primary" @click="$router.push('/conference/auto')">Register Now</el-button>
+          <el-button type="primary" @click="$router.push('/conference/new')">Register Now</el-button>
         </el-empty>
       </div>
       
@@ -74,19 +74,6 @@
         </div>
         
         <div class="document-grid">
-          <!-- 确认函 -->
-          <el-card class="document-card" shadow="hover">
-            <div class="document-icon">
-              <i class="el-icon-document"></i>
-            </div>
-            <h4>Confirmation Letter</h4>
-            <p>Conference attendance confirmation letter for visa applications and other purposes</p>
-            <el-button type="success" @click="downloadDocument('confirmation')" :loading="downloadLoading.confirmation">
-              <i v-if="isDocumentDownloadable('confirmation')" class="el-icon-download"></i>
-              {{ getDownloadButtonText('confirmation') }}
-            </el-button>
-          </el-card>
-          
           <!-- 收据 -->
           <el-card class="document-card" shadow="hover">
             <div class="document-icon">
@@ -100,21 +87,24 @@
             </el-button>
           </el-card>
           
-          <!-- 注册信息 -->
+          <!-- 餐券 -->
           <el-card class="document-card" shadow="hover">
             <div class="document-icon">
-              <i class="el-icon-user"></i>
+              <i class="el-icon-food"></i>
             </div>
-            <h4>Registration Information</h4>
-            <p>Complete registration information sheet with all submitted details</p>
-            <el-button type="info" @click="downloadDocument('registration')" :loading="downloadLoading.registration">
-              <i v-if="isDocumentDownloadable('registration')" class="el-icon-download"></i>
-              {{ getDownloadButtonText('registration') }}
+            <h4>Meal Voucher</h4>
+            <p>Download meal vouchers for conference catering services</p>
+            <el-button 
+              type="success" 
+              @click="downloadDocument('mealVoucher')" 
+              :loading="downloadLoading.mealVoucher">
+              <i v-if="isDocumentDownloadable('mealVoucher')" class="el-icon-download"></i>
+              {{ getDownloadButtonText('mealVoucher') }}
             </el-button>
           </el-card>
           
           <!-- 参会证书 -->
-          <el-card class="document-card" shadow="hover">
+          <!-- <el-card class="document-card" shadow="hover">
             <div class="document-icon">
               <i class="el-icon-medal"></i>
             </div>
@@ -128,7 +118,7 @@
               <i v-if="isCertificateAvailable && isDocumentDownloadable('certificate')" class="el-icon-download"></i>
               {{ isCertificateAvailable ? 'Download Certificate' : 'Available After Conference' }}
             </el-button>
-          </el-card>
+          </el-card> -->
         </div>
         
         <!-- 注册信息概览 -->
@@ -139,12 +129,17 @@
             <el-table-column prop="productCode" label="Product Code" width="120"></el-table-column>
             <el-table-column prop="name" label="Attendee Name"></el-table-column>
             <el-table-column prop="email" label="Email"></el-table-column>
-            <el-table-column prop="productPrice" label="Fee" width="100">
+            <el-table-column prop="paper_id" label="Paper ID" width="100">
               <template slot-scope="scope">
-                ${{ scope.row.productPrice }} USD
+                {{ scope.row.paper_id || 'N/A' }}
               </template>
             </el-table-column>
-            <el-table-column prop="submissionTime" label="Registration Time" width="180">
+            <el-table-column label="Amount Paid" width="120">
+              <template slot-scope="scope">
+                {{ getAmountPaidDisplay(scope.row) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="submissionTime" label="Created Time" width="130">
               <template slot-scope="scope">
                 <div class="registration-time">
                   <div>{{ formatDateOnly(scope.row.submissionTime) }}</div>
@@ -152,7 +147,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="reviewTime" label="Approval Time" width="180">
+            <el-table-column prop="reviewTime" label="Approval Time" width="130">
               <template slot-scope="scope">
                 <div class="registration-time">
                   <div>{{ formatDateOnly(scope.row.reviewTime) }}</div>
@@ -162,7 +157,8 @@
             </el-table-column>
             <el-table-column label="Status" width="120">
               <template slot-scope="scope">
-                <el-tag type="success">Approved</el-tag>
+                <el-tag v-if="scope.row.isRefunded" type="danger">Refunded</el-tag>
+                <el-tag v-else type="success">Approved</el-tag>
               </template>
             </el-table-column>
           </el-table>
@@ -170,6 +166,90 @@
         </div>
       </div>
     </el-card>
+    
+    <!-- 注册/餐券选择对话框 -->
+    <el-dialog
+      :title="selectionDialogTitle"
+      :visible.sync="registrationSelectionDialog"
+      width="80%"
+      :close-on-click-modal="false">
+      <div class="registration-selection-content">
+        <p class="selection-tip">{{ selectionDialogTip }}</p>
+        
+        <!-- 注册选择表格 -->
+        <el-table
+          v-if="pendingDownloadType !== 'mealVoucher'"
+          :data="approvedRegistrations"
+          border
+          highlight-current-row
+          @current-change="handleRegistrationSelect"
+          style="width: 100%; margin-top: 15px;">
+          <el-table-column type="index" label="#" width="50"></el-table-column>
+          <el-table-column prop="productCode" label="Product Code" width="120"></el-table-column>
+          <el-table-column prop="name" label="Attendee Name" min-width="120"></el-table-column>
+          <el-table-column prop="email" label="Email" min-width="150"></el-table-column>
+          <el-table-column label="Amount Paid" width="140">
+            <template slot-scope="scope">
+              {{ getAmountPaidDisplay(scope.row) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="submissionTime" label="Created Time" width="180">
+            <template slot-scope="scope">
+              <div class="registration-time">
+                <div>{{ formatDateOnly(scope.row.submissionTime) }}</div>
+                <div class="time-part">{{ formatTimeOnly(scope.row.submissionTime) }}</div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="Action" width="100" fixed="right">
+            <template slot-scope="scope">
+              <el-button
+                type="primary"
+                size="mini"
+                @click="confirmRegistrationSelection(scope.row)">
+                Select
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <!-- 餐券选择表格 -->
+        <el-table
+          v-else
+          :data="approvedMealVouchers"
+          border
+          highlight-current-row
+          style="width: 100%; margin-top: 15px;">
+          <el-table-column type="index" label="#" width="50"></el-table-column>
+          <el-table-column prop="voucher_code" label="Voucher Code" width="150"></el-table-column>
+          <el-table-column prop="attendee_name" label="Attendee Name" min-width="120"></el-table-column>
+          <el-table-column prop="email" label="Email" min-width="150"></el-table-column>
+          <el-table-column label="Quantity" width="100">
+            <template slot-scope="scope">
+              {{ scope.row.quantity }} meal(s)
+            </template>
+          </el-table-column>
+          <el-table-column label="Total Amount" width="140">
+            <template slot-scope="scope">
+              {{ getMealVoucherAmountDisplay(scope.row) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="Action" width="100" fixed="right">
+            <template slot-scope="scope">
+              <el-button
+                type="primary"
+                size="mini"
+                @click="confirmMealVoucherSelection(scope.row)">
+                Select
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="registrationSelectionDialog = false">Cancel</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -184,11 +264,11 @@ export default {
     return {
       hasApprovedRegistration: false,
       approvedRegistrations: [],
+      approvedMealVouchers: [], // 新增：已批准的餐券列表
       downloadLoading: {
-        confirmation: false,
         receipt: false,
-        registration: false,
-        certificate: false
+        certificate: false,
+        mealVoucher: false
       },
       downloadHistory: [],
       isCertificateAvailable: false,
@@ -210,12 +290,30 @@ export default {
       hasInitialized: false, // 添加初始化状态标志
       
       // 防止重复下载
-      downloadingTasks: new Set() // 存储正在下载的任务标识
+      downloadingTasks: new Set(), // 存储正在下载的任务标识
+      
+      // 注册选择对话框
+      registrationSelectionDialog: false,
+      selectedRegistrationId: null,
+      pendingDownloadType: null // 待处理的下载类型
     };
   },
   computed: {
     hasPendingTasks() {
       return Object.keys(this.allPendingTasks).length > 0;
+    },
+    
+    // 选择对话框标题
+    selectionDialogTitle() {
+      return this.pendingDownloadType === 'mealVoucher' ? 'Select Meal Voucher' : 'Select Registration';
+    },
+    
+    // 选择对话框提示文本
+    selectionDialogTip() {
+      if (this.pendingDownloadType === 'mealVoucher') {
+        return 'You have multiple approved meal vouchers. Please select which one you want to download:';
+      }
+      return 'You have multiple approved registrations. Please select which one you want to download the document for:';
     },
     
     // 检查文档是否可以下载（任务状态为 generated）
@@ -665,6 +763,7 @@ export default {
           this.approvedRegistrations = response.data;
           this.hasApprovedRegistration = this.approvedRegistrations.length > 0;
           console.log('DocumentManagement: Found approved registrations:', this.approvedRegistrations.length);
+          console.log('DocumentManagement: Registrations data:', JSON.stringify(this.approvedRegistrations, null, 2));
         } else {
           console.log('DocumentManagement: No data in response or response failed');
           this.hasApprovedRegistration = false;
@@ -742,7 +841,9 @@ export default {
         'registration-info': 'registration',
         'confirmation': 'confirmation',
         'confirmation-letter': 'confirmation', // 新增：将 confirmation-letter 映射到 confirmation
-        'receipt': 'receipt'
+        'receipt': 'receipt',
+        'meal-voucher': 'mealVoucher', // 新增：将 meal-voucher 映射到 mealVoucher
+        'mealVoucher': 'mealVoucher'
       };
       return typeMapping[serverType] || serverType;
     },
@@ -1595,8 +1696,89 @@ export default {
           }
         }
         
-        if (type === 'confirmation' || type === 'receipt' || type === 'registration') {
+        if (type === 'mealVoucher') {
+          // 餐券特殊处理：先加载餐券列表
           const axios = (await import('axios')).default;
+          
+          try {
+            // 获取已批准的餐券列表
+            const response = await axios.get('/api/vouchers/', {
+              withCredentials: true
+            });
+            
+            if (response.data && response.data.vouchers) {
+              this.approvedMealVouchers = response.data.vouchers.filter(v => v.status === 'approved');
+              
+              if (this.approvedMealVouchers.length === 0) {
+                this.$message.warning('No approved meal vouchers found');
+                return;
+              }
+              
+              if (this.approvedMealVouchers.length > 1) {
+                // 有多个餐券，显示选择对话框
+                this.pendingDownloadType = type;
+                this.selectedRegistrationId = null;
+                this.registrationSelectionDialog = true;
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('Failed to load meal vouchers:', error);
+            this.$message.error('Failed to load meal vouchers. Please try again.');
+            return;
+          }
+          
+          this.$message.info(`Starting generation of ${this.getDocumentTypeName(type)}...`);
+          await this.startDocumentGeneration(axios, type);
+          
+        } else if (type === 'confirmation' || type === 'receipt' || type === 'registration') {
+          // 注册相关文档处理
+          const axios = (await import('axios')).default;
+          
+          // 对于 receipt，需要排除已退款的注册
+          if (type === 'receipt') {
+            try {
+              // 重新加载注册列表，排除已退款的
+              const response = await userService.getApprovedRegistrations(true);
+              
+              if (response && response.success && response.data) {
+                const nonRefundedRegistrations = response.data;
+                
+                if (nonRefundedRegistrations.length === 0) {
+                  this.$message.warning('No valid registration found for receipt generation. Refunded registrations cannot generate receipts.');
+                  return;
+                }
+                
+                if (nonRefundedRegistrations.length > 1) {
+                  // 有多个未退款的注册，显示选择对话框（使用筛选后的列表）
+                  this.approvedRegistrations = nonRefundedRegistrations;
+                  this.pendingDownloadType = type;
+                  this.selectedRegistrationId = null;
+                  this.registrationSelectionDialog = true;
+                  return;
+                }
+                
+                // 只有一个未退款的注册，直接使用它
+                // 这里不需要特别处理，因为后续逻辑会使用第一个注册
+              } else {
+                this.$message.error('Failed to load registrations');
+                return;
+              }
+            } catch (error) {
+              console.error('Failed to load non-refunded registrations:', error);
+              this.$message.error('Failed to load registrations. Please try again.');
+              return;
+            }
+          } else {
+            // 对于其他类型（confirmation, registration），使用原有的列表
+            if (this.approvedRegistrations.length > 1) {
+              // 有多个注册，显示选择对话框
+              this.pendingDownloadType = type;
+              this.selectedRegistrationId = null;
+              this.registrationSelectionDialog = true;
+              return;
+            }
+          }
           
           this.$message.info(`Starting generation of ${this.getDocumentTypeName(type)}...`);
           
@@ -1624,7 +1806,7 @@ export default {
       }
     },
 
-    async startDocumentGeneration(axios, type) {
+    async startDocumentGeneration(axios, type, registrationId = null) {
       try {
         // 第一步：启动PDF生成
         let generateEndpoint;
@@ -1638,13 +1820,28 @@ export default {
           case 'registration':
             generateEndpoint = '/api/submissions/generate_registration';
             break;
+          case 'mealVoucher':
+            generateEndpoint = '/api/submissions/generate_meal_voucher';
+            break;
           default:
             generateEndpoint = '/api/submissions/generate_receipt';
         }
 
-        const generateResponse = await axios.post(generateEndpoint, {
+        const requestBody = {
           marginMode: this.pdfMarginMode
-        }, {
+        };
+        
+        // 如果指定了 registrationId，添加到请求中
+        // 对于餐券类型，使用 voucherId 而不是 registrationId
+        if (registrationId) {
+          if (type === 'mealVoucher') {
+            requestBody.voucherId = registrationId;
+          } else {
+            requestBody.registrationId = registrationId;
+          }
+        }
+
+        const generateResponse = await axios.post(generateEndpoint, requestBody, {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json'
@@ -1757,9 +1954,146 @@ export default {
         'confirmation': 'Confirmation Letter',
         'receipt': 'Receipt',
         'registration': 'Registration Information',
-        'certificate': 'Certificate'
+        'certificate': 'Certificate',
+        'mealVoucher': 'Meal Voucher'
       };
       return typeNames[type] || type;
+    },
+    
+    // 获取金额显示（与 PDF 生成逻辑一致）
+    getAmountPaidDisplay(registration) {
+      let amountPaid, currency, currencySymbol;
+      
+      // 兼容不同的命名方式（驼峰和下划线）
+      const paymentMethod = registration.paymentMethod || registration.payment_method;
+      const totalAmountRMB = registration.totalAmountRMB || registration.total_amount_rmb;
+      const totalAmountUSD = registration.totalAmountUSD || registration.total_amount_usd;
+      const productPrice = registration.productPrice || registration.product_price;
+      
+      console.log('getAmountPaidDisplay:', {
+        id: registration.id,
+        paymentMethod,
+        totalAmountRMB,
+        totalAmountUSD,
+        productPrice
+      });
+      
+      // 根据支付方式确定金额和货币（与 PDF 生成逻辑完全一致）
+      if (paymentMethod === 'domestic' && totalAmountRMB) {
+        amountPaid = totalAmountRMB;
+        currency = 'CNY';
+        currencySymbol = '¥';
+      } else if (paymentMethod === 'international' && totalAmountUSD) {
+        amountPaid = totalAmountUSD;
+        currency = 'USD';
+        currencySymbol = '$';
+      } else {
+        // 后备逻辑：优先USD，其次RMB，最后product_price
+        if (totalAmountUSD) {
+          amountPaid = totalAmountUSD;
+          currency = 'USD';
+          currencySymbol = '$';
+        } else if (totalAmountRMB) {
+          amountPaid = totalAmountRMB;
+          currency = 'CNY';
+          currencySymbol = '¥';
+        } else {
+          amountPaid = productPrice;
+          currency = 'USD';
+          currencySymbol = '$';
+        }
+      }
+      
+      console.log('Result:', `${currencySymbol}${amountPaid} ${currency}`);
+      return `${currencySymbol}${amountPaid} ${currency}`;
+    },
+    
+    // 处理注册选择（表格行点击）
+    handleRegistrationSelect(currentRow) {
+      if (currentRow) {
+        this.selectedRegistrationId = currentRow.id;
+      }
+    },
+    
+    // 确认选择注册并开始下载
+    async confirmRegistrationSelection(registration) {
+      if (!registration) {
+        this.$message.warning('Please select a registration');
+        return;
+      }
+      
+      this.selectedRegistrationId = registration.id;
+      this.registrationSelectionDialog = false;
+      
+      // 开始生成文档
+      try {
+        const axios = (await import('axios')).default;
+        const type = this.pendingDownloadType;
+        
+        this.downloadLoading[type] = true;
+        this.$message.info(`Starting generation of ${this.getDocumentTypeName(type)} for ${registration.name}...`);
+        
+        // 使用选定的 registrationId 调用生成接口
+        await this.startDocumentGeneration(axios, type, this.selectedRegistrationId);
+        
+      } catch (error) {
+        console.error(`Download ${this.pendingDownloadType} failed:`, error);
+        if (error.response && error.response.status === 404) {
+          this.$message.error('No approved registration found. Please complete your registration first.');
+        } else {
+          this.$message.error(`Failed to start generation of ${this.getDocumentTypeName(this.pendingDownloadType)}: ${error.message || error}`);
+        }
+      } finally {
+        this.downloadLoading[this.pendingDownloadType] = false;
+        this.pendingDownloadType = null;
+      }
+    },
+    
+    // 确认选择餐券并开始下载
+    async confirmMealVoucherSelection(voucher) {
+      if (!voucher) {
+        this.$message.warning('Please select a meal voucher');
+        return;
+      }
+      
+      this.selectedRegistrationId = voucher.id;
+      this.registrationSelectionDialog = false;
+      
+      // 开始生成文档
+      try {
+        const axios = (await import('axios')).default;
+        const type = this.pendingDownloadType;
+        
+        this.downloadLoading[type] = true;
+        const attendeeName = voucher.attendee_name || voucher.attendeeName;
+        this.$message.info(`Starting generation of ${this.getDocumentTypeName(type)} for ${attendeeName}...`);
+        
+        // 使用选定的 voucherId 调用生成接口
+        await this.startDocumentGeneration(axios, type, this.selectedRegistrationId);
+        
+      } catch (error) {
+        console.error(`Download ${this.pendingDownloadType} failed:`, error);
+        if (error.response && error.response.status === 404) {
+          this.$message.error('No approved meal voucher found.');
+        } else {
+          this.$message.error(`Failed to start generation of ${this.getDocumentTypeName(this.pendingDownloadType)}: ${error.message || error}`);
+        }
+      } finally {
+        this.downloadLoading[this.pendingDownloadType] = false;
+        this.pendingDownloadType = null;
+      }
+    },
+    
+    // 获取餐券金额显示
+    getMealVoucherAmountDisplay(voucher) {
+      const paymentMethod = voucher.payment_method || voucher.paymentMethod;
+      if (paymentMethod === 'domestic') {
+        const amount = voucher.total_amount_rmb || voucher.totalAmountRmb || '0.00';
+        return `¥${amount}`;
+      } else {
+        const amount = voucher.total_amount_usd || voucher.totalAmountUsd || '0.00';
+        return `$${amount}`;
+      }
     },
     
     updateDownloadHistory(type) {
@@ -2520,6 +2854,61 @@ export default {
     font-size: 12px;
     text-align: center;
     white-space: nowrap;
+  }
+}
+
+/* 注册选择对话框样式 */
+.registration-selection-content {
+  padding: 0;
+}
+
+.selection-tip {
+  color: #606266;
+  font-size: 14px;
+  margin: 0 0 15px 0;
+  line-height: 1.6;
+  background: #f0f9ff;
+  border-left: 4px solid #409EFF;
+  padding: 12px 16px;
+  border-radius: 4px;
+}
+
+.registration-selection-content .el-table {
+  margin-top: 0;
+}
+
+.registration-selection-content .el-table .el-button--mini {
+  padding: 6px 12px;
+}
+
+.registration-selection-content .registration-time {
+  font-size: 13px;
+}
+
+.registration-selection-content .registration-time .time-part {
+  color: #909399;
+  font-size: 12px;
+}
+
+/* 对话框在移动设备上的适配 */
+@media (max-width: 768px) {
+  .el-dialog {
+    width: 95% !important;
+    margin-top: 5vh !important;
+  }
+  
+  .registration-selection-content .el-table {
+    font-size: 12px;
+  }
+  
+  .registration-selection-content .el-table th,
+  .registration-selection-content .el-table td {
+    padding: 8px 4px;
+  }
+  
+  .selection-tip {
+    font-size: 13px;
+    padding: 10px 12px;
   }
 }
 </style>

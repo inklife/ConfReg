@@ -6,15 +6,31 @@
         <p class="card-subtitle">Apply for refund for approved registrations, must request 30 days in advance</p>
       </div>
       
+      <!-- 重要退款政策提示 -->
+      <el-alert
+        title="Refund Policy Notice"
+        type="warning"
+        :closable="false"
+        show-icon
+        class="refund-policy-alert">
+        <div class="policy-content">
+          <p><strong>Important Notes:</strong></p>
+          <ul>
+            <li>If this registration is the <strong>only full registration</strong> (not student registration) for a paper ID, refund is <strong>NOT allowed</strong>.</li>
+            <li>All refunds are subject to a processing fee of <strong>$100 USD</strong> or <strong>¥750 RMB</strong> (automatically deducted from the refund amount).</li>
+          </ul>
+        </div>
+      </el-alert>
+      
       <!-- 无已批准注册的状态 -->
       <div v-if="!refundStatus.hasApprovedRegistration" class="empty-state">
         <el-empty description="You need to have approved registrations before requesting refunds">
-          <el-button type="primary" @click="$router.push('/conference/auto')">Register Now</el-button>
+          <el-button type="primary" @click="$router.push('/conference/new')">Register Now</el-button>
         </el-empty>
       </div>
       
       <!-- 有待处理的退款申请 -->
-      <div v-else-if="refundStatus.pendingRequest" class="pending-request">
+      <div v-if="refundStatus.pendingRequest" class="pending-request">
         <el-alert
           title="You have a pending refund request"
           type="warning"
@@ -22,226 +38,31 @@
           show-icon>
         </el-alert>
         
-        <div class="request-details">
-          <h4>Request Details</h4>
-          
-          <!-- 桌面端描述列表 -->
-          <div class="desktop-details">
-            <el-descriptions :column="2">
-              <el-descriptions-item label="Request Time">
-                {{ formatDate(refundStatus.pendingRequest.requestTime) }}
-              </el-descriptions-item>
-              <el-descriptions-item label="Refund Amount">
-                ${{ refundStatus.pendingRequest.refundAmount }} USD
-              </el-descriptions-item>
-              <el-descriptions-item label="Status">
-                <el-tag :type="getRefundStatusType(refundStatus.pendingRequest.status)">
-                  {{ getRefundStatusText(refundStatus.pendingRequest.status) }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="Admin Notes" v-if="refundStatus.pendingRequest.adminNotes">
-                {{ refundStatus.pendingRequest.adminNotes }}
-              </el-descriptions-item>
-            </el-descriptions>
-          </div>
-          
-          <!-- 移动端卡片形式 -->
-          <div class="mobile-details">
-            <div class="detail-card">
-              <div class="detail-item">
-                <div class="detail-label">Request Time</div>
-                <div class="detail-value">{{ formatDate(refundStatus.pendingRequest.requestTime) }}</div>
-              </div>
-              <div class="detail-item">
-                <div class="detail-label">Refund Amount</div>
-                <div class="detail-value amount-highlight">${{ refundStatus.pendingRequest.refundAmount }} USD</div>
-              </div>
-              <div class="detail-item">
-                <div class="detail-label">Status</div>
-                <div class="detail-value">
-                  <el-tag :type="getRefundStatusType(refundStatus.pendingRequest.status)" class="status-tag">
-                    {{ getRefundStatusText(refundStatus.pendingRequest.status) }}
-                  </el-tag>
-                </div>
-              </div>
-              <div class="detail-item full-width" v-if="refundStatus.pendingRequest.adminNotes">
-                <div class="detail-label">Admin Notes</div>
-                <div class="detail-value notes">{{ refundStatus.pendingRequest.adminNotes }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+
       </div>
       
-      <!-- 有已批准的退款申请 -->
-      <div v-else-if="refundStatus.approvedRequest" class="approved-request">
-        <el-alert
-          title="Your refund request has been approved"
-          type="success"
-          :closable="false"
-          show-icon>
-          <template slot="description">
-            Your refund has been approved and is being processed. You will receive the refund soon.
-          </template>
-        </el-alert>
-        
-        <!-- 已批准退款统计卡片 -->
-        <div class="approved-stats-info">
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <div class="stats-card approved-refund-status">
-                <div class="stats-icon">
-                  <i class="el-icon-check"></i>
-                </div>
-                <div class="stats-content">
-                  <div class="stats-number">1</div>
-                  <div class="stats-label">Approved Refund</div>
-                </div>
-              </div>
-            </el-col>
-            <el-col :span="8">
-              <div class="stats-card refund-amount">
-                <div class="stats-icon">
-                  <i class="el-icon-money"></i>
-                </div>
-                <div class="stats-content">
-                  <div class="stats-number">${{ refundStatus.approvedRequest.refundAmount }}</div>
-                  <div class="stats-label">Refund Amount</div>
-                </div>
-              </div>
-            </el-col>
-            <el-col :span="8">
-              <div class="stats-card processing-days">
-                <div class="stats-icon">
-                  <i class="el-icon-time"></i>
-                </div>
-                <div class="stats-content">
-                  <div class="stats-number">{{ getProcessingDays(refundStatus.approvedRequest.requestTime, refundStatus.approvedRequest.processTime) }}</div>
-                  <div class="stats-label">Processing Days</div>
-                </div>
-              </div>
-            </el-col>
-          </el-row>
-        </div>
-        
-        <div class="request-details">
-          <h4>Approved Refund Details</h4>
-          
-          <!-- 桌面端描述列表 -->
-          <div class="desktop-details">
-            <el-descriptions :column="2" border>
-              <el-descriptions-item label="Request Time">
-                {{ formatDate(refundStatus.approvedRequest.requestTime) }}
-              </el-descriptions-item>
-              <el-descriptions-item label="Refund Amount">
-                ${{ refundStatus.approvedRequest.refundAmount }} USD
-              </el-descriptions-item>
-              <el-descriptions-item label="Status">
-                <el-tag :type="getRefundStatusType(refundStatus.approvedRequest.status)">
-                  {{ getRefundStatusText(refundStatus.approvedRequest.status) }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="Process Time" v-if="refundStatus.approvedRequest.processTime">
-                {{ formatDate(refundStatus.approvedRequest.processTime) }}
-              </el-descriptions-item>
-              <el-descriptions-item label="Admin Notes" v-if="refundStatus.approvedRequest.adminNotes">
-                {{ refundStatus.approvedRequest.adminNotes }}
-              </el-descriptions-item>
-            </el-descriptions>
-          </div>
-          
-          <!-- 移动端卡片形式 -->
-          <div class="mobile-details">
-            <div class="detail-card">
-              <div class="detail-item">
-                <div class="detail-label">Request Time</div>
-                <div class="detail-value">{{ formatDate(refundStatus.approvedRequest.requestTime) }}</div>
-              </div>
-              <div class="detail-item">
-                <div class="detail-label">Refund Amount</div>
-                <div class="detail-value amount-highlight">${{ refundStatus.approvedRequest.refundAmount }} USD</div>
-              </div>
-              <div class="detail-item">
-                <div class="detail-label">Status</div>
-                <div class="detail-value">
-                  <el-tag :type="getRefundStatusType(refundStatus.approvedRequest.status)" class="status-tag">
-                    {{ getRefundStatusText(refundStatus.approvedRequest.status) }}
-                  </el-tag>
-                </div>
-              </div>
-              <div class="detail-item" v-if="refundStatus.approvedRequest.processTime">
-                <div class="detail-label">Process Time</div>
-                <div class="detail-value">{{ formatDate(refundStatus.approvedRequest.processTime) }}</div>
-              </div>
-              <div class="detail-item full-width" v-if="refundStatus.approvedRequest.adminNotes">
-                <div class="detail-label">Admin Notes</div>
-                <div class="detail-value notes">{{ refundStatus.approvedRequest.adminNotes }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 可以申请退款的状态 -->
-      <div v-else class="refund-content">
+      <!-- 显示所有注册信息（不管是否有pending request） -->
+      <div v-if="refundStatus.hasApprovedRegistration" class="refund-content">
         <div v-if="approvedRegistrations.length > 0">
-          <!-- 退款资格信息 -->
-          <div class="eligibility-info">
-            <el-row :gutter="16">
-              <el-col :span="12">
-                <div class="stats-card approved-registrations">
-                  <div class="stats-icon">
-                    <i class="el-icon-document"></i>
-                  </div>
-                  <div class="stats-content">
-                    <div class="stats-number">{{ approvedRegistrations.length }}</div>
-                    <div class="stats-label">Approved Registrations</div>
-                  </div>
-                </div>
-              </el-col>
-              <el-col :span="12">
-                <div class="stats-card eligible-refunds">
-                  <div class="stats-icon">
-                    <i class="el-icon-money"></i>
-                  </div>
-                  <div class="stats-content">
-                    <div class="stats-number">{{ eligibleRegistrationsCount }}</div>
-                    <div class="stats-label">Eligible for Refund</div>
-                  </div>
-                </div>
-              </el-col>
-            </el-row>
-          </div>
-          
-          <!-- 无法退款的原因说明 -->
-          <div v-if="eligibleRegistrationsCount === 0 && refundStatus.ineligibleReasons.length > 0" class="ineligible-reasons">
-            <el-alert
-              title="Cannot request refund"
-              type="info"
-              :closable="false"
-              show-icon>
-              <div class="refund-not-available">
-                <p><strong>Reason:</strong></p>
-                <ul>
-                  <li v-for="reason in refundStatus.ineligibleReasons" :key="reason">{{ reason }}</li>
-                </ul>
-              </div>
-            </el-alert>
-          </div>
-          
-          <!-- 可退款注册列表 -->
-          <div v-if="eligibleRegistrationsCount > 0" class="eligible-registrations">
-            <h4>Eligible Refund Registrations</h4>
+
+          <!-- 所有注册列表（包括可退款和已退款） -->
+          <div class="all-registrations">
+            <h4>Registration Records</h4>
             
             <!-- 桌面端表格显示 -->
             <div class="desktop-table">
-              <el-table :data="eligibleRegistrations" border style="width: 100%">
+              <el-table :data="allRegistrationsWithRefundStatus" border style="width: 100%">
                 <el-table-column prop="productCode" label="Product Code" width="120"></el-table-column>
+                <el-table-column prop="paper_id" label="Paper ID" width="100">
+                  <template slot-scope="scope">
+                    <span>{{ scope.row.paper_id || '-' }}</span>
+                  </template>
+                </el-table-column>
                 <el-table-column prop="name" label="Attendee Name"></el-table-column>
                 <el-table-column prop="email" label="Email"></el-table-column>
                 <el-table-column prop="productPrice" label="Amount" width="100">
                   <template slot-scope="scope">
-                    ${{ scope.row.productPrice }} USD
+                    {{ formatAmount(scope.row) }}
                   </template>
                 </el-table-column>
                 <el-table-column prop="submissionTime" label="Registration Time" width="180">
@@ -252,12 +73,22 @@
                     </div>
                   </template>
                 </el-table-column>
-                <el-table-column label="Actions" width="140">
+                <el-table-column label="Status" width="160" align="center">
                   <template slot-scope="scope">
                     <div class="table-action-cell">
-                      <el-button size="mini" type="danger" @click="selectRegistrationForRefund(scope.row)">
+                      <!-- 已退款状态 -->
+                      <el-tag v-if="scope.row.isRefunded" type="success" size="small">
+                        <i class="el-icon-circle-check"></i>
+                        Refunded
+                      </el-tag>
+                      <!-- 可退款按钮 -->
+                      <el-button v-else-if="scope.row.refundEligible" size="mini" type="danger" @click="selectRegistrationForRefund(scope.row)">
                         Apply Refund
                       </el-button>
+                      <!-- 不可退款状态 -->
+                      <el-tooltip v-else placement="top" :content="scope.row.refundIneligibleReason || 'Not eligible for refund'">
+                        <el-tag type="info" size="small">Not Eligible</el-tag>
+                      </el-tooltip>
                     </div>
                   </template>
                 </el-table-column>
@@ -266,13 +97,17 @@
             
             <!-- 移动端卡片显示 -->
             <div class="mobile-cards">
-              <div v-for="registration in eligibleRegistrations" :key="registration.id" class="registration-card">
+              <div v-for="registration in allRegistrationsWithRefundStatus" :key="registration.id" class="registration-card" :class="{'refunded-card': registration.isRefunded}">
                 <div class="card-header-info">
                   <div class="product-code">{{ registration.productCode }}</div>
-                  <div class="amount">${{ registration.productPrice }} USD</div>
+                  <div class="amount">{{ formatAmount(registration) }}</div>
                 </div>
                 
                 <div class="card-content">
+                  <div class="info-row">
+                    <span class="label">Paper ID:</span>
+                    <span class="value">{{ registration.paper_id || '-' }}</span>
+                  </div>
                   <div class="info-row">
                     <span class="label">Name:</span>
                     <span class="value">{{ registration.name }}</span>
@@ -291,10 +126,23 @@
                 </div>
                 
                 <div class="card-action">
-                  <el-button type="danger" @click="selectRegistrationForRefund(registration)" block>
+                  <!-- 已退款状态 -->
+                  <div v-if="registration.isRefunded" class="refunded-status">
+                    <el-tag type="success" size="medium">
+                      <i class="el-icon-circle-check"></i>
+                      Refunded
+                    </el-tag>
+                  </div>
+                  <!-- 可退款按钮 -->
+                  <el-button v-else-if="registration.refundEligible" type="danger" @click="selectRegistrationForRefund(registration)" block>
                     <i class="el-icon-money"></i>
                     Apply Refund
                   </el-button>
+                  <!-- 不可退款状态 -->
+                  <div v-else class="not-eligible-status">
+                    <el-tag type="info" size="medium">Not Eligible</el-tag>
+                    <p class="not-eligible-reason">{{ registration.refundIneligibleReason }}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -309,11 +157,28 @@
               View Refund History
             </el-button>
           </div>
+          
+          <!-- 无法退款的原因说明 -->
+          <div v-if="eligibleRegistrationsCount === 0 && refundStatus.ineligibleReasons.length > 0" class="ineligible-reasons">
+            <el-alert
+              title="Cannot request refund"
+              type="info"
+              :closable="false"
+              show-icon>
+              <div class="refund-not-available">
+                <p><strong>Reason:</strong></p>
+                <ul>
+                  <li v-for="reason in refundStatus.ineligibleReasons" :key="reason">{{ reason }}</li>
+                </ul>
+              </div>
+            </el-alert>
+          </div>
+          
         </div>
         
         <div v-else class="no-registrations">
           <el-empty description="You have no approved registration records">
-            <el-button type="primary" @click="$router.push('/conference/auto')">Register Now</el-button>
+            <el-button type="primary" @click="$router.push('/conference/new')">Register Now</el-button>
           </el-empty>
         </div>
       </div>
@@ -331,7 +196,10 @@
         type="info"
         :closable="false"
         show-icon>
-        <p>Refund requests must be submitted at least 30 days before the conference begins. Processing time is 5-10 business days.</p>
+        <div>
+          <p>Refund requests must be submitted at least 30 days before the conference begins. Processing time is 5-10 business days.</p>
+          <p><strong>Refund Fee:</strong> A processing fee of $100 USD or ¥750 RMB will be deducted from your refund amount.</p>
+        </div>
       </el-alert>
       
       <el-form :model="refundForm" :rules="refundRules" ref="refundForm" label-width="180px" class="refund-form">
@@ -340,16 +208,28 @@
             <el-option
               v-for="registration in eligibleRegistrations"
               :key="registration.id"
-              :label="`${registration.productCode} - $${registration.productPrice} USD`"
+              :label="`${registration.productCode} - ${formatAmount(registration)}`"
               :value="registration.id">
               <span style="float: left">{{ registration.productCode }}</span>
-              <span style="float: right; color: #8492a6; font-size: 13px">${{ registration.productPrice }} USD</span>
+              <span style="float: right; color: #8492a6; font-size: 13px">{{ formatAmount(registration) }}</span>
             </el-option>
           </el-select>
         </el-form-item>
         
-        <el-form-item label="Refund Amount" v-if="selectedRegistration">
-          <el-input :value="`$${selectedRegistration.productPrice} USD`" disabled></el-input>
+        <el-form-item label="Original Amount" v-if="selectedRegistration">
+          <el-input :value="formatAmount(selectedRegistration)" disabled></el-input>
+        </el-form-item>
+        
+        <el-form-item label="Processing Fee" v-if="selectedRegistration">
+          <el-input :value="getProcessingFeeText(selectedRegistration)" disabled>
+            <template slot="append">will be deducted</template>
+          </el-input>
+        </el-form-item>
+        
+        <el-form-item label="Actual Refund Amount" v-if="selectedRegistration">
+          <el-input :value="getActualRefundText(selectedRegistration)" disabled>
+            <template slot="prepend" style="color: #67C23A; font-weight: bold;">≈</template>
+          </el-input>
         </el-form-item>
         
         <el-form-item label="Refund Reason" prop="reason">
@@ -360,54 +240,141 @@
             :rows="4"></el-input>
         </el-form-item>
         
-        <el-divider>Bank Information (Optional)</el-divider>
-        <p class="bank-info-note">
-          If you wish to receive refund via bank transfer, please fill in the following information. Otherwise, we will refund through your original payment method.
-          <br><strong>Note:</strong> If you provide bank information, all required fields (*) must be completed.
-        </p>
-        
-        <el-form-item 
-          :label="hasBankInfo ? 'Account Holder Name *' : 'Account Holder Name'" 
-          prop="bankInfo.accountName">
-          <el-input 
-            v-model="refundForm.bankInfo.accountName" 
-            placeholder="Bank account holder name"
-            @input="onBankInfoChange"></el-input>
-        </el-form-item>
-        
-        <el-form-item 
-          :label="hasBankInfo ? 'Bank Name *' : 'Bank Name'" 
-          prop="bankInfo.bankName">
-          <el-input 
-            v-model="refundForm.bankInfo.bankName" 
-            placeholder="Bank name"
-            @input="onBankInfoChange"></el-input>
-        </el-form-item>
-        
-        <el-form-item 
-          :label="hasBankInfo ? 'Account Number *' : 'Account Number'" 
-          prop="bankInfo.accountNumber">
-          <el-input 
-            v-model="refundForm.bankInfo.accountNumber" 
-            placeholder="Bank account number"
-            @input="onBankInfoChange"></el-input>
-        </el-form-item>
-        
-        <el-form-item label="Routing Number" prop="bankInfo.routingNumber">
-          <el-input 
-            v-model="refundForm.bankInfo.routingNumber" 
-            placeholder="Bank routing number (if applicable)"
-            @input="onBankInfoChange"></el-input>
-        </el-form-item>
-        
-        <el-form-item 
-          :label="hasBankInfo ? 'Country/Region *' : 'Country/Region'" 
-          prop="bankInfo.country">
-          <el-input 
-            v-model="refundForm.bankInfo.country" 
-            placeholder="Bank account country"
-            @input="onBankInfoChange"></el-input>
-        </el-form-item>
+        <!-- 银行信息折叠面板 -->
+        <el-collapse v-model="bankInfoCollapse" class="bank-info-collapse">
+          <el-collapse-item name="bankInfo">
+            <template slot="title">
+              <div class="collapse-title">
+                <i class="el-icon-bank-card"></i>
+                <span>Bank Information (Optional)</span>
+                <el-tag size="mini" type="info" style="margin-left: 10px;">Expand to fill</el-tag>
+              </div>
+            </template>
+            
+            <el-alert
+              type="info"
+              :closable="false"
+              show-icon
+              class="bank-info-alert">
+              <div>
+                <p>If you wish to receive refund via bank transfer, please fill in the following information. Otherwise, we will refund through your original payment method.</p>
+                <p><strong>Note:</strong> If you close this section without filling, bank information will be ignored and refund will be processed through your original payment method.</p>
+              </div>
+            </el-alert>
+            
+            <!-- 选择银行类型 -->
+            <el-form-item label="Bank Type" prop="bankInfo.bankType">
+              <el-radio-group v-model="refundForm.bankInfo.bankType" @change="onBankTypeChange">
+                <el-radio label="international">International (SWIFT)</el-radio>
+                <el-radio label="domestic">Domestic (China)</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            
+            <!-- 国际银行信息 -->
+            <div v-if="refundForm.bankInfo.bankType === 'international'" class="bank-fields-section">
+              <h5 class="section-title">Beneficiary's Details</h5>
+              
+              <el-form-item 
+                label="Account Number" 
+                prop="bankInfo.accountNumber">
+                <el-input 
+                  v-model="refundForm.bankInfo.accountNumber" 
+                  placeholder="Enter account number"
+                  @input="onBankInfoChange"></el-input>
+              </el-form-item>
+              
+              <el-form-item 
+                label="Name" 
+                prop="bankInfo.accountName">
+                <el-input 
+                  v-model="refundForm.bankInfo.accountName" 
+                  placeholder="Enter beneficiary name"
+                  @input="onBankInfoChange"></el-input>
+              </el-form-item>
+              
+              <el-form-item 
+                label="Address" 
+                prop="bankInfo.beneficiaryAddress">
+                <el-input 
+                  type="textarea"
+                  v-model="refundForm.bankInfo.beneficiaryAddress" 
+                  placeholder="Enter beneficiary address"
+                  :rows="3"
+                  @input="onBankInfoChange"></el-input>
+              </el-form-item>
+              
+              <h5 class="section-title">Beneficiary's Bank Details</h5>
+              
+              <el-form-item 
+                label="Country / Region" 
+                prop="bankInfo.country">
+                <el-input 
+                  v-model="refundForm.bankInfo.country" 
+                  placeholder="Enter bank country/region"
+                  @input="onBankInfoChange"></el-input>
+              </el-form-item>
+              
+              <el-form-item 
+                label="SWIFT Code" 
+                prop="bankInfo.swiftCode">
+                <el-input 
+                  v-model="refundForm.bankInfo.swiftCode" 
+                  placeholder="Enter SWIFT/BIC code"
+                  @input="onBankInfoChange"></el-input>
+              </el-form-item>
+              
+              <el-form-item 
+                label="Bank Name" 
+                prop="bankInfo.bankName">
+                <el-input 
+                  v-model="refundForm.bankInfo.bankName" 
+                  placeholder="Enter bank name"
+                  @input="onBankInfoChange"></el-input>
+              </el-form-item>
+              
+              <el-form-item 
+                label="Bank Address" 
+                prop="bankInfo.bankAddress">
+                <el-input 
+                  type="textarea"
+                  v-model="refundForm.bankInfo.bankAddress" 
+                  placeholder="Enter bank address"
+                  :rows="3"
+                  @input="onBankInfoChange"></el-input>
+              </el-form-item>
+            </div>
+            
+            <!-- 国内银行信息 -->
+            <div v-if="refundForm.bankInfo.bankType === 'domestic'" class="bank-fields-section">
+              <el-form-item 
+                label="账户名称" 
+                prop="bankInfo.accountName">
+                <el-input 
+                  v-model="refundForm.bankInfo.accountName" 
+                  placeholder="请输入账户名称"
+                  @input="onBankInfoChange"></el-input>
+              </el-form-item>
+              
+              <el-form-item 
+                label="开户行" 
+                prop="bankInfo.bankName">
+                <el-input 
+                  v-model="refundForm.bankInfo.bankName" 
+                  placeholder="请输入开户行名称"
+                  @input="onBankInfoChange"></el-input>
+              </el-form-item>
+              
+              <el-form-item 
+                label="账户号码" 
+                prop="bankInfo.accountNumber">
+                <el-input 
+                  v-model="refundForm.bankInfo.accountNumber" 
+                  placeholder="请输入银行账户号码"
+                  @input="onBankInfoChange"></el-input>
+              </el-form-item>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
       </el-form>
       
       <div slot="footer">
@@ -443,10 +410,10 @@
             
             <el-descriptions :column="2" border size="small">
               <el-descriptions-item label="Registration Info">
-                {{ refund.registration.productCode }} - ${{ refund.registration.productPrice }} USD
+                {{ refund.registration.productCode }} - {{ formatAmount(refund.registration) }}
               </el-descriptions-item>
               <el-descriptions-item label="Refund Amount">
-                ${{ refund.refundAmount }} USD
+                {{ formatRefundAmount(refund.refundAmount, refund.refundCurrency) }}
               </el-descriptions-item>
               <el-descriptions-item label="Request Reason" :span="2">
                 {{ refund.reason }}
@@ -516,15 +483,20 @@ export default {
       dialogVisible: false,
       historyDialogVisible: false,
       loading: false,
+      bankInfoCollapse: [], // 控制银行信息折叠面板（默认关闭）
       refundForm: {
         registrationId: '',
         reason: '',
         bankInfo: {
+          bankType: '', // 'international' 或 'domestic'
           accountName: '',
           bankName: '',
           accountNumber: '',
-          routingNumber: '',
-          country: ''
+          // 国际银行字段
+          beneficiaryAddress: '',
+          country: '',
+          swiftCode: '',
+          bankAddress: ''
         }
       },
       refundRules: {
@@ -535,6 +507,9 @@ export default {
           { required: true, message: 'Please provide refund reason', trigger: 'blur' },
           { min: 10, max: 1000, message: 'Reason must be between 10 and 1000 characters', trigger: 'blur' }
         ],
+        'bankInfo.bankType': [
+          { validator: this.validateBankInfo, trigger: 'change' }
+        ],
         'bankInfo.accountName': [
           { validator: this.validateBankInfo, trigger: 'blur' }
         ],
@@ -544,10 +519,16 @@ export default {
         'bankInfo.accountNumber': [
           { validator: this.validateBankInfo, trigger: 'blur' }
         ],
-        'bankInfo.routingNumber': [
+        'bankInfo.beneficiaryAddress': [
           { validator: this.validateBankInfo, trigger: 'blur' }
         ],
         'bankInfo.country': [
+          { validator: this.validateBankInfo, trigger: 'blur' }
+        ],
+        'bankInfo.swiftCode': [
+          { validator: this.validateBankInfo, trigger: 'blur' }
+        ],
+        'bankInfo.bankAddress': [
           { validator: this.validateBankInfo, trigger: 'blur' }
         ]
       },
@@ -555,6 +536,18 @@ export default {
     };
   },
   computed: {
+    // 所有注册记录（包括已退款和未退款）
+    allRegistrationsWithRefundStatus() {
+      return this.approvedRegistrations.map(reg => {
+        // 检查该注册是否已退款
+        const isRefunded = reg.isRefunded || false;
+        return {
+          ...reg,
+          isRefunded
+        };
+      });
+    },
+    
     eligibleRegistrations() {
       return this.approvedRegistrations.filter(reg => reg.refundEligible);
     },
@@ -571,9 +564,9 @@ export default {
     // 检测用户是否开始填写银行信息
     hasBankInfo() {
       const bankInfo = this.refundForm.bankInfo;
-      return bankInfo.accountName || bankInfo.bankName || 
-             bankInfo.accountNumber || bankInfo.routingNumber || 
-             bankInfo.country;
+      return bankInfo.bankType || bankInfo.accountName || bankInfo.bankName || 
+             bankInfo.accountNumber || bankInfo.beneficiaryAddress || 
+             bankInfo.country || bankInfo.swiftCode || bankInfo.bankAddress;
     }
   },
   async mounted() {
@@ -628,13 +621,17 @@ export default {
         registrationId: '',
         reason: '',
         bankInfo: {
+          bankType: '',
           accountName: '',
           bankName: '',
           accountNumber: '',
-          routingNumber: '',
-          country: ''
+          beneficiaryAddress: '',
+          country: '',
+          swiftCode: '',
+          bankAddress: ''
         }
       };
+      this.bankInfoCollapse = []; // 重置折叠面板为关闭状态
       this.dialogVisible = true;
     },
     
@@ -653,27 +650,60 @@ export default {
       // 注册选择改变时的处理
     },
     
+    // 银行类型改变时清空其他字段
+    onBankTypeChange() {
+      this.refundForm.bankInfo.accountName = '';
+      this.refundForm.bankInfo.bankName = '';
+      this.refundForm.bankInfo.accountNumber = '';
+      this.refundForm.bankInfo.beneficiaryAddress = '';
+      this.refundForm.bankInfo.country = '';
+      this.refundForm.bankInfo.swiftCode = '';
+      this.refundForm.bankInfo.bankAddress = '';
+      
+      // 清除校验状态
+      this.$nextTick(() => {
+        if (this.$refs.refundForm) {
+          this.$refs.refundForm.clearValidate();
+        }
+      });
+    },
+    
     // 银行信息输入变化时触发重新校验
     onBankInfoChange() {
       // 延迟校验，避免用户还在输入时就显示错误
       this.$nextTick(() => {
         if (this.$refs.refundForm) {
           // 重新校验所有银行信息字段
+          this.$refs.refundForm.validateField('bankInfo.bankType');
           this.$refs.refundForm.validateField('bankInfo.accountName');
           this.$refs.refundForm.validateField('bankInfo.bankName');
           this.$refs.refundForm.validateField('bankInfo.accountNumber');
-          this.$refs.refundForm.validateField('bankInfo.routingNumber');
+          this.$refs.refundForm.validateField('bankInfo.beneficiaryAddress');
           this.$refs.refundForm.validateField('bankInfo.country');
+          this.$refs.refundForm.validateField('bankInfo.swiftCode');
+          this.$refs.refundForm.validateField('bankInfo.bankAddress');
         }
       });
     },
     
     // 银行信息校验方法
     validateBankInfo(rule, value, callback) {
+      // 如果折叠面板未展开，跳过校验
+      if (!this.bankInfoCollapse.includes('bankInfo')) {
+        callback();
+        return;
+      }
+      
       const bankInfo = this.refundForm.bankInfo;
-      const hasAnyBankInfo = bankInfo.accountName || bankInfo.bankName || 
-                           bankInfo.accountNumber || bankInfo.routingNumber || 
-                           bankInfo.country;
+      // 检查是否有实际填写的内容（排除空字符串）
+      const hasAnyBankInfo = (bankInfo.bankType && bankInfo.bankType.trim()) || 
+                           (bankInfo.accountName && bankInfo.accountName.trim()) || 
+                           (bankInfo.bankName && bankInfo.bankName.trim()) || 
+                           (bankInfo.accountNumber && bankInfo.accountNumber.trim()) || 
+                           (bankInfo.beneficiaryAddress && bankInfo.beneficiaryAddress.trim()) || 
+                           (bankInfo.country && bankInfo.country.trim()) || 
+                           (bankInfo.swiftCode && bankInfo.swiftCode.trim()) || 
+                           (bankInfo.bankAddress && bankInfo.bankAddress.trim());
       
       // 如果用户没有填写任何银行信息，则不需要校验
       if (!hasAnyBankInfo) {
@@ -682,23 +712,32 @@ export default {
       }
       
       // 如果用户填写了银行信息，则需要校验必要字段
-      const field = rule.field.split('.')[1]; // 获取字段名，例如 'accountName'
+      const field = rule.field.split('.')[1]; // 获取字段名
+      const bankType = bankInfo.bankType;
       
       switch (field) {
-        case 'accountName':
+        case 'bankType':
           if (!value || value.trim() === '') {
-            callback(new Error('Account holder name is required when providing bank information'));
-          } else if (value.length < 2 || value.length > 100) {
-            callback(new Error('Account name must be between 2 and 100 characters'));
+            callback(new Error('Please select bank type when providing bank information'));
+          } else {
+            callback();
+          }
+          break;
+          
+        case 'accountName':
+          if (bankType && (!value || value.trim() === '')) {
+            callback(new Error('Account/Beneficiary name is required'));
+          } else if (value && (value.length < 2 || value.length > 100)) {
+            callback(new Error('Name must be between 2 and 100 characters'));
           } else {
             callback();
           }
           break;
           
         case 'bankName':
-          if (!value || value.trim() === '') {
-            callback(new Error('Bank name is required when providing bank information'));
-          } else if (value.length < 2 || value.length > 100) {
+          if (bankType && (!value || value.trim() === '')) {
+            callback(new Error('Bank name is required'));
+          } else if (value && (value.length < 2 || value.length > 100)) {
             callback(new Error('Bank name must be between 2 and 100 characters'));
           } else {
             callback();
@@ -706,29 +745,54 @@ export default {
           break;
           
         case 'accountNumber':
-          if (!value || value.trim() === '') {
-            callback(new Error('Account number is required when providing bank information'));
-          } else if (value.length < 5 || value.length > 50) {
+          if (bankType && (!value || value.trim() === '')) {
+            callback(new Error('Account number is required'));
+          } else if (value && (value.length < 5 || value.length > 50)) {
             callback(new Error('Account number must be between 5 and 50 characters'));
           } else {
             callback();
           }
           break;
           
+        case 'beneficiaryAddress':
+          // 仅国际银行需要
+          if (bankType === 'international' && (!value || value.trim() === '')) {
+            callback(new Error('Beneficiary address is required for international transfers'));
+          } else if (value && (value.length < 10 || value.length > 500)) {
+            callback(new Error('Address must be between 10 and 500 characters'));
+          } else {
+            callback();
+          }
+          break;
+          
         case 'country':
-          if (!value || value.trim() === '') {
-            callback(new Error('Country/Region is required when providing bank information'));
-          } else if (value.length < 2 || value.length > 100) {
+          // 仅国际银行需要
+          if (bankType === 'international' && (!value || value.trim() === '')) {
+            callback(new Error('Country/Region is required for international transfers'));
+          } else if (value && (value.length < 2 || value.length > 100)) {
             callback(new Error('Country/Region must be between 2 and 100 characters'));
           } else {
             callback();
           }
           break;
           
-        case 'routingNumber':
-          // Routing number 是可选的，只在有值时校验长度
-          if (value && (value.length < 4 || value.length > 20)) {
-            callback(new Error('Routing number must be between 4 and 20 characters'));
+        case 'swiftCode':
+          // 仅国际银行需要
+          if (bankType === 'international' && (!value || value.trim() === '')) {
+            callback(new Error('SWIFT code is required for international transfers'));
+          } else if (value && (value.length < 8 || value.length > 11)) {
+            callback(new Error('SWIFT code must be between 8 and 11 characters'));
+          } else {
+            callback();
+          }
+          break;
+          
+        case 'bankAddress':
+          // 仅国际银行需要
+          if (bankType === 'international' && (!value || value.trim() === '')) {
+            callback(new Error('Bank address is required for international transfers'));
+          } else if (value && (value.length < 10 || value.length > 500)) {
+            callback(new Error('Bank address must be between 10 and 500 characters'));
           } else {
             callback();
           }
@@ -746,15 +810,30 @@ export default {
         
         this.loading = true;
         
+        // 如果折叠面板未展开，清空银行信息
+        const formData = { ...this.refundForm };
+        if (!this.bankInfoCollapse.includes('bankInfo')) {
+          formData.bankInfo = {
+            bankType: '',
+            accountName: '',
+            bankName: '',
+            accountNumber: '',
+            beneficiaryAddress: '',
+            country: '',
+            swiftCode: '',
+            bankAddress: ''
+          };
+        }
+        
         // 检查退款资格
-        const eligibilityCheck = await userService.checkRefundEligibility(this.refundForm.registrationId);
+        const eligibilityCheck = await userService.checkRefundEligibility(formData.registrationId);
         if (!eligibilityCheck.data.eligible) {
           this.$message.error(eligibilityCheck.data.reason);
           return;
         }
         
         // 提交退款申请
-        await userService.submitRefundRequest(this.refundForm);
+        await userService.submitRefundRequest(formData);
         
         this.$message.success('Refund request submitted successfully! We will review your request within 5-10 business days and contact you.');
         this.dialogVisible = false;
@@ -828,6 +907,81 @@ export default {
         'other': 'Other'
       };
       return methods[method] || method;
+    },
+    
+    // 格式化金额显示 - 优先显示总价
+    formatAmount(registration) {
+      // 检查支付方式，如果是国内支付，优先显示人民币
+      const paymentMethod = registration.paymentMethod || registration.payment_method;
+      
+      // 获取金额数据
+      const totalAmountRmb = registration.totalAmountRMB || registration.total_amount_rmb;
+      const totalAmountUsd = registration.totalAmountUSD || registration.total_amount_usd;
+      const productPrice = registration.productPrice;
+      
+      // 如果支付方式是国内支付，优先显示人民币
+      if (paymentMethod === 'domestic') {
+        if (totalAmountRmb) {
+          return `¥${totalAmountRmb}`;
+        }
+      }
+      
+      // 否则显示美元
+      if (totalAmountUsd) {
+        return `$${totalAmountUsd}`;
+      }
+      
+      // 最后使用 productPrice 作为后备
+      if (productPrice) {
+        return `$${productPrice}`;
+      }
+      
+      return '$0';
+    },
+    
+    // 格式化退款金额显示（包含货币单位）
+    formatRefundAmount(amount, currency) {
+      if (!amount) return '$0';
+      const curr = currency || 'USD';
+      if (curr === 'RMB') {
+        return `¥${amount} RMB`;
+      }
+      return `$${amount} USD`;
+    },
+    
+    // 获取退款手续费文本
+    getProcessingFeeText(registration) {
+      if (!registration) return 'N/A';
+      // 根据支付方式确定手续费
+      if (registration.paymentMethod === 'domestic') {
+        return '¥750 RMB';
+      }
+      return '$100 USD';
+    },
+    
+    // 获取实际退款金额文本
+    getActualRefundText(registration) {
+      if (!registration) return 'N/A';
+      
+      const REFUND_FEE_USD = 100;
+      const REFUND_FEE_RMB = 750;
+      
+      let actualAmount;
+      let currency;
+      
+      if (registration.paymentMethod === 'domestic') {
+        // 使用人民币
+        const totalAmount = registration.totalAmountRMB || registration.productPriceRMB || 0;
+        actualAmount = Math.max(0, totalAmount - REFUND_FEE_RMB);
+        currency = 'RMB';
+        return `¥${actualAmount.toFixed(2)} ${currency}`;
+      } else {
+        // 使用美元
+        const totalAmount = registration.totalAmountUSD || registration.productPrice || 0;
+        actualAmount = Math.max(0, totalAmount - REFUND_FEE_USD);
+        currency = 'USD';
+        return `$${actualAmount.toFixed(2)} ${currency}`;
+      }
     },
     
     // 统一的错误处理方法
@@ -1273,6 +1427,29 @@ export default {
   padding: 60px 40px;
 }
 
+.refund-policy-alert {
+  margin-bottom: 24px;
+}
+
+.policy-content {
+  line-height: 1.8;
+  font-size: 14px;
+}
+
+.policy-content p {
+  margin: 8px 0;
+}
+
+.policy-content ul {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.policy-content li {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
 .action-buttons {
   display: flex;
   gap: 20px;
@@ -1301,6 +1478,52 @@ export default {
   background: #f0f9ff;
   border-left: 4px solid #409eff;
   border-radius: 4px;
+}
+
+.bank-info-collapse {
+  margin-bottom: 20px;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+}
+
+.bank-info-collapse .el-collapse-item__header {
+  padding: 0 20px;
+  font-size: 15px;
+  font-weight: 500;
+  background-color: #f5f7fa;
+}
+
+.collapse-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapse-title i {
+  font-size: 18px;
+  color: #409eff;
+}
+
+.bank-info-alert {
+  margin-bottom: 20px;
+}
+
+.bank-info-alert p {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.bank-fields-section {
+  margin-top: 20px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin: 20px 0 15px 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #409eff;
 }
 
 .empty-history {
@@ -1342,25 +1565,53 @@ export default {
   text-align: center;
 }
 
-/* 已批准退款申请样式 */
-.approved-request {
-  margin: 20px 0;
+
+
+/* 其他注册区域样式 */
+.refund-content {
+  margin-top: 0;
 }
 
-.approved-request .el-alert {
+.refund-content .eligibility-info:first-child {
+  margin-top: 10px;
+}
+
+/* 所有注册列表样式 */
+.all-registrations {
+  margin: 30px 0;
+}
+
+.all-registrations h4 {
+  font-size: 18px;
   margin-bottom: 20px;
+  color: #333;
 }
 
-.approved-request .request-details {
+/* 已退款卡片样式 */
+.refunded-card {
   background: #f6ffed;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #b7eb8f;
+  border: 1px solid #b7eb8f !important;
 }
 
-.approved-request .request-details h4 {
-  color: #52c41a;
-  margin-bottom: 15px;
+.refunded-status {
+  text-align: center;
+  padding: 10px 0;
+}
+
+.refunded-status .el-tag {
+  font-size: 14px;
+  padding: 8px 16px;
+}
+
+.not-eligible-status {
+  text-align: center;
+}
+
+.not-eligible-reason {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
 }
 
 @media (max-width: 768px) {
@@ -1418,7 +1669,7 @@ export default {
   
   .eligibility-info .el-col,
   .approved-stats-info .el-col {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
   
   /* 确保最后一个统计卡片没有底部边距 */
@@ -1429,29 +1680,31 @@ export default {
   
   .eligibility-info,
   .approved-stats-info {
-    margin: 30px 0;
+    margin: 20px 0;
   }
   
   .stats-card {
-    padding: 20px 16px;
-    margin-bottom: 15px;
-    border-radius: 16px;
+    padding: 18px 16px;
+    margin-bottom: 0;
+    border-radius: 12px;
   }
   
   .stats-icon {
-    font-size: 28px;
-    margin-right: 16px;
-    min-width: 40px;
+    font-size: 26px;
+    margin-right: 14px;
+    min-width: 36px;
   }
   
   .stats-number {
-    font-size: 28px;
-    margin-bottom: 6px;
+    font-size: 26px;
+    margin-bottom: 4px;
   }
   
   .stats-label {
-    font-size: 15px;
+    font-size: 14px;
   }
+  
+
   
   .request-details,
   .refund-content,
@@ -1600,6 +1853,28 @@ export default {
     font-size: 13px;
     padding: 12px;
     margin-bottom: 20px;
+  }
+  
+  .bank-info-collapse .el-collapse-item__header {
+    padding: 0 15px;
+    font-size: 14px;
+  }
+  
+  .collapse-title i {
+    font-size: 16px;
+  }
+  
+  .bank-info-alert {
+    font-size: 13px;
+  }
+  
+  .bank-info-alert p {
+    margin: 6px 0;
+  }
+  
+  .section-title {
+    font-size: 15px;
+    margin: 15px 0 12px 0;
   }
   
   /* 历史记录对话框适配 */
@@ -1794,6 +2069,32 @@ export default {
   .bank-info-note {
     font-size: 12px;
     padding: 10px;
+  }
+  
+  .bank-info-collapse .el-collapse-item__header {
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  
+  .collapse-title {
+    gap: 6px;
+  }
+  
+  .collapse-title i {
+    font-size: 15px;
+  }
+  
+  .bank-info-alert {
+    font-size: 12px;
+  }
+  
+  .bank-info-alert p {
+    margin: 5px 0;
+  }
+  
+  .section-title {
+    font-size: 14px;
+    margin: 12px 0 10px 0;
   }
   
   /* 超小屏幕卡片优化 */

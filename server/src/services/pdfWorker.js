@@ -295,6 +295,36 @@ async function generateReceiptPDF(submission, customOptions = {}) {
     
     const qrCodeDataURL = await generateQRCode(verificationData);
     
+    // 根据支付方式确定金额和货币
+    let amountPaid, currency, currencySymbol, amountDisplay;
+    if (submission.payment_method === 'domestic' && submission.total_amount_rmb) {
+      amountPaid = submission.total_amount_rmb;
+      currency = 'CNY';
+      currencySymbol = '¥';
+    } else if (submission.payment_method === 'international' && submission.total_amount_usd) {
+      amountPaid = submission.total_amount_usd;
+      currency = 'USD';
+      currencySymbol = '$';
+    } else {
+      // 后备逻辑：优先USD，其次RMB，最后product_price
+      if (submission.total_amount_usd) {
+        amountPaid = submission.total_amount_usd;
+        currency = 'USD';
+        currencySymbol = '$';
+      } else if (submission.total_amount_rmb) {
+        amountPaid = submission.total_amount_rmb;
+        currency = 'CNY';
+        currencySymbol = '¥';
+      } else {
+        amountPaid = submission.product_price;
+        currency = 'USD';
+        currencySymbol = '$';
+      }
+    }
+    
+    // 构建完整的金额显示字符串
+    amountDisplay = `${currencySymbol}${amountPaid} ${currency}`;
+
     const templateData = {
       receiptNumber,
       issueDate: now.toISOString().split('T')[0],
@@ -303,7 +333,7 @@ async function generateReceiptPDF(submission, customOptions = {}) {
       attendeeEmail: submission.email,
       paperTitle: submission.paper_id || 'N/A',
       productCode: convertChineseToReadable(submission.product_code),
-      amountPaid: submission.product_price,
+      amountPaid: amountDisplay,
       transactionDate: submission.submission_time ? 
         submission.submission_time.toISOString().replace('T', ' ').split('.')[0] : 'N/A',
       generationDateTime: now.toISOString().replace('T', ' ').split('.')[0],
@@ -397,6 +427,59 @@ async function generateRegistrationInfoPDF(submission, customOptions = {}) {
   }
 }
 
+async function generateMealVoucherPDF(mealVoucher, customOptions = {}) {
+  try {
+    const now = new Date();
+    const marginMode = getMarginMode(customOptions);
+    
+    // 生成二维码数据
+    const verificationData = JSON.stringify({
+      type: 'meal-voucher',
+      voucherId: mealVoucher.id,
+      voucherCode: mealVoucher.voucher_code || mealVoucher.voucherCode,
+      name: mealVoucher.attendee_name || mealVoucher.attendeeName,
+      email: mealVoucher.email
+    });
+    
+    const qrCodeDataURL = await generateQRCode(verificationData);
+    
+    // 确定货币和金额
+    let currencySymbol, unitPrice, totalAmount;
+    const paymentMethod = mealVoucher.payment_method || mealVoucher.paymentMethod;
+    
+    if (paymentMethod === 'domestic') {
+      currencySymbol = '¥';
+      unitPrice = mealVoucher.unit_price_rmb || mealVoucher.unitPriceRmb || '1100.00';
+      totalAmount = mealVoucher.total_amount_rmb || mealVoucher.totalAmountRmb || '1100.00';
+    } else {
+      currencySymbol = '$';
+      unitPrice = mealVoucher.unit_price_usd || mealVoucher.unitPriceUsd || '150.00';
+      totalAmount = mealVoucher.total_amount_usd || mealVoucher.totalAmountUsd || '150.00';
+    }
+    
+    const templateData = {
+      MARGIN_CLASS: `margin-${marginMode}`,
+      ATTENDEE_NAME: convertChineseToReadable(mealVoucher.attendee_name || mealVoucher.attendeeName),
+      EMAIL: mealVoucher.email,
+      VOUCHER_CODE: mealVoucher.voucher_code || mealVoucher.voucherCode || 'N/A',
+      QUANTITY: mealVoucher.quantity || 1,
+      CURRENCY_SYMBOL: currencySymbol,
+      UNIT_PRICE: unitPrice,
+      TOTAL_AMOUNT: totalAmount,
+      PAYMENT_METHOD: paymentMethod === 'domestic' ? 'Domestic (RMB)' : 'International (USD)',
+      STATUS: (mealVoucher.status || 'pending').toUpperCase(),
+      QR_CODE: qrCodeDataURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      GENERATION_DATE: now.toISOString().split('T')[0]
+    };
+    
+    const html = await renderTemplate('meal-voucher', templateData);
+    return await generatePDFFromHTML(html, customOptions);
+  } catch (error) {
+    console.error('Worker meal voucher PDF generation error:', error);
+    throw error;
+  }
+}
+
 // 监听主线程消息
 parentPort.on('message', async (message) => {
   const { taskId, type, workerId, data } = message;
@@ -425,6 +508,9 @@ parentPort.on('message', async (message) => {
         break;
       case 'registration-info':
         pdfBuffer = await generateRegistrationInfoPDF(data.submission, data.options);
+        break;
+      case 'meal-voucher':
+        pdfBuffer = await generateMealVoucherPDF(data.submission, data.options);
         break;
       default:
         throw new Error(`Unknown PDF type: ${type}`);

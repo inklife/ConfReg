@@ -4,9 +4,10 @@
       <h1>Step 5: Registration Complete</h1>
       <div class="progress-container">
         <button 
-          class="progress-nav-btn progress-nav-left progress-nav-warning"
+          class="progress-nav-btn progress-nav-left"
+          :class="{ 'progress-nav-warning': isApproved }"
           @click="goToPreviousStep"
-          title="Previous step"
+          :title="isApproved ? 'Warning: Editing will reset approved status' : 'Previous step'"
         >
           <i class="el-icon-arrow-left"></i>
         </button>
@@ -25,10 +26,52 @@
 
     <div class="content">
       <!-- 成功提示 -->
-      <div class="success-banner" :class="{ 'approved': isApproved, 'pending': !isApproved }">
-        <i :class="isApproved ? 'el-icon-circle-check' : 'el-icon-info'" class="success-icon"></i>
+      <div v-if="!isRefunded" class="success-banner" :class="{ 'approved': isApproved, 'pending': !isApproved && !isRejected, 'rejected': isRejected }">
+        <i :class="isApproved ? 'el-icon-circle-check' : (isRejected ? 'el-icon-close' : 'el-icon-info')" class="success-icon"></i>
         <h2>{{ bannerTitle }}</h2>
         <p>{{ bannerMessage }}</p>
+      </div>
+
+      <!-- 退款提示 (针对已退款的注册) -->
+      <div v-if="isRefunded" class="refund-notice">
+        <div class="refund-header">
+          <i class="el-icon-warning"></i>
+          <h3>Registration Refunded</h3>
+        </div>
+        <div class="refund-body">
+          <p>This registration has been refunded. Documents are no longer available for download.</p>
+          <p>If you have any questions, please contact the conference organizers at <a href="mailto:registration@ieee-icpads.org.cn">registration@ieee-icpads.org.cn</a></p>
+        </div>
+      </div>
+
+      <!-- 拒绝原因提示 (针对被拒绝的注册) -->
+      <div v-if="isRejected" class="rejection-notice">
+        <div class="rejection-header">
+          <i class="el-icon-warning"></i>
+          <h3>Rejection Details</h3>
+        </div>
+        <div class="rejection-body">
+          <div class="rejection-reason">
+            <label>Administrator Notes:</label>
+            <p v-if="rejectionReason">{{ rejectionReason }}</p>
+            <p v-else class="no-reason">No specific reason provided. Please contact the organizers for more information.</p>
+          </div>
+          <div v-if="reviewTime" class="rejection-time">
+            <i class="el-icon-time"></i>
+            <span>Reviewed on: {{ formatReviewDate(reviewTime) }}</span>
+          </div>
+          <!-- Debug info (remove in production) -->
+          <div v-if="!rejectionReason" style="margin-top: 12px; padding: 12px; background: #f0f0f0; border-radius: 6px; font-size: 12px; color: #666;">
+            <strong>Debug Info:</strong><br>
+            Status: {{ backendRegistrationData ? backendRegistrationData.status : 'N/A' }}<br>
+            Has backendData: {{ !!backendRegistrationData }}<br>
+            Review Notes: {{ backendRegistrationData ? backendRegistrationData.review_notes : 'N/A' }}<br>
+            Rejection Reason Computed: {{ rejectionReason || 'null' }}
+          </div>
+        </div>
+        <div class="rejection-footer">
+          <p>If you have any questions about the rejection, please contact the conference organizers at <a href="mailto:registration@ieee-icpads.org.cn">registration@ieee-icpads.org.cn</a></p>
+        </div>
       </div>
 
       <!-- 注册信息摘要 -->
@@ -50,6 +93,18 @@
               <span class="label">Organization:</span>
               <span class="value">{{ userInfo.organization }}</span>
             </div>
+            <div class="info-item" v-if="userInfo.phone">
+              <span class="label">Phone:</span>
+              <span class="value">{{ userInfo.phone }}</span>
+            </div>
+            <div class="info-item" v-if="userInfo.country">
+              <span class="label">Country:</span>
+              <span class="value">{{ userInfo.country }}</span>
+            </div>
+            <div class="info-item" v-if="userInfo.paperID">
+              <span class="label">Paper ID:</span>
+              <span class="value">{{ userInfo.paperID }}</span>
+            </div>
           </div>
         </div>
 
@@ -57,16 +112,69 @@
           <h4>Registration Details</h4>
           <div class="info-grid">
             <div class="info-item">
-              <span class="label">Registration Type:</span>
-              <span class="value">{{ selectedProduct && selectedProduct.code }}</span>
+              <span class="label">Registration Category:</span>
+              <span class="value registration-category">
+                {{ getRegistrationCategory() }}
+                <el-tag 
+                  :type="getRegistrationCategory().includes('Student') ? 'warning' : 'success'" 
+                  size="mini" 
+                  style="margin-left: 8px;">
+                  {{ getRegistrationCategory().includes('Student') ? 'Student' : 'Full' }}
+                </el-tag>
+              </span>
             </div>
             <div class="info-item">
-              <span class="label">Amount:</span>
-              <span class="value price">${{ selectedProduct && selectedProduct.price }} USD</span>
+              <span class="label">Membership Type:</span>
+              <span class="value membership-type">
+                {{ selectedProduct && selectedProduct.code }}
+                <el-tag 
+                  v-if="selectedProduct && selectedProduct.code && selectedProduct.code.includes('IEEE')"
+                  type="info" 
+                  size="mini" 
+                  style="margin-left: 8px;">
+                  IEEE
+                </el-tag>
+              </span>
             </div>
-            <!-- <div class="info-item">
+            <div class="info-item" v-if="userInfo.paperPages > 0">
+              <span class="label">Paper Pages:</span>
+              <span class="value">
+                {{ userInfo.paperPages }} pages
+                <span v-if="extraPagesCount > 0" class="extra-pages">
+                  ({{ extraPagesCount }} extra)
+                </span>
+              </span>
+            </div>
+            <div class="info-item">
+              <span class="label">Base Fee:</span>
+              <span class="value price" v-if="isDomesticPayment">¥{{ basePriceRMB }} RMB</span>
+              <span class="value price" v-else>${{ basePriceUSD }} USD</span>
+            </div>
+            <div class="info-item" v-if="extraPagesCount > 0">
+              <span class="label">Extra Page Fee ({{ extraPagesCount }} pages):</span>
+              <span class="value price" v-if="isDomesticPayment">¥{{ extraPageFeeRMB }} RMB</span>
+              <span class="value price" v-else>${{ extraPageFeeUSD }} USD</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Total Amount:</span>
+              <span class="value price total-price" v-if="isDomesticPayment">¥{{ totalRMB }} RMB</span>
+              <span class="value price total-price" v-else>${{ totalUSD }} USD</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Payment Method:</span>
+              <span class="value">
+                {{ paymentMethodDisplayName }}
+                <el-tag 
+                  :type="isDomesticPayment ? 'success' : 'primary'" 
+                  size="mini" 
+                  style="margin-left: 8px;">
+                  {{ isDomesticPayment ? 'Domestic' : 'International' }}
+                </el-tag>
+              </span>
+            </div>
+            <!-- <div class="info-item" v-if="registrationId">
               <span class="label">Registration ID:</span>
-              <span class="value">{{ registrationId }}</span>
+              <span class="value registration-id">{{ registrationId }}</span>
             </div> -->
           </div>
         </div>
@@ -93,9 +201,9 @@
             type="primary" 
             icon="el-icon-download" 
             @click="downloadCertificate"
-            :disabled="!isApproved"
+            :disabled="!isApproved || isRefunded"
             :loading="isGenerating"
-            :title="isApproved ? 'Download your receipt' : 'Receipt will be available after approval'"
+            :title="isRefunded ? 'Receipt not available for refunded registration' : (isApproved ? 'Download your receipt' : 'Receipt will be available after approval')"
           >
             {{ isGenerating ? 'Generating...' : 'Download Receipt' }}
           </el-button>
@@ -124,13 +232,13 @@
       <div class="next-steps">
         <h3>What's Next?</h3>
         <div class="steps-list">
-          <div class="step-item">
+          <!-- <div class="step-item">
             <i class="el-icon-message"></i>
             <div>
               <strong>Email Confirmation</strong>
               <p>You will receive a confirmation email within 24 hours with your registration details.</p>
             </div>
-          </div>
+          </div> -->
           <div class="step-item">
             <i class="el-icon-check"></i>
             <div>
@@ -176,6 +284,12 @@ import { sseService } from '../_services/sse.service.js';
 
 export default {
   name: 'Step5Receipt',
+  props: {
+    id: {
+      type: String,
+      default: null
+    }
+  },
   data() {
     return {
       registrationId: '',
@@ -183,6 +297,7 @@ export default {
       backendRegistrationData: null,
       error: null,
       currentUserId: null,
+      editMode: false,
       isGenerating: false,
       currentTaskId: null,
       // 已完成任务的下载支持
@@ -199,9 +314,20 @@ export default {
       // 首先尝试从后端数据获取
       if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
         const regData = this.backendRegistrationData.registration_data;
+        
+        // 根据产品代码获取人民币价格
+        const priceMapRMB = {
+          'IEEE Member': 5000,
+          'Non-IEEE Member': 6000,
+          'Life Member': 3600,
+          'Student - IEEE Member': 3600,
+          'Student - Non-IEEE Member': 4400
+        };
+        
         return {
           code: regData.product_code,
-          price: regData.product_price
+          price: regData.product_price,
+          priceRMB: priceMapRMB[regData.product_code] || 0
         };
       }
       
@@ -220,7 +346,8 @@ export default {
           organization: regData.affiliation || '',
           country: regData.country || 'N/A',
           phone: regData.phone || '',
-          paperID: regData.paper_id || ''
+          paperID: regData.paper_id || '',
+          paperPages: regData.paper_pages || 0
         };
       }
       
@@ -239,7 +366,7 @@ export default {
             organization: regData.userInfo.affiliation || '',
             country: regData.userInfo.country || 'N/A',
             phone: regData.userInfo.phone || '',
-            paperID: regData.userInfo.paperTitle || regData.userInfo.paper_id || ''
+            paperID: regData.userInfo.paperId || regData.userInfo.paper_id || ''
           };
         }
       }
@@ -254,7 +381,7 @@ export default {
           organization: userInfo.invoiceTitle || userInfo.organization || userInfo.affiliation || '',
           country: userInfo.country || 'N/A',
           phone: userInfo.phone || '',
-          paperID: userInfo.paperID || userInfo.paper_id || userInfo.paperTitle || ''
+          paperID: userInfo.paperID || userInfo.paper_id || userInfo.paperId || ''
         };
       }
       
@@ -268,6 +395,12 @@ export default {
       };
     },
     paymentMethod() {
+      // 首先尝试从后端数据获取
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data && this.backendRegistrationData.registration_data.payment_method) {
+        return this.backendRegistrationData.registration_data.payment_method;
+      }
+      
+      // 兜底：从localStorage获取
       if (!this.currentUserId) return '';
       return localStorage.getItem(this.getStorageKey('conferencePaymentMethod')) || '';
     },
@@ -278,6 +411,122 @@ export default {
       };
       return methods[this.paymentMethod] || 'Unknown';
     },
+    paymentMethodDisplayName() {
+      // 尝试从后端数据获取支付方式
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data && this.backendRegistrationData.registration_data.payment_method) {
+        const method = this.backendRegistrationData.registration_data.payment_method;
+        const methods = {
+          'domestic': 'China Mainland Payment',
+          'international': 'International Bank Transfer'
+        };
+        return methods[method] || method;
+      }
+      
+      // 兜底：从localStorage获取
+      const methods = {
+        'domestic': 'China Mainland Payment',
+        'international': 'International Bank Transfer'
+      };
+      return methods[this.paymentMethod] || 'International Bank Transfer';
+    },
+    // 计算超页数
+    extraPagesCount() {
+      let paperPages = 0;
+      
+      // 首先从后端数据获取
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
+        paperPages = this.backendRegistrationData.registration_data.paper_pages || 0;
+      } else if (this.userInfo.paperPages) {
+        paperPages = parseInt(this.userInfo.paperPages);
+      }
+      
+      return paperPages > 8 ? (paperPages - 8) : 0;
+    },
+    // 基础价格
+    basePriceUSD() {
+      if (this.selectedProduct && this.selectedProduct.price) {
+        return parseFloat(this.selectedProduct.price);
+      }
+      return 0;
+    },
+    // 超页费用
+    extraPageFeeUSD() {
+      // 优先使用后端返回的超页费
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
+        const extraFee = this.backendRegistrationData.registration_data.extra_page_fee_usd;
+        if (extraFee !== null && extraFee !== undefined) {
+          return parseFloat(extraFee);
+        }
+      }
+      // 兜底：计算
+      return this.extraPagesCount * 80; // 每超1页 $80
+    },
+    // 总价格
+    totalUSD() {
+      // 优先使用后端返回的总金额
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
+        const totalAmount = this.backendRegistrationData.registration_data.total_amount_usd;
+        if (totalAmount !== null && totalAmount !== undefined) {
+          return parseFloat(totalAmount);
+        }
+      }
+      // 兜底：计算基础价格+超页费
+      return this.basePriceUSD + this.extraPageFeeUSD;
+    },
+    // 判断是否为国内支付
+    isDomesticPayment() {
+      // 首先从后端数据获取支付方式
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data && this.backendRegistrationData.registration_data.payment_method) {
+        return this.backendRegistrationData.registration_data.payment_method === 'domestic';
+      }
+      
+      // 兜底：从localStorage获取
+      return this.paymentMethod === 'domestic';
+    },
+    // 基础价格人民币
+    basePriceRMB() {
+      if (this.selectedProduct && this.selectedProduct.priceRMB) {
+        return parseFloat(this.selectedProduct.priceRMB);
+      }
+      
+      // 如果没有priceRMB，根据产品代码推断
+      if (this.selectedProduct && this.selectedProduct.code) {
+        const priceMapRMB = {
+          'IEEE Member': 5000,
+          'Non-IEEE Member': 6000,
+          'Life Member': 3600,
+          'Student - IEEE Member': 3600,
+          'Student - Non-IEEE Member': 4400
+        };
+        return priceMapRMB[this.selectedProduct.code] || 0;
+      }
+      
+      return 0;
+    },
+    // 超页费用人民币
+    extraPageFeeRMB() {
+      // 优先使用后端返回的超页费
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
+        const extraFee = this.backendRegistrationData.registration_data.extra_page_fee_rmb;
+        if (extraFee !== null && extraFee !== undefined) {
+          return parseFloat(extraFee);
+        }
+      }
+      // 兜底：计算
+      return this.extraPagesCount * 600; // 每超1页 ¥600
+    },
+    // 总价格人民币
+    totalRMB() {
+      // 优先使用后端返回的总金额
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
+        const totalAmount = this.backendRegistrationData.registration_data.total_amount_rmb;
+        if (totalAmount !== null && totalAmount !== undefined) {
+          return parseFloat(totalAmount);
+        }
+      }
+      // 兜底：计算基础价格+超页费
+      return this.basePriceRMB + this.extraPageFeeRMB;
+    },
     isApproved() {
       // 根据后端数据判断是否已批准
       if (this.backendRegistrationData) {
@@ -286,10 +535,63 @@ export default {
       }
       return false;
     },
+    isRejected() {
+      // 根据后端数据判断是否被拒绝
+      if (this.backendRegistrationData) {
+        // 检查多个可能的字段
+        const status = this.backendRegistrationData.status || 
+                      (this.backendRegistrationData.submission_data && this.backendRegistrationData.submission_data.status);
+        console.log('Step5 - isRejected check:', {
+          status,
+          backendData: this.backendRegistrationData
+        });
+        return status === 'rejected';
+      }
+      return false;
+    },
+    isRefunded() {
+      // 检查注册是否已退款
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
+        return this.backendRegistrationData.registration_data.is_refunded === true;
+      }
+      return false;
+    },
+    rejectionReason() {
+      // 获取拒绝原因，尝试多个可能的字段位置
+      if (this.backendRegistrationData) {
+        const reason = this.backendRegistrationData.review_notes || 
+                      this.backendRegistrationData.rejection_reason ||
+                      (this.backendRegistrationData.submission_data && this.backendRegistrationData.submission_data.review_notes) ||
+                      (this.backendRegistrationData.submission_data && this.backendRegistrationData.submission_data.rejection_reason);
+        console.log('Step5 - rejectionReason check:', {
+          reason,
+          backendData: this.backendRegistrationData
+        });
+        return reason || null;
+      }
+      return null;
+    },
+    reviewTime() {
+      // 获取审核时间，尝试多个可能的字段位置
+      if (this.backendRegistrationData) {
+        return this.backendRegistrationData.review_time || 
+               this.backendRegistrationData.reviewed_at ||
+               (this.backendRegistrationData.submission_data && this.backendRegistrationData.submission_data.review_time) ||
+               (this.backendRegistrationData.submission_data && this.backendRegistrationData.submission_data.reviewed_at) ||
+               null;
+      }
+      return null;
+    },
     bannerTitle() {
+      if (this.isRejected) {
+        return 'Registration Rejected';
+      }
       return this.isApproved ? 'Registration Approved!' : 'Thank you for your registration!';
     },
     bannerMessage() {
+      if (this.isRejected) {
+        return 'Unfortunately, your registration has been rejected. Please see the details below.';
+      }
       return this.isApproved 
         ? 'Congratulations! Your registration has been approved and you can now download your certificate.' 
         : 'Your registration has been successfully submitted and is being processed.';
@@ -300,6 +602,12 @@ export default {
     }
   },
   async mounted() {
+    // 检测编辑模式
+    if (this.id && this.id !== 'new') {
+      this.editMode = true;
+      console.log('Step5 - Edit mode detected, registration ID:', this.id);
+    }
+    
     this.initializeUserData();
     await this.initSSE();
   },
@@ -307,6 +615,34 @@ export default {
     this.cleanup();
   },
   methods: {
+    formatReviewDate(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+    getRegistrationCategory() {
+      // 首先尝试从后端数据获取
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data && this.backendRegistrationData.registration_data.registration_category) {
+        const category = this.backendRegistrationData.registration_data.registration_category;
+        return category === 'student' ? 'Student Registration' : 'Full Registration';
+      }
+      
+      // 兜底：根据产品代码判断
+      if (!this.selectedProduct) return 'Not selected';
+      
+      const productCode = this.selectedProduct.code;
+      if (productCode && productCode.includes('Student')) {
+        return 'Student Registration';
+      } else {
+        return 'Full Registration';
+      }
+    },
     initializeUserData() {
       // 检查当前登录用户信息 - currentUser现在是computed属性，自动从store获取
       if (!this.currentUser || !this.currentUser.id) {
@@ -323,6 +659,12 @@ export default {
     },
 
     getStorageKey(baseName) {
+      // 生成带用户ID和注册记录ID的存储键名
+      // 如果有注册记录ID（编辑模式），包含在键名中以区分不同注册记录
+      if (this.id && this.id !== 'new') {
+        return `${baseName}_${this.currentUserId}_${this.id}`;
+      }
+      // 新建注册时，只用用户ID
       return `${baseName}_${this.currentUserId}`;
     },
 
@@ -384,8 +726,29 @@ export default {
         // 调用后端API获取注册数据
         const axios = (await import('axios')).default;
         
-        // 使用相对路径，axios已设置baseURL
-        const response = await axios.get('/api/submissions/check-registration', {
+        let apiUrl = '/api/submissions/check-registration';
+        
+        // 如果有ID参数，则调用获取指定ID注册信息的API
+        if (this.id && this.id !== 'new') {
+          console.log('Step5 - Loading specific registration ID:', this.id);
+          
+          // 验证ID是否为有效的数字
+          if (!/^\d+$/.test(this.id)) {
+            console.warn('Step5 - Invalid registration ID format:', this.id);
+            this.$message.warning('Invalid registration ID');
+            this.$router.push('/dashboard?tab=registrations');
+            return;
+          }
+          
+          // 通过ID获取指定注册信息
+          apiUrl = `/api/submissions/registration/${this.id}`;
+        } else {
+          // 没有ID或ID为'new'，获取最新注册
+          console.log('Step5 - Loading latest registration');
+          apiUrl = '/api/submissions/check-registration';
+        }
+        
+        const response = await axios.get(apiUrl, {
           withCredentials: true
         });
         
@@ -400,16 +763,36 @@ export default {
             this.registrationId = this.generateRegistrationId();
           }
         } else {
+          // 如果指定了ID但没有找到数据，说明ID不存在
+          if (this.id && this.id !== 'new') {
+            console.warn('Step5 - Registration not found for ID:', this.id);
+            this.$message.warning('Registration not found');
+            this.$router.push('/dashboard?tab=registrations');
+            return;
+          }
           // 如果后端没有数据，使用本地生成的ID
           this.registrationId = this.generateRegistrationId();
         }
         
       } catch (error) {
         console.error('Failed to load registration data:', error);
+        
+        // 如果是404错误且指定了ID，说明ID不存在
+        if (this.id && this.id !== 'new' && error.response && error.response.status === 404) {
+          this.$message.warning('Registration not found');
+          this.$router.push('/dashboard?tab=registrations');
+          return;
+        }
+        
         this.error = 'Failed to load registration data';
         this.registrationId = this.generateRegistrationId();
       } finally {
         this.loading = false;
+        
+        // 保存后端数据到 localStorage，以便后退到其他步骤时使用
+        if (this.currentUserId && this.backendRegistrationData) {
+          await this.saveBackendDataToLocalStorage();
+        }
         
         // 保存注册完成状态（使用用户关联的键名）
         if (this.currentUserId) {
@@ -433,6 +816,123 @@ export default {
       const timestamp = Date.now().toString().slice(-6);
       const random = Math.random().toString(36).substring(2, 5).toUpperCase();
       return `${prefix}-${timestamp}${random}`;
+    },
+
+    async saveBackendDataToLocalStorage() {
+      if (!this.backendRegistrationData || !this.backendRegistrationData.registration_data) {
+        return;
+      }
+
+      const regData = this.backendRegistrationData.registration_data;
+      const images = this.backendRegistrationData.images || {};
+
+      try {
+        console.log('Step5 - Saving backend data to localStorage');
+
+        // 保存产品选择数据
+        const productData = {
+          code: regData.product_code,
+          price: regData.product_price,
+          priceRMB: regData.product_price_rmb,
+          description: this.getProductDescription(regData.product_code)
+        };
+        localStorage.setItem(
+          this.getStorageKey('conferenceProductSelection'),
+          JSON.stringify(productData)
+        );
+
+        // 保存用户信息
+        const userInfo = {
+          name: regData.name,
+          email: regData.email,
+          phone: regData.phone,
+          affiliation: regData.affiliation,
+          paperId: regData.paper_id,
+          paperPages: regData.paper_pages
+        };
+        localStorage.setItem(
+          this.getStorageKey('conferenceUserInfo'),
+          JSON.stringify(userInfo)
+        );
+
+        // 保存支付方式
+        if (regData.payment_method) {
+          localStorage.setItem(
+            this.getStorageKey('conferencePaymentMethod'),
+            regData.payment_method
+          );
+        }
+
+        // 加载并保存图片（如果有）
+        if (images.proof) {
+          await this.loadAndSaveImage(images.proof, 'conferenceProofFile');
+        }
+
+        if (images.screenshot) {
+          await this.loadAndSaveImage(images.screenshot, 'conferencePaymentProof');
+        }
+
+        console.log('Step5 - Backend data saved to localStorage successfully');
+      } catch (error) {
+        console.warn('Step5 - Failed to save backend data to localStorage:', error);
+      }
+    },
+
+    getProductDescription(productCode) {
+      const products = {
+        'IEEE Member': 'For IEEE members',
+        'Non-IEEE Member': 'For non-IEEE members',
+        'Life Member': 'For IEEE life members',
+        'Student - IEEE Member': 'For students with IEEE membership',
+        'Student - Non-IEEE Member': 'For students without IEEE membership'
+      };
+      return products[productCode] || '';
+    },
+
+    async loadAndSaveImage(imageUrl, storageKey) {
+      try {
+        const axios = (await import('axios')).default;
+
+        // 构建完整URL
+        let fullUrl = imageUrl;
+        if (!imageUrl.startsWith('http')) {
+          const baseUrl = window.location.origin;
+          fullUrl = `${baseUrl}${imageUrl}`;
+        }
+
+        console.log(`Step5 - Loading image from: ${fullUrl}`);
+
+        const response = await axios.get(fullUrl, {
+          responseType: 'blob',
+          withCredentials: true
+        });
+
+        const blob = response.data;
+
+        // 检查文件大小，超过2MB的不存储到localStorage
+        const MAX_STORAGE_SIZE = 2 * 1024 * 1024; // 2MB
+        if (blob.size > MAX_STORAGE_SIZE) {
+          console.log(`Step5 - Image too large (${Math.round(blob.size / 1024)}KB), skipping localStorage storage`);
+          return;
+        }
+
+        // 转换为 base64
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64Data = reader.result;
+          try {
+            localStorage.setItem(this.getStorageKey(storageKey), base64Data);
+            console.log(`Step5 - Image saved to localStorage: ${storageKey}`);
+          } catch (storageError) {
+            console.warn(`Step5 - Failed to save image to localStorage: ${storageKey}`, storageError);
+          }
+        };
+        reader.readAsDataURL(blob);
+
+      } catch (error) {
+        console.warn(`Step5 - Failed to load image ${imageUrl}:`, error);
+        // 不阻塞流程
+      }
     },
 
     async downloadCertificate() {
@@ -487,7 +987,8 @@ export default {
         this.isGenerating = true;
         
         const generateResponse = await axios.post('/api/submissions/generate_receipt', {
-          marginMode: 'standard' // 默认边距模式
+          marginMode: 'standard', // 默认边距模式
+          registrationId: this.id // 传递当前注册ID
         }, {
           withCredentials: true,
           headers: {
@@ -744,8 +1245,12 @@ export default {
     },
 
     goToPreviousStep() {
-      // 返回上一步
-      this.$router.push('/conference/step4');
+      // 返回上一步（Step4会处理已批准注册的警告）
+      if (this.editMode && this.id) {
+        this.$router.push(`/conference/${this.id}/step4`);
+      } else {
+        this.$router.push('/conference/step4');
+      }
     },
 
     goToUserPanel() {
@@ -877,6 +1382,11 @@ export default {
   background: linear-gradient(135deg, #fff3e0 0%, #fffe80 100%);
 }
 
+.success-banner.rejected {
+  border-left-color: #f44336;
+  background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%);
+}
+
 .success-icon {
   font-size: 32px;
   margin-right: 15px;
@@ -891,6 +1401,10 @@ export default {
   color: #4caf50;
 }
 
+.success-banner.rejected .success-icon {
+  color: #f44336;
+}
+
 .success-banner h2 {
   margin: 0 0 8px 0;
   color: #2e7d32;
@@ -898,11 +1412,179 @@ export default {
   line-height: 1.3;
 }
 
+.success-banner.rejected h2 {
+  color: #c62828;
+}
+
 .success-banner p {
   margin: 0;
   color: #4a6c4e;
   font-size: 16px;
   line-height: 1.4;
+}
+
+.success-banner.rejected p {
+  color: #b71c1c;
+}
+
+/* Refund notice */
+.refund-notice {
+  background: #fff8e1;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(255, 152, 0, 0.1);
+  margin-bottom: 30px;
+  border: 2px solid #ffecb3;
+}
+
+.refund-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #ffe082;
+}
+
+.refund-header i {
+  font-size: 28px;
+  color: #ff9800;
+}
+
+.refund-header h3 {
+  color: #e65100;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.refund-body {
+  margin-bottom: 0;
+}
+
+.refund-body p {
+  color: #424242;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 0 12px 0;
+}
+
+.refund-body p:last-child {
+  margin-bottom: 0;
+}
+
+.refund-body a {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.refund-body a:hover {
+  text-decoration: underline;
+}
+
+/* Rejection notice */
+.rejection-notice {
+  background: #fff5f5;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(244, 67, 54, 0.1);
+  margin-bottom: 30px;
+  border: 2px solid #ffcdd2;
+}
+
+.rejection-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #ffcdd2;
+}
+
+.rejection-header i {
+  font-size: 28px;
+  color: #f44336;
+}
+
+.rejection-header h3 {
+  color: #c62828;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.rejection-body {
+  margin-bottom: 16px;
+}
+
+.rejection-reason {
+  margin-bottom: 16px;
+}
+
+.rejection-reason label {
+  display: block;
+  color: #f56c6c;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rejection-reason p {
+  color: #303133;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  border-left: 3px solid #f56c6c;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.rejection-reason p.no-reason {
+  color: #909399;
+  font-style: italic;
+  border-left-color: #e0e0e0;
+}
+
+.rejection-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #909399;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 6px;
+}
+
+.rejection-time i {
+  font-size: 14px;
+}
+
+.rejection-footer {
+  padding-top: 16px;
+  border-top: 1px solid #ffcdd2;
+}
+
+.rejection-footer p {
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.rejection-footer a {
+  color: #409EFF;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.rejection-footer a:hover {
+  text-decoration: underline;
 }
 
 .registration-summary {
@@ -941,7 +1623,7 @@ export default {
 
 .info-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 10px;
 }
 
@@ -977,6 +1659,16 @@ export default {
   color: #f56c6c !important;
   font-size: 15px !important;
   font-weight: 700 !important;
+}
+
+.total-price {
+  color: #e91e63 !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  background: linear-gradient(135deg, #fff3f3, #ffe0e0);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #ffd0d0;
 }
 
 .actions-section {
@@ -1128,6 +1820,47 @@ export default {
   background: #e2e8f0;
   border-color: #94a3b8;
   text-decoration: underline;
+}
+
+/* 编辑已批准注册的警告提示 */
+.edit-warning-notice {
+  margin-top: 20px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border: 2px solid #ff9800;
+  border-left: 6px solid #f57c00;
+  border-radius: 8px;
+  color: #e65100;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.15);
+}
+
+.edit-warning-notice i {
+  color: #f57c00;
+  font-size: 24px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.edit-warning-notice .warning-content {
+  flex: 1;
+}
+
+.edit-warning-notice .warning-content strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: #e65100;
+  margin-bottom: 8px;
+}
+
+.edit-warning-notice .warning-content p {
+  margin: 0;
+  line-height: 1.6;
+  color: #bf360c;
 }
 
 .next-steps {
@@ -1362,6 +2095,44 @@ export default {
   
   .contact-info h3 {
     font-size: 16px;
+  }
+}
+
+/* 新增的样式 */
+.registration-category {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.membership-type {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.extra-pages {
+  color: #E6A23C;
+  font-weight: 500;
+  margin-left: 8px;
+  font-size: 0.9em;
+}
+
+.registration-id {
+  font-family: 'Courier New', monospace;
+  background: #f5f7fa;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  color: #409EFF;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .registration-category .el-tag,
+  .membership-type .el-tag {
+    margin-left: 4px !important;
+    margin-top: 4px;
   }
 }
 </style>

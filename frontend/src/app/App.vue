@@ -3,9 +3,9 @@
     <!-- 顶部导航栏 -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary py-3">
       <div class="container-fluid px-4">
-        <router-link to="/" class="navbar-brand fs-3">
+        <span class="navbar-brand fs-3">
           <i class="fas fa-lock me-2"></i>ICPADS2025 Registration
-        </router-link>
+        </span>
         
         <!-- 未登录时显示登录/注册按钮 -->
         <div class="d-flex" v-if="!isLoggedIn">
