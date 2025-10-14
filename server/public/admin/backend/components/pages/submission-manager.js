@@ -816,6 +816,43 @@ class SubmissionManager extends BaseComponent {
                 gap: 4px;
             }
 
+            /* PDF 预览样式 */
+            #submission-modal-global .pdf-link {
+                display: block;
+                text-decoration: none;
+            }
+
+            #submission-modal-global .pdf-preview {
+                width: 100%;
+                max-width: 200px;
+                height: 150px;
+                background: linear-gradient(135deg, #fee2e2 0%, #fef3c7 100%);
+                border: 2px solid #fca5a5;
+                border-radius: 8px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                margin: 0 auto;
+            }
+
+            #submission-modal-global .pdf-preview:hover {
+                transform: scale(1.05);
+                border-color: #dc2626;
+                box-shadow: 0 8px 25px rgba(220, 38, 38, 0.15);
+                background: linear-gradient(135deg, #fecaca 0%, #fef3c7 100%);
+            }
+
+            #submission-modal-global .pdf-preview i {
+                transition: transform 0.3s ease;
+            }
+
+            #submission-modal-global .pdf-preview:hover i {
+                transform: translateY(-4px);
+            }
+
             #submission-modal-global .image-loading {
                 width: 100%;
                 max-width: 200px;
@@ -1115,7 +1152,7 @@ class SubmissionManager extends BaseComponent {
                     <div class="detail-item">
                         <div class="detail-label">论文页数</div>
                         <div class="detail-value">
-                            ${submission.paper_pages || 0} 页
+                            ${submission.paper_pages ? `${submission.paper_pages} 页` : '未填写'}
                         </div>
                     </div>
                     <div class="detail-item">
@@ -1176,7 +1213,7 @@ class SubmissionManager extends BaseComponent {
                     <h4 class="detail-group-title">
                         <i class="fas fa-receipt"></i>
                         支付凭证
-                        <small>（点击图片可放大查看）</small>
+                        <small>（点击可查看完整文件）</small>
                     </h4>
                     <div class="image-container">
                         ${submission.screenshot ? `
@@ -1194,13 +1231,23 @@ class SubmissionManager extends BaseComponent {
                         ${submission.proof ? `
                             <div class="image-item">
                                 <div class="detail-label">证明文件</div>
-                                <a href="/uploads/${submission.proof}" target="_blank" class="pixel-voyager-link">
-                                    <img src="/uploads/${submission.proof}" 
-                                         class="image-preview" 
-                                         alt="证明文件" 
-                                         title="点击放大查看"
-                                         loading="lazy">
-                                </a>
+                                ${this.isProofPdf(submission.proof) ? `
+                                    <a href="/uploads/${submission.proof}" target="_blank" class="pdf-link">
+                                        <div class="pdf-preview">
+                                            <i class="fas fa-file-pdf" style="font-size: 48px; color: #dc2626;"></i>
+                                            <div style="margin-top: 12px; font-size: 14px; color: #374151; font-weight: 500;">PDF 文档</div>
+                                            <div style="margin-top: 4px; font-size: 12px; color: #6b7280;">点击在新标签页中打开</div>
+                                        </div>
+                                    </a>
+                                ` : `
+                                    <a href="/uploads/${submission.proof}" target="_blank" class="pixel-voyager-link">
+                                        <img src="/uploads/${submission.proof}" 
+                                             class="image-preview" 
+                                             alt="证明文件" 
+                                             title="点击放大查看"
+                                             loading="lazy">
+                                    </a>
+                                `}
                             </div>
                         ` : ''}
                     </div>
@@ -1485,6 +1532,19 @@ class SubmissionManager extends BaseComponent {
             return cleanFileName || '未知文件';
         } catch (error) {
             return '未知文件';
+        }
+    }
+
+    // 判断文件是否为 PDF
+    isProofPdf(filename) {
+        if (!filename) return false;
+        
+        try {
+            // 获取文件扩展名
+            const ext = filename.toLowerCase().split('.').pop();
+            return ext === 'pdf';
+        } catch (error) {
+            return false;
         }
     }
 }

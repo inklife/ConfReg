@@ -259,7 +259,7 @@
         <div class="contact-details">
           <p><i class="el-icon-message"></i> Email: registration@ieee-icpads.org.cn</p>
           <!-- <p><i class="el-icon-phone"></i> Phone: +1-234-567-8900</p> -->
-          <p><i class="el-icon-time"></i> Office Hours: Monday - Friday, 9:00 AM - 5:00 PM EST</p>
+          <p><i class="el-icon-time"></i> Office Hours: Monday - Friday, 9:00 AM - 5:00 PM Beijing Time</p>
         </div>
       </div>
     </div>

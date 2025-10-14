@@ -85,8 +85,8 @@
             <div class="document-icon">
               <i class="el-icon-food"></i>
             </div>
-            <h4>Meal Voucher</h4>
-            <p>Download meal vouchers for conference catering services</p>
+            <h4>Extra Banquet Ticket</h4>
+            <p>Download extra banquet tickets for the conference banquet dinner</p>
             <el-button 
               type="success" 
               @click="downloadDocument('mealVoucher')" 
@@ -214,12 +214,12 @@
           highlight-current-row
           style="width: 100%; margin-top: 15px;">
           <el-table-column type="index" label="#" width="50"></el-table-column>
-          <el-table-column prop="voucher_code" label="Voucher Code" width="150"></el-table-column>
+          <el-table-column prop="voucher_code" label="Ticket Code" width="150"></el-table-column>
           <el-table-column prop="attendee_name" label="Attendee Name" min-width="120"></el-table-column>
           <el-table-column prop="email" label="Email" min-width="150"></el-table-column>
           <el-table-column label="Quantity" width="100">
             <template slot-scope="scope">
-              {{ scope.row.quantity }} meal(s)
+              {{ scope.row.quantity }} ticket(s)
             </template>
           </el-table-column>
           <el-table-column label="Total Amount" width="140">
@@ -298,13 +298,13 @@ export default {
     
     // 选择对话框标题
     selectionDialogTitle() {
-      return this.pendingDownloadType === 'mealVoucher' ? 'Select Meal Voucher' : 'Select Registration';
+      return this.pendingDownloadType === 'mealVoucher' ? 'Select Banquet Ticket' : 'Select Registration';
     },
     
     // 选择对话框提示文本
     selectionDialogTip() {
       if (this.pendingDownloadType === 'mealVoucher') {
-        return 'You have multiple approved meal vouchers. Please select which one you want to download:';
+        return 'You have multiple approved banquet tickets. Please select which one you want to download:';
       }
       return 'You have multiple approved registrations. Please select which one you want to download the document for:';
     },
@@ -809,7 +809,7 @@ export default {
 
     async loadApprovedMealVouchers() {
       try {
-        console.log('DocumentManagement: Loading approved meal vouchers...');
+        console.log('DocumentManagement: Loading approved banquet tickets...');
         const axios = (await import('axios')).default;
         const response = await axios.get('/api/vouchers/', {
           withCredentials: true
@@ -817,13 +817,13 @@ export default {
         
         if (response.data && response.data.vouchers) {
           this.approvedMealVouchers = response.data.vouchers.filter(v => v.status === 'approved');
-          console.log('DocumentManagement: Found approved meal vouchers:', this.approvedMealVouchers.length);
+          console.log('DocumentManagement: Found approved banquet tickets:', this.approvedMealVouchers.length);
         } else {
-          console.log('DocumentManagement: No meal vouchers data in response');
+          console.log('DocumentManagement: No banquet tickets data in response');
           this.approvedMealVouchers = [];
         }
       } catch (error) {
-        console.error('DocumentManagement: Failed to load meal vouchers:', error);
+        console.error('DocumentManagement: Failed to load banquet tickets:', error);
         this.approvedMealVouchers = [];
       }
     },
@@ -1976,7 +1976,7 @@ export default {
         'receipt': 'Receipt',
         'registration': 'Registration Information',
         'certificate': 'Certificate',
-        'mealVoucher': 'Meal Voucher'
+        'mealVoucher': 'Extra Banquet Ticket'
       };
       return typeNames[type] || type;
     },

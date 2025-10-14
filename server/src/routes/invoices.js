@@ -308,8 +308,8 @@ router.get('/download/:fileId', requireAuth, async (req, res) => {
     const fileName = file.originalName;
     const encodedFileName = encodeURIComponent(fileName);
     
-    // 设置 Content-Disposition 头部，兼容不同浏览器
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFileName}; filename="${fileName}"`);
+    // 设置 Content-Disposition 头部，使用 RFC 5987 标准支持中文文件名
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFileName}`);
     res.setHeader('Content-Type', file.mimeType);
     res.sendFile(path.resolve(absolutePath));
 

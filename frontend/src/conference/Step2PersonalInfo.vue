@@ -59,7 +59,7 @@
             </div>
           </el-form-item>
 
-          <el-form-item label="Phone" prop="phone">
+          <el-form-item label="Phone" prop="phone" required>
             <el-input 
               v-model="userInfo.phone" 
               placeholder="Enter your phone number"
@@ -148,6 +148,9 @@ export default {
         name: [
           { required: true, message: 'Please enter your full name', trigger: 'blur' }
         ],
+        phone: [
+          { required: true, message: 'Please enter your phone number', trigger: 'blur' }
+        ],
         paperId: [
           { 
             pattern: /^[1-9]\d*$/, 
@@ -190,8 +193,8 @@ export default {
   },
   computed: {
     canProceed() {
-      // 只需要检查name字段，email会自动从用户账户加载
-      return this.userInfo.name.trim() && this.userInfo.email.trim();
+      // 检查必填字段：name, email, phone
+      return this.userInfo.name.trim() && this.userInfo.email.trim() && this.userInfo.phone.trim();
     },
     // 避免与ElementUI Form组件的内部fields属性冲突
     formFields() {

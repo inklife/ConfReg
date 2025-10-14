@@ -41,7 +41,7 @@
           
           <el-menu-item index="vouchers">
             <i class="el-icon-food"></i>
-            <span slot="title">Meal Vouchers</span>
+            <span slot="title">Extra Banquet Tickets</span>
           </el-menu-item>
           
           <el-menu-item index="attendee">
@@ -106,11 +106,11 @@
                       <i class="el-icon-food"></i>
                     </div>
                     <div class="management-info">
-                      <h3>Meal Vouchers</h3>
-                      <p>Purchase and manage meal vouchers</p>
+                      <h3>Extra Banquet Tickets</h3>
+                      <p>Purchase extra banquet tickets</p>
                       <div class="management-stats">
                         <span class="price-display">
-                          $150 (RMB 1100) per voucher
+                          $150 (RMB 1100) per ticket
                         </span>
                       </div>
                     </div>
@@ -140,8 +140,8 @@
                   <i class="el-icon-food"></i>
                 </div>
                 <div class="mobile-mgmt-info">
-                  <h4>Meal Vouchers</h4>
-                  <p>$150 per voucher</p>
+                  <h4>Extra Banquet Tickets</h4>
+                  <p>$150 per ticket</p>
                 </div>
               </div>
             </div>
@@ -361,7 +361,7 @@ export default {
         { index: 'overview', title: 'Overview', icon: 'el-icon-pie-chart' },
         { index: 'profile', title: 'Profile', icon: 'el-icon-user' },
         { index: 'registrations', title: 'Registrations', icon: 'el-icon-user-solid' },
-        { index: 'vouchers', title: 'Vouchers', icon: 'el-icon-food' },
+        { index: 'vouchers', title: 'Banquet Tickets', icon: 'el-icon-food' },
         { index: 'attendee', title: 'Transfer', icon: 'el-icon-edit-outline' },
         { index: 'refund', title: 'Refund', icon: 'el-icon-money' },
         { index: 'invoice', title: 'Invoice', icon: 'el-icon-document-add' },

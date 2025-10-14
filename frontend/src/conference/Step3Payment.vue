@@ -121,12 +121,6 @@
             <p><strong>账户号码：</strong>934012013000728814</p>
             <p><strong>转账附言：</strong> Name+ICPADS 2025+PaperID</p>
           </div>
-          <!-- <div class="qr-container">
-            <img src="@img/payment.png" alt="Payment QR Code" class="qr-code" @click="openQrPreview">
-          </div>
-          <p class="qr-instruction">
-            扫描二维码（点击可全屏查看）完成支付 或 通过银行转账到上述账户
-          </p> -->
           <div class="reference-box cn">
             <div class="ref-title">转账附言</div>
             <div class="ref-format">格式：<code>Name+ICPADS 2025+PaperID</code></div>
@@ -158,13 +152,7 @@
       <i class="el-icon-arrow-down"></i> Scroll down
     </div>
 
-    <!-- 二维码全屏预览 -->
-    <div v-if="qrPreviewVisible" class="qr-overlay" @click.self="closeQrPreview">
-      <div class="qr-dialog">
-        <img src="@img/payment.png" alt="Payment QR Code" class="qr-large" />
-        <button class="qr-close" @click="closeQrPreview"><i class="el-icon-close"></i></button>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -179,12 +167,11 @@ export default {
   },
   data() {
     return {
-      selectedMethod: null,
+      selectedMethod: 'domestic',
       currentUserId: null,
       showScrollHint: false,
       initialScrollTop: 0,
       hasScrolled: false,
-      qrPreviewVisible: false,
       editMode: false,
       paymentMethods: [
         {
@@ -196,7 +183,7 @@ export default {
         {
           id: 'domestic',
           name: 'China Mainland Payment',
-          description: 'QR code payment for China users',
+          description: 'Bank transfer for China users',
           icon: 'el-icon-chat-round'
         }
       ]
@@ -281,12 +268,6 @@ export default {
     window.addEventListener('resize', this.checkScrollHint);
   },
   methods: {
-    openQrPreview() {
-      this.qrPreviewVisible = true;
-    },
-    closeQrPreview() {
-      this.qrPreviewVisible = false;
-    },
     async copyReference(text) {
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -423,6 +404,10 @@ export default {
       const saved = localStorage.getItem(this.getStorageKey('conferencePaymentMethod'));
       if (saved) {
         this.selectedMethod = saved;
+      } else {
+        // 默认选择国内支付方式
+        this.selectedMethod = 'domestic';
+        localStorage.setItem(this.getStorageKey('conferencePaymentMethod'), 'domestic');
       }
     },
 
@@ -700,25 +685,7 @@ export default {
   font-size: 17px;
 }
 
-.qr-container {
-  background: #f5f5f5;
-  padding: 16px;
-  border-radius: 10px;
-  display: inline-block;
-  margin-bottom: 16px;
-}
 
-.qr-code {
-  width: 160px;
-  height: 160px;
-  object-fit: contain;
-  cursor: zoom-in;
-}
-
-.qr-instruction {
-  color: #666;
-  font-size: 15px;
-}
 
 .bank-payment h3 {
   color: #409EFF;
@@ -955,14 +922,7 @@ export default {
     min-height: 240px;
   }
 
-  .qr-code {
-    width: 140px;
-    height: 140px;
-  }
 
-  .qr-instruction {
-    font-size: 13px;
-  }
 
   .bank-info {
     padding: 12px;
@@ -1030,10 +990,7 @@ export default {
     font-size: 14px;
   }
 
-  .qr-code {
-    width: 120px;
-    height: 120px;
-  }
+
 
   .payment-details {
     min-height: 200px;
@@ -1047,43 +1004,5 @@ export default {
     padding: 10px 16px;
     font-size: 14px;
   }
-}
-
-/* 二维码全屏预览 */
-.qr-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-.qr-dialog {
-  position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
-}
-.qr-large {
-  max-width: 80vw;
-  max-height: 80vh;
-  display: block;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-}
-.qr-close {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  background: #fff;
-  border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 </style>

@@ -1,8 +1,8 @@
 <template>
   <div class="meal-voucher-management">
     <div class="page-header">
-      <h2>Meal Voucher Management</h2>
-      <p>Purchase and manage meal vouchers for the conference</p>
+      <h2>Extra Banquet Ticket Management</h2>
+      <p>Purchase and manage extra banquet tickets for the conference</p>
     </div>
 
     <!-- Voucher Information -->
@@ -13,8 +13,8 @@
             <i class="el-icon-food"></i>
           </div>
           <div class="voucher-details">
-            <h3>Conference Meal Voucher</h3>
-            <p>Includes breakfast, lunch, and refreshments during conference days</p>
+            <h3>Extra Banquet Ticket</h3>
+            <p>Additional ticket for the conference banquet dinner</p>
             <div class="price-info">
               <span class="price-usd">$150 USD</span>
               <span class="price-rmb">(RMB ¥1,100)</span>
@@ -33,32 +33,30 @@
     <div v-else class="voucher-content">
       <!-- Important Notice - Only show when no vouchers -->
       <div v-if="vouchers.length === 0" class="notice-section">
-        <el-alert
-          type="info"
-          :closable="false"
-          show-icon>
-          <template slot="title">
-            <strong>Important Notice</strong>
-          </template>
+        <div class="notice-box">
+          <div class="notice-icon">
+            <i class="el-icon-warning"></i>
+          </div>
           <div class="notice-content">
+            <h4>Important Notice</h4>
             <p>
-              <strong>Both full registration and student registration include conference attendance and the banquet.</strong>
-              There is no need to purchase meal vouchers separately. If you are not attending the conference or need additional banquet tickets, you may purchase meal vouchers.
+              <strong>Both full registration and attendee registration include conference attendance and the banquet.</strong>
+              There is no need to purchase extra banquet tickets. Only purchase if you need additional tickets for accompanying guests.
             </p>
           </div>
-        </el-alert>
+        </div>
       </div>
 
       <!-- Current vouchers -->
       <div class="current-vouchers-section">
         <div class="section-header">
-          <h3>My Vouchers</h3>
+          <h3>My Banquet Tickets</h3>
           <el-button 
             type="primary" 
             icon="el-icon-plus" 
             @click="showPurchaseDialog = true"
             :disabled="!canPurchase">
-            Purchase Vouchers
+            Purchase Tickets
           </el-button>
         </div>
 
@@ -67,14 +65,14 @@
           <div class="empty-icon">
             <i class="el-icon-tickets"></i>
           </div>
-          <h4>No Meal Vouchers</h4>
-          <p>You haven't purchased any meal vouchers yet. Purchase vouchers to enjoy conference meals.</p>
+          <h4>No Extra Banquet Tickets</h4>
+          <p>You haven't purchased any extra banquet tickets yet. Purchase tickets for accompanying guests.</p>
           <el-button 
             type="primary" 
             icon="el-icon-plus" 
             @click="showPurchaseDialog = true"
             :disabled="!canPurchase">
-            Purchase Your First Vouchers
+            Purchase Your First Ticket
           </el-button>
         </div>
 
@@ -120,7 +118,7 @@
                     <el-dropdown-item 
                       v-if="voucher.status === 'approved'"
                       :command="{action: 'downloadVoucher', voucher}">
-                      <i class="el-icon-download"></i> Download Voucher
+                      <i class="el-icon-download"></i> Download Ticket
                     </el-dropdown-item>
                     <el-dropdown-item 
                       v-if="voucher.status === 'active'"
@@ -138,7 +136,7 @@
 
     <!-- Purchase dialog -->
     <el-dialog
-      title="Purchase Meal Vouchers"
+      title="Purchase Extra Banquet Tickets"
       :visible.sync="showPurchaseDialog"
       width="600px"
       :before-close="handleClosePurchase">
@@ -146,10 +144,10 @@
       <div class="purchase-form">
         <div class="voucher-preview">
           <div class="preview-info">
-            <h4>Conference Meal Voucher</h4>
-            <p>Valid for all conference days • Includes all meals and refreshments</p>
+            <h4>Extra Banquet Ticket</h4>
+            <p>Additional ticket for the conference banquet dinner</p>
             <div class="price-display">
-              <span class="unit-price">$150 USD (RMB ¥1,100) per voucher</span>
+              <span class="unit-price">$150 USD (RMB ¥1,100) per ticket</span>
             </div>
           </div>
         </div>
@@ -168,22 +166,22 @@
               size="large"
               controls-position="right">
             </el-input-number>
-            <div class="quantity-hint">Maximum 10 vouchers per order</div>
+            <div class="quantity-hint">Maximum 10 tickets per order</div>
           </el-form-item>
 
           <el-form-item label="Attendee Name" prop="attendee_name">
             <el-input 
               v-model="purchaseForm.attendee_name"
-              placeholder="Enter the name for voucher registration"
+              placeholder="Enter the name for ticket registration"
               size="large">
             </el-input>
-            <div class="form-hint">Name that will appear on the vouchers</div>
+            <div class="form-hint">Name that will appear on the tickets</div>
           </el-form-item>
 
           <el-form-item label="Email" prop="email">
             <el-input 
               v-model="purchaseForm.email"
-              placeholder="Email for voucher confirmation"
+              placeholder="Email for ticket confirmation"
               size="large">
             </el-input>
           </el-form-item>
@@ -240,8 +238,8 @@
                       
                       <div class="detail-group">
                         <h5>Transfer Reference</h5>
-                        <p><strong>Format:</strong> <code>Name+ICPADS 2025+MealVoucher</code></p>
-                        <p class="reference-example">Example: JohnDoe+ICPADS 2025+MealVoucher</p>
+                        <p><strong>Format:</strong> <code>Name+ICPADS 2025+Banquet</code></p>
+                        <p class="reference-example">Example: JohnDoe+ICPADS 2025+Banquet</p>
                       </div>
                     </div>
                     <div class="payment-note">
@@ -262,8 +260,8 @@
                       
                       <div class="detail-group">
                         <h5>转账附言</h5>
-                        <p><strong>格式：</strong> <code>姓名+ICPADS 2025+餐券</code></p>
-                        <p class="reference-example">示例：张三+ICPADS 2025+餐券</p>
+                        <p><strong>格式：</strong> <code>姓名+ICPADS 2025+晚宴</code></p>
+                        <p class="reference-example">示例：张三+ICPADS 2025+晚宴</p>
                       </div>
                     </div>
                     <div class="payment-note">
@@ -333,17 +331,17 @@
 
     <!-- Voucher detail dialog -->
     <el-dialog
-      :title="selectedVoucher ? 'Voucher Details' : ''"
+      :title="selectedVoucher ? 'Banquet Ticket Details' : ''"
       :visible.sync="detailDialogVisible"
       width="50%">
       
       <div v-if="selectedVoucher" class="voucher-detail">
         <div class="detail-section">
-          <h4>Voucher Information</h4>
+          <h4>Ticket Information</h4>
           <el-row :gutter="20">
             <el-col :span="12">
               <div class="detail-item">
-                <label>Voucher ID:</label>
+                <label>Ticket ID:</label>
                 <span>{{ selectedVoucher.id }}</span>
               </div>
             </el-col>
@@ -389,7 +387,7 @@
           v-if="selectedVoucher && selectedVoucher.status === 'approved'"
           type="primary" 
           @click="downloadVoucher(selectedVoucher)">
-          Download Voucher
+          Download Ticket
         </el-button>
         <el-button 
           v-if="selectedVoucher && selectedVoucher.status === 'active'"
@@ -536,8 +534,8 @@ export default {
       const taskInfo = this.pendingDownloadTasks[taskId];
       
       this.$notify({
-        title: 'Voucher Ready',
-        message: 'Your meal voucher is ready and will download automatically!',
+        title: 'Ticket Ready',
+        message: 'Your banquet ticket is ready and will download automatically!',
         type: 'success',
         duration: 3000
       });
@@ -558,7 +556,7 @@ export default {
       }
       
       this.$message({
-        message: `Failed to generate voucher: ${error || 'Unknown error'}`,
+        message: `Failed to generate ticket: ${error || 'Unknown error'}`,
         type: 'error'
       });
       
@@ -746,7 +744,7 @@ export default {
     async downloadVoucher(voucher) {
       try {
         this.$message({
-          message: 'Preparing voucher download...',
+          message: 'Preparing ticket download...',
           type: 'info'
         });
         
@@ -772,7 +770,7 @@ export default {
                 await this.downloadGeneratedVoucher(voucherTask.taskId, voucher);
                 return;
               } else if (voucherTask.status === 'processing') {
-                this.$message.info('Voucher is being generated. Please wait...');
+                this.$message.info('Ticket is being generated. Please wait...');
                 return;
               }
             }
@@ -790,7 +788,7 @@ export default {
         });
         
         if (!generateResponse.data.success) {
-          throw new Error(generateResponse.data.message || 'Failed to start voucher generation');
+          throw new Error(generateResponse.data.message || 'Failed to start ticket generation');
         }
         
         const taskId = generateResponse.data.taskId;
@@ -802,7 +800,7 @@ export default {
           startTime: Date.now()
         };
         
-        this.$message.success('Voucher generation started! You will be notified when it\'s ready. You can also check progress in Document Management.');
+        this.$message.success('Ticket generation started! You will be notified when it\'s ready. You can also check progress in Document Management.');
         
         // 添加到全局 store 以便在其他页面也能看到进度
         if (this.$store && this.$store.state.account && this.$store.state.account.user) {
@@ -819,9 +817,9 @@ export default {
         
         // 如果异步接口失败，尝试使用同步备用接口
         if (error.response && error.response.status === 404) {
-          this.$message.error('No approved voucher found for download.');
+          this.$message.error('No approved ticket found for download.');
         } else {
-          this.$message.error(`Failed to download voucher: ${error.message || 'Unknown error'}`);
+          this.$message.error(`Failed to download ticket: ${error.message || 'Unknown error'}`);
         }
       }
     },
@@ -843,7 +841,7 @@ export default {
         filename: `ICPADS2025_MealVoucher_${voucher.id}.pdf`,
         context: this,
         onSuccess: (taskId) => {
-          this.$message.success('Voucher downloaded successfully!');
+          this.$message.success('Ticket downloaded successfully!');
           
           // 清理待处理任务
           delete this.pendingDownloadTasks[taskId];
@@ -860,7 +858,7 @@ export default {
         },
         onError: (error) => {
           console.error('Error downloading voucher:', error);
-          this.$message.error('Failed to download voucher');
+          this.$message.error('Failed to download ticket');
           
           // 清理待处理任务
           delete this.pendingDownloadTasks[taskId];
@@ -926,7 +924,7 @@ export default {
         
         if (response.data.success) {
           this.$message({
-            message: 'Voucher purchase request submitted successfully! Waiting for admin approval.',
+            message: 'Banquet ticket purchase request submitted successfully! Waiting for admin approval.',
             type: 'success',
             duration: 5000
           });
@@ -940,7 +938,7 @@ export default {
       } catch (error) {
         console.error('Purchase error:', error);
         this.$message({
-          message: error.response?.data?.message || 'Failed to purchase vouchers. Please try again.',
+          message: error.response?.data?.message || 'Failed to purchase tickets. Please try again.',
           type: 'error'
         });
       } finally {
@@ -1040,18 +1038,51 @@ export default {
 }
 
 /* Notice section */
+
 .notice-section {
   margin-bottom: 32px;
+}
+
+.notice-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: #fff7e6;
+  border: 2px solid #ffa940;
+  border-radius: 8px;
+  padding: 20px 24px;
+}
+
+.notice-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ff9c3d;
+  border-radius: 50%;
+  color: white;
+  font-size: 18px;
+}
+
+.notice-content h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #d46b08;
 }
 
 .notice-content p {
   margin: 0;
   line-height: 1.6;
   font-size: 14px;
+  color: #8c4a00;
 }
 
 .notice-content strong {
-  color: #303133;
+  color: #ad4e00;
+  font-weight: 600;
 }
 
 /* Content sections */

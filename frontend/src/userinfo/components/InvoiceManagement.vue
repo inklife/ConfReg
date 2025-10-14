@@ -246,6 +246,10 @@
                 <!-- 购方税号 - 所有发票都需要 -->
                 <el-form-item label="Tax Number (税号)" required>
                   <el-input v-model="form.taxNumber" placeholder="Enter tax ID number / 请输入纳税人识别号"></el-input>
+                  <div style="font-size: 12px; color: #909399; margin-top: 5px;">
+                    <span v-if="form.invoiceCategory === 'normal'">For individual invoice, please enter ID card number / 开具个人发票时，请填写身份证号</span>
+                    <span v-if="form.invoiceCategory === 'vat'">Please enter company tax identification number / 请填写企业纳税人识别号</span>
+                  </div>
                 </el-form-item>
 
                 <!-- 增值税专用发票额外字段 -->

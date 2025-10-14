@@ -259,7 +259,7 @@ class InvoiceManager extends BaseComponent {
                     <div>
                         <div style="font-weight: 500; margin-bottom: 6px; font-size: 16px;">${userName}</div>
                         <div style="font-size: 14px; color: var(--gray-500); margin-bottom: 2px;">${userEmail}</div>
-                        <div style="font-size: 14px; color: var(--gray-500);">ID: #${invoice.id}</div>
+                        <div style="font-size: 14px; color: var(--gray-500);">发票ID: #${invoice.id}</div>
                     </div>
                 </td>
                 <td>
@@ -963,6 +963,11 @@ class InvoiceManager extends BaseComponent {
         const uploadModal = document.getElementById('invoice-upload-modal-global');
         if (uploadModal) {
             uploadModal.remove();
+        }
+        
+        const registrationModal = document.getElementById('registration-details-modal-global');
+        if (registrationModal) {
+            registrationModal.remove();
         }
     }
 
@@ -2520,6 +2525,15 @@ class InvoiceManager extends BaseComponent {
         
         // 重新绑定事件监听器
         this._detailsModalClickHandler = (e) => {
+            // 注册系统编号链接
+            const registrationLink = e.target.closest('.registration-link');
+            if (registrationLink) {
+                e.preventDefault();
+                const registrationId = registrationLink.dataset.registrationId;
+                this.showRegistrationDetails(registrationId);
+                return;
+            }
+            
             // 下载按钮
             const downloadBtn = e.target.closest('.btn-download');
             if (downloadBtn) {
@@ -2668,8 +2682,18 @@ class InvoiceManager extends BaseComponent {
             modalBody.removeEventListener('click', this._detailsModalClickHandler);
         }
         
-        // 为下载按钮添加事件监听器，使用箭头函数保持 this 上下文
+        // 为下载按钮和注册链接添加事件监听器，使用箭头函数保持 this 上下文
         this._detailsModalClickHandler = (e) => {
+            // 注册系统编号链接
+            const registrationLink = e.target.closest('.registration-link');
+            if (registrationLink) {
+                e.preventDefault();
+                const registrationId = registrationLink.dataset.registrationId;
+                this.showRegistrationDetails(registrationId);
+                return;
+            }
+            
+            // 下载按钮
             const button = e.target.closest('.btn-download');
             if (button) {
                 const fileId = parseInt(button.dataset.fileId);
@@ -2786,7 +2810,14 @@ class InvoiceManager extends BaseComponent {
                     ${invoice.registrationSystemNo ? `
                     <div class="detail-row">
                         <span class="detail-label">注册系统编号:</span>
-                        <span class="detail-value">${invoice.registrationSystemNo}</span>
+                        <span class="detail-value">
+                            <a href="#" 
+                               class="registration-link" 
+                               data-registration-id="${invoice.registrationSystemNo}"
+                               style="color: var(--blue-600); text-decoration: none; font-weight: 600; cursor: pointer; transition: all 0.2s ease; border-bottom: 1px dashed var(--blue-400);">
+                                #${invoice.registrationSystemNo}
+                            </a>
+                        </span>
                     </div>
                     ` : ''}
                 </div>
@@ -3110,6 +3141,425 @@ class InvoiceManager extends BaseComponent {
         this.updatePaginationDisplay();
         
         console.log('InvoiceManager: Test data display completed');
+    }
+
+    async showRegistrationDetails(registrationId) {
+        try {
+            console.log('Loading registration details for ID:', registrationId);
+            
+            const response = await fetch(`/admin/submissions/${registrationId}`, {
+                credentials: 'include'
+            });
+            
+            console.log('Registration API response status:', response.status);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Registration API error:', response.status, errorText);
+                throw new Error('获取注册信息失败');
+            }
+            
+            const data = await response.json();
+            console.log('Registration data received:', data);
+            
+            const registration = data.data || data;
+            
+            // 显示注册详情模态框
+            this.showRegistrationModal(registration);
+            
+        } catch (error) {
+            console.error('Error loading registration details:', error);
+            this.showError('获取注册信息失败: ' + error.message);
+        }
+    }
+
+    showRegistrationModal(registration) {
+        console.log('Showing registration modal for:', registration);
+        
+        // 创建或获取注册详情模态框
+        let modal = document.getElementById('registration-details-modal-global');
+        if (!modal) {
+            console.log('Creating registration modal...');
+            this.createRegistrationModal();
+            modal = document.getElementById('registration-details-modal-global');
+        }
+        
+        console.log('Modal element:', modal);
+        
+        // 填充内容
+        const modalBody = modal.querySelector('.modal-body');
+        console.log('Modal body:', modalBody);
+        
+        if (modalBody) {
+            modalBody.innerHTML = this.renderRegistrationDetails(registration);
+            console.log('Modal body content updated');
+        }
+        
+        // 显示模态框
+        modal.style.display = 'flex';
+        console.log('Modal display set to flex');
+    }
+
+    createRegistrationModal() {
+        const modal = document.createElement('div');
+        modal.id = 'registration-details-modal-global';
+        modal.style.display = 'none';
+        
+        // 添加样式
+        const modalStyle = document.createElement('style');
+        modalStyle.textContent = `
+            #registration-details-modal-global {
+                --white: #ffffff;
+                --gray-50: #f9fafb;
+                --gray-100: #f3f4f6;
+                --gray-200: #e5e7eb;
+                --gray-300: #d1d5db;
+                --gray-400: #9ca3af;
+                --gray-500: #6b7280;
+                --gray-600: #4b5563;
+                --gray-700: #374151;
+                --gray-800: #1f2937;
+                --gray-900: #111827;
+                --blue-500: #3b82f6;
+                --blue-600: #2563eb;
+                --green-500: #10b981;
+                --green-600: #059669;
+                --red-500: #ef4444;
+                --red-600: #dc2626;
+                --yellow-500: #f59e0b;
+                --yellow-600: #d97706;
+                --radius: 8px;
+                --radius-lg: 12px;
+                --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+                --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            }
+
+            #registration-details-modal-global .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.6);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                animation: fadeIn 0.3s ease-out;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            #registration-details-modal-global .modal-content {
+                background: var(--white);
+                border-radius: 16px;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                max-width: 900px;
+                width: 100%;
+                max-height: 90vh;
+                overflow-y: auto;
+                animation: modalSlideIn 0.3s ease-out;
+            }
+
+            @keyframes modalSlideIn {
+                from {
+                    opacity: 0;
+                    transform: scale(0.95) translateY(-20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1) translateY(0);
+                }
+            }
+
+            #registration-details-modal-global .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 24px 24px 16px 24px;
+                border-bottom: 1px solid var(--gray-200);
+            }
+
+            #registration-details-modal-global .modal-title {
+                font-size: 20px;
+                font-weight: 600;
+                color: var(--gray-900);
+                margin: 0;
+            }
+
+            #registration-details-modal-global .modal-close {
+                background: none;
+                border: none;
+                padding: 8px;
+                cursor: pointer;
+                color: var(--gray-400);
+                border-radius: 6px;
+                transition: all 0.2s ease;
+                font-size: 16px;
+            }
+
+            #registration-details-modal-global .modal-close:hover {
+                background: var(--gray-100);
+                color: var(--gray-600);
+            }
+
+            #registration-details-modal-global .modal-body {
+                padding: 24px;
+            }
+
+            #registration-details-modal-global .detail-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 20px;
+            }
+
+            #registration-details-modal-global .detail-section {
+                border: 1px solid var(--gray-200);
+                border-radius: var(--radius);
+                padding: 16px;
+                background: var(--gray-50);
+            }
+
+            #registration-details-modal-global .detail-title {
+                font-weight: 600;
+                color: var(--gray-900);
+                margin-bottom: 12px;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            #registration-details-modal-global .detail-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 8px;
+                font-size: 14px;
+                align-items: flex-start;
+            }
+
+            #registration-details-modal-global .detail-row:last-child {
+                margin-bottom: 0;
+            }
+
+            #registration-details-modal-global .detail-label {
+                color: var(--gray-600);
+                font-weight: 500;
+                min-width: 80px;
+                flex-shrink: 0;
+            }
+
+            #registration-details-modal-global .detail-value {
+                color: var(--gray-900);
+                font-weight: 500;
+                text-align: right;
+                word-break: break-word;
+            }
+        `;
+        
+        modal.innerHTML = `
+            <div class="modal-overlay">
+                <div class="modal-content" style="max-width: 900px;">
+                    <div class="modal-header">
+                        <h2 class="modal-title">注册信息详情</h2>
+                        <button class="modal-close" id="close-registration-details-global">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body" id="registration-details-modal-body">
+                        <!-- 详情内容将通过JavaScript填充 -->
+                    </div>
+                </div>
+            </div>
+        `;
+
+        modal.appendChild(modalStyle);
+        document.body.appendChild(modal);
+
+        // 设置关闭事件
+        modal.querySelector('#close-registration-details-global').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        modal.querySelector('.modal-overlay').addEventListener('click', (e) => {
+            if (e.target === modal.querySelector('.modal-overlay')) {
+                modal.style.display = 'none';
+            }
+        });
+    }
+
+    renderRegistrationDetails(registration) {
+        console.log('Rendering registration with data:', registration);
+        
+        // 提取数据
+        const fullName = registration.name || registration.fullName || '未填写';
+        const email = registration.email || '未填写';
+        const phone = registration.phone || '未提供';
+        const affiliation = registration.affiliation || '未填写';
+        const paperId = registration.paper_id || '未提供';
+        const paperPages = registration.paper_pages || 0;
+        const productCode = registration.product_code || '未知';
+        const registrationCategory = registration.registration_category || '未知';
+        const paymentMethod = registration.payment_method === 'domestic' ? '国内支付' : '国际支付';
+        
+        // 费用信息
+        const isDomestic = registration.payment_method === 'domestic';
+        const totalAmount = isDomestic ? registration.total_amount_rmb : registration.total_amount_usd;
+        const currency = isDomestic ? 'RMB' : 'USD';
+        const extraPageFee = isDomestic ? registration.extra_page_fee_rmb : registration.extra_page_fee_usd;
+        
+        // 状态转换
+        const statusMap = {
+            'pending': '待审核',
+            'approved': '已批准',
+            'rejected': '已拒绝',
+            'paid': '已支付'
+        };
+        const status = statusMap[registration.status] || registration.status;
+        
+        // 分类转换
+        const categoryMap = {
+            'attendee': '仅参会',
+            'full': '全额注册'
+        };
+        const category = categoryMap[registrationCategory] || registrationCategory;
+        
+        // 时间格式化
+        const submissionTime = registration.submission_time 
+            ? new Date(registration.submission_time).toLocaleString('zh-CN')
+            : '未知';
+        const reviewTime = registration.review_time 
+            ? new Date(registration.review_time).toLocaleString('zh-CN')
+            : '未审核';
+        
+        return `
+            <div class="detail-grid">
+                <div class="detail-section">
+                    <div class="detail-title">
+                        <i class="fas fa-id-card"></i> 基本信息
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">注册编号:</span>
+                        <span class="detail-value">#${registration.id}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">姓名:</span>
+                        <span class="detail-value">${fullName}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">邮箱:</span>
+                        <span class="detail-value">${email}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">手机:</span>
+                        <span class="detail-value">${phone}</span>
+                    </div>
+                    ${affiliation ? `
+                    <div class="detail-row">
+                        <span class="detail-label">单位/机构:</span>
+                        <span class="detail-value">${affiliation}</span>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-title">
+                        <i class="fas fa-file-alt"></i> 论文信息
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">论文ID:</span>
+                        <span class="detail-value">${paperId}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">页数:</span>
+                        <span class="detail-value">${paperPages} 页</span>
+                    </div>
+                    ${extraPageFee > 0 ? `
+                    <div class="detail-row">
+                        <span class="detail-label">超页费:</span>
+                        <span class="detail-value" style="color: var(--red-600);">
+                            ${extraPageFee} ${currency}
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-title">
+                        <i class="fas fa-shopping-cart"></i> 注册信息
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">注册类型:</span>
+                        <span class="detail-value">${productCode}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">注册类别:</span>
+                        <span class="detail-value">${category}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">支付方式:</span>
+                        <span class="detail-value">${paymentMethod}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">费用:</span>
+                        <span class="detail-value" style="font-weight: 600; color: var(--green-600);">
+                            ${totalAmount} ${currency}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-title">
+                        <i class="fas fa-clock"></i> 时间信息
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">提交时间:</span>
+                        <span class="detail-value">${submissionTime}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">审核时间:</span>
+                        <span class="detail-value">${reviewTime}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">状态:</span>
+                        <span class="detail-value">
+                            <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; background: ${
+                                registration.status === 'approved' ? '#d1fae5' : 
+                                registration.status === 'rejected' ? '#fee2e2' : 
+                                '#fef3c7'
+                            }; color: ${
+                                registration.status === 'approved' ? '#065f46' : 
+                                registration.status === 'rejected' ? '#991b1b' : 
+                                '#92400e'
+                            };">
+                                ${status}
+                            </span>
+                        </span>
+                    </div>
+                    ${registration.is_refunded ? `
+                    <div class="detail-row">
+                        <span class="detail-label">退款状态:</span>
+                        <span class="detail-value" style="color: var(--red-600);">已退款</span>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            
+            ${registration.review_notes ? `
+            <div class="detail-section" style="margin-top: 20px;">
+                <div class="detail-title">
+                    <i class="fas fa-comment"></i> 审核备注
+                </div>
+                <p style="margin: 8px 0 0 0; color: var(--gray-700);">${registration.review_notes}</p>
+            </div>
+            ` : ''}
+        `;
     }
 
     disconnectedCallback() {

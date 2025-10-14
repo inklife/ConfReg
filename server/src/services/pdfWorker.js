@@ -8,6 +8,38 @@ const crypto = require('crypto');
 // 导入现有的工具函数
 const { getChromiumExecutablePath } = require('../utils/cross-platform-chromium');
 
+// 获取北京时间(UTC+8)的工具函数
+function getBeijingTime() {
+  const now = new Date();
+  // 直接使用 toLocaleString 获取北京时区的时间
+  return now;
+}
+
+function formatBeijingDateTime(date, format = 'full') {
+  // 使用 Asia/Shanghai 时区格式化时间
+  if (format === 'date') {
+    // YYYY-MM-DD
+    const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
+    return dateStr;
+  } else if (format === 'time') {
+    // HH:MM:SS
+    const timeStr = date.toLocaleTimeString('en-GB', { 
+      timeZone: 'Asia/Shanghai',
+      hour12: false 
+    });
+    return timeStr;
+  } else if (format === 'datetime') {
+    // YYYY-MM-DD HH:MM:SS
+    const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
+    const timeStr = date.toLocaleTimeString('en-GB', { 
+      timeZone: 'Asia/Shanghai',
+      hour12: false 
+    });
+    return `${dateStr} ${timeStr}`;
+  }
+  return date.toISOString();
+}
+
 // 复制pdfGenerator.js中的工具函数
 function containsChinese(text) {
   if (!text) return false;
@@ -281,7 +313,7 @@ async function generatePDFFromHTML(html, options = {}) {
 // PDF生成处理函数
 async function generateReceiptPDF(submission, customOptions = {}) {
   try {
-    const now = new Date();
+    const now = getBeijingTime(); // 使用北京时间
     const receiptNumber = generateReceiptNumber(submission.id);
     const marginMode = getMarginMode(customOptions);
     
@@ -327,16 +359,16 @@ async function generateReceiptPDF(submission, customOptions = {}) {
 
     const templateData = {
       receiptNumber,
-      issueDate: now.toISOString().split('T')[0],
-      issueTime: now.toTimeString().split(' ')[0],
+      issueDate: `${formatBeijingDateTime(now, 'date')} (UTC+8)`,
+      issueTime: formatBeijingDateTime(now, 'time'),
       attendeeName: convertChineseToReadable(submission.name),
       attendeeEmail: submission.email,
       paperTitle: submission.paper_id || 'N/A',
       productCode: convertChineseToReadable(submission.product_code),
       amountPaid: amountDisplay,
       transactionDate: submission.submission_time ? 
-        submission.submission_time.toISOString().replace('T', ' ').split('.')[0] : 'N/A',
-      generationDateTime: now.toISOString().replace('T', ' ').split('.')[0],
+        formatBeijingDateTime(submission.submission_time, 'datetime') : 'N/A',
+      generationDateTime: `${formatBeijingDateTime(now, 'datetime')} (UTC+8)`,
       qrCodeDataURL: qrCodeDataURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
       marginMode
     };
@@ -351,16 +383,20 @@ async function generateReceiptPDF(submission, customOptions = {}) {
 
 async function generateConfirmationLetterPDF(submission, customOptions = {}) {
   try {
-    const now = new Date();
+    const now = getBeijingTime(); // 使用北京时间
     const verificationCode = crypto.createHash('md5').update(`${submission.id}-${now.getTime()}`).digest('hex').toUpperCase().slice(0, 8);
     const marginMode = getMarginMode(customOptions);
     
+    // 格式化北京时间为英文长日期格式
+    const issueDateFormatted = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      timeZone: 'Asia/Shanghai'
+    });
+    
     const templateData = {
-      issueDate: now.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      }),
+      issueDate: `${issueDateFormatted} (UTC+8)`,
       participantName: convertChineseToReadable(submission.name),
       emailAddress: submission.email,
       affiliation: convertChineseToReadable(submission.affiliation || 'N/A'),
@@ -381,7 +417,7 @@ async function generateConfirmationLetterPDF(submission, customOptions = {}) {
 
 async function generateRegistrationInfoPDF(submission, customOptions = {}) {
   try {
-    const now = new Date();
+    const now = getBeijingTime(); // 使用北京时间
     
     let statusClass = 'pending';
     if (submission.status === 'approved') statusClass = 'approved';
@@ -414,7 +450,7 @@ async function generateRegistrationInfoPDF(submission, customOptions = {}) {
         submission.submission_time.toISOString().split('T')[0] : 'N/A',
       reviewDate: submission.review_time ? 
         submission.review_time.toISOString().split('T')[0] : null,
-      generationDateTime: now.toISOString().replace('T', ' ').split('.')[0],
+      generationDateTime: `${formatBeijingDateTime(now, 'datetime')} (UTC+8)`,
       qrCodeDataURL: qrCodeDataURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
       marginMode
     };
@@ -429,7 +465,7 @@ async function generateRegistrationInfoPDF(submission, customOptions = {}) {
 
 async function generateMealVoucherPDF(mealVoucher, customOptions = {}) {
   try {
-    const now = new Date();
+    const now = getBeijingTime(); // 使用北京时间
     const marginMode = getMarginMode(customOptions);
     
     // 生成二维码数据
@@ -469,16 +505,19 @@ async function generateMealVoucherPDF(mealVoucher, customOptions = {}) {
       PAYMENT_METHOD: paymentMethod === 'domestic' ? 'Domestic (RMB)' : 'International (USD)',
       STATUS: (mealVoucher.status || 'pending').toUpperCase(),
       QR_CODE: qrCodeDataURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-      GENERATION_DATE: now.toISOString().split('T')[0]
+      GENERATION_DATE: `${formatBeijingDateTime(now, 'date')} (UTC+8)`
     };
     
     const html = await renderTemplate('meal-voucher', templateData);
     return await generatePDFFromHTML(html, customOptions);
   } catch (error) {
-    console.error('Worker meal voucher PDF generation error:', error);
+    console.error('Worker banquet ticket PDF generation error:', error);
     throw error;
   }
 }
+
+// 为了保持向后兼容性，创建别名
+const generateBanquetTicketPDF = generateMealVoucherPDF;
 
 // 监听主线程消息
 parentPort.on('message', async (message) => {
@@ -510,7 +549,7 @@ parentPort.on('message', async (message) => {
         pdfBuffer = await generateRegistrationInfoPDF(data.submission, data.options);
         break;
       case 'meal-voucher':
-        pdfBuffer = await generateMealVoucherPDF(data.submission, data.options);
+        pdfBuffer = await generateBanquetTicketPDF(data.submission, data.options);
         break;
       default:
         throw new Error(`Unknown PDF type: ${type}`);

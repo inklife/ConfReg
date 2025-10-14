@@ -39,11 +39,28 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024 // 10MB limit
   },
   fileFilter: function (req, file, cb) {
-    // Allow images only
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
+    // Allow images and PDF files
+    // screenshot field: only images
+    // proof field: images or PDF
+    if (file.fieldname === 'screenshot') {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Payment screenshot must be an image file'), false);
+      }
+    } else if (file.fieldname === 'proof') {
+      if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+        cb(null, true);
+      } else {
+        cb(new Error('Proof file must be an image or PDF file'), false);
+      }
     } else {
-      cb(new Error('Only image files are allowed'), false);
+      // For other fields, allow images only
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed'), false);
+      }
     }
   }
 });
@@ -1311,7 +1328,7 @@ router.get('/registration/:id', requireAuth, async (req, res) => {
   }
 });
 
-// Generate meal voucher PDF
+// Generate extra banquet ticket PDF
 router.post('/generate_meal_voucher', pdfDownloadLimiter, memoryMonitor, requireAuth, async (req, res) => {
   try {
     const { MealVoucher } = require('../models');
@@ -1322,12 +1339,12 @@ router.post('/generate_meal_voucher', pdfDownloadLimiter, memoryMonitor, require
       status: 'approved'
     };
     
-    // 如果提供了 voucherId，则查询特定的餐券记录
+    // 如果提供了 voucherId，则查询特定的晚宴票记录
     if (req.body.voucherId) {
       whereCondition.id = req.body.voucherId;
     }
     
-    // Find approved meal voucher for user
+    // Find approved banquet ticket for user
     const mealVoucher = await MealVoucher.findOne({
       where: whereCondition,
       include: [{
@@ -1340,8 +1357,8 @@ router.post('/generate_meal_voucher', pdfDownloadLimiter, memoryMonitor, require
       return res.status(404).json({
         success: false,
         message: req.body.voucherId 
-          ? `No approved meal voucher found with ID ${req.body.voucherId}` 
-          : 'No approved meal voucher found'
+          ? `No approved banquet ticket found with ID ${req.body.voucherId}` 
+          : 'No approved banquet ticket found'
       });
     }
 
@@ -1395,14 +1412,14 @@ router.post('/generate_meal_voucher', pdfDownloadLimiter, memoryMonitor, require
     res.json({
       success: true,
       taskId: result,
-      message: 'Meal voucher generation started'
+      message: 'Banquet ticket generation started'
     });
 
   } catch (error) {
-    console.error('Meal voucher generation start error:', error);
+    console.error('Banquet ticket generation start error:', error);
     res.status(500).json({
       success: false,
-      message: `Error starting meal voucher generation: ${error.message}`
+      message: `Error starting banquet ticket generation: ${error.message}`
     });
   }
 });

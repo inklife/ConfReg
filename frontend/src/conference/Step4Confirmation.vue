@@ -909,9 +909,10 @@ export default {
         formData.append('extraPageFeeUSD', this.extraPageFeeUSD);
         formData.append('extraPageFeeRMB', this.extraPageFeeRMB);
         
-        // 添加注册类别信息
-        const registrationCategory = this.selectedProduct.code && this.selectedProduct.code.includes('Student') ? 'student' : 'full';
+        // 添加注册类别信息（直接使用 Step1 保存的类别）
+        const registrationCategory = this.selectedProduct.registration_category;
         formData.append('registrationCategory', registrationCategory);
+        console.log('Registration category from Step1:', registrationCategory);
         
         // 添加支付方式信息
         formData.append('paymentMethod', this.paymentMethod || 'international');
@@ -954,26 +955,26 @@ export default {
         }
 
         // 处理第一步的证明文件
-        const savedProofFile = localStorage.getItem(this.getStorageKey('conferenceProofFile'));
-        if (savedProofFile) {
+        // 注意：不从 localStorage 读取文件（文件可能很大）
+        // 而是从 sessionStorage 中获取文件引用（仅用于新建注册流程）
+        const proofFileKey = `proofFile_${this.currentUserId}`;
+        
+        // 尝试从 window 对象获取临时存储的文件
+        if (window[proofFileKey] && window[proofFileKey] instanceof File) {
           try {
-            // 将base64转换为blob
-            const response = await fetch(savedProofFile);
-            const blob = await response.blob();
-            
-            // 创建文件对象
-            const proofFileToUpload = new File([blob], 'verification_proof.png', {
-              type: blob.type || 'image/png'
-            });
-            
+            const proofFileToUpload = window[proofFileKey];
             formData.append('proof', proofFileToUpload);
-            console.log('Added proof file to form data:', proofFileToUpload);
+            console.log('Added proof file to form data from memory:', {
+              name: proofFileToUpload.name,
+              size: proofFileToUpload.size,
+              type: proofFileToUpload.type
+            });
           } catch (error) {
             console.warn('Failed to process proof file, continuing without it:', error);
-            // 证明文件不是必须的，所以失败了也继续提交
           }
         } else {
-          console.log('No proof file found in localStorage, continuing without it');
+          console.log('No proof file found in memory, continuing without it');
+          // 编辑模式下，如果需要更新 proof 文件，用户需要重新上传
         }
 
         // 调用后端API
@@ -998,6 +999,15 @@ export default {
 
         if (response.data.success) {
           this.$message.success('Registration submitted successfully!');
+          
+          // 清理临时存储的文件
+          if (this.currentUserId) {
+            const proofFileKey = `proofFile_${this.currentUserId}`;
+            if (window[proofFileKey]) {
+              delete window[proofFileKey];
+              console.log('Cleaned up proof file from memory');
+            }
+          }
           
           // 保存注册数据到localStorage（使用用户关联的键名）
           const registrationData = {

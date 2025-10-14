@@ -19,6 +19,12 @@
 
     <div class="content">
       <div class="product-list">
+        <!-- Early Bird Price Notice -->
+        <div class="early-bird-notice" @click="showPriceComparison">
+          <i class="el-icon-warning-outline"></i>
+          <span>Current prices are <strong>Early Bird</strong> rates. Register now to save! <span class="click-hint">(Click for details)</span></span>
+        </div>
+
         <!-- Full Registration Section -->
         <div class="product-group">
           <h3 class="group-title">Full Registration</h3>
@@ -46,18 +52,18 @@
           </div>
         </div>
 
-        <!-- Student Registration Section -->
+        <!-- Attendee Registration Section -->
         <div class="product-group">
-          <h3 class="group-title">Students</h3>
-          <div class="product-grid student-registration-grid">
+          <h3 class="group-title">Attendee Registration</h3>
+          <div class="product-grid attendee-registration-grid">
             <div 
-              v-for="(product, index) in studentRegistrationProducts" 
-              :key="index + 3"
+              v-for="(product, index) in attendeeRegistrationProducts" 
+              :key="index + 2"
               class="product-item grid-item"
-              :class="{ 'selected': selectedProduct === index + 3 }"
-              @click="selectProduct(index + 3)"
+              :class="{ 'selected': selectedProduct === index + 2 }"
+              @click="selectProduct(index + 2)"
             >
-              <div class="radio-icon" v-if="selectedProduct === index + 3">
+              <div class="radio-icon" v-if="selectedProduct === index + 2">
                 <i class="el-icon-success"></i>
               </div>
               <div class="product-info">
@@ -78,6 +84,7 @@
         <div class="proof-header">
           <h4>Upload Verification Document</h4>
           <p>Please upload verification for {{ proofTypes[products[selectedProduct].code] }}</p>
+          <p class="proof-requirement">PDF format required (supports multiple pages, max 10MB)</p>
         </div>
         
         <div class="proof-upload-area">
@@ -87,18 +94,22 @@
             :auto-upload="false"
             :on-change="handleProofUpload"
             :show-file-list="false"
-            accept="image/*"
+            accept="application/pdf"
           >
             <el-button size="small" type="primary">
               <i class="el-icon-upload"></i> Upload Document
             </el-button>
             <div slot="tip" class="upload-tip">
-              less than 2MB
+              PDF files only, supports multiple pages, max 10MB
             </div>
           </el-upload>
 
-          <div v-if="proofPreview" class="preview-area">
-            <img :src="proofPreview" class="preview-image">
+          <div v-if="proofFile" class="preview-area">
+            <div class="file-preview">
+              <i class="el-icon-document"></i>
+              <span class="file-name">{{ proofFile.name }}</span>
+              <span class="file-size">({{ formatFileSize(proofFile.size) }})</span>
+            </div>
             <el-button size="mini" @click="removeProof" class="remove-btn">
               Remove
             </el-button>
@@ -112,7 +123,7 @@
       <h4>Important Notes</h4>
       <ul>
         <li>To be published in the IEEE ICPADS 2025 Proceedings and to be eligible for publication in IEEE Xplore, at least one author of an accepted paper is required to register for the conference at the <strong>FULL (member or non-member) rate</strong>.</li>
-        <li>Please note that <strong>ONE Regular registration must be paid for EACH paper</strong> to be published in the proceedings.</li>
+        <li>Please note that <strong>ONE Full Registration must be paid for EACH paper</strong> to be published in the proceedings.</li>
       </ul>
     </div>
 
@@ -126,6 +137,102 @@
         Next Step
       </el-button>
     </div>
+
+    <!-- Price Comparison Dialog -->
+    <el-dialog
+      title="Registration Fees"
+      :visible.sync="priceDialogVisible"
+      width="90%"
+      custom-class="price-comparison-dialog"
+      center
+    >
+      <div class="price-table-container">
+        <table class="price-comparison-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Membership Type / Item</th>
+              <th>Early Bird (USD / RMB)</th>
+              <th>Late Registration (USD / RMB)</th>
+              <th>Benefits</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Full Registration -->
+            <tr>
+              <td rowspan="2" class="category-cell">Full Registration</td>
+              <td>IEEE Member</td>
+              <td class="price-cell highlight">$700 (RMB 5000)</td>
+              <td class="price-cell">$850 (RMB 6100)</td>
+              <td rowspan="2" class="benefits-cell">
+                <ul>
+                  <li>Presentation and Publication of one paper</li>
+                  <li>Access to all conference sessions</li>
+                  <li>A copy of the proceedings</li>
+                  <li>Program brochure and conference goodies (e.g., bags/paper/pens)</li>
+                  <li>Lunch, coffee breaks, banquet and reception</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Non-IEEE Member</td>
+              <td class="price-cell highlight">$840 (RMB 6000)</td>
+              <td class="price-cell">$990 (RMB 7100)</td>
+            </tr>
+            
+            <!-- Attendee Registration -->
+            <tr>
+              <td rowspan="4" class="category-cell">Attendee Registration</td>
+              <td>IEEE Student Member/Life Member</td>
+              <td class="price-cell highlight">$500 (RMB 3600)</td>
+              <td class="price-cell">$650 (RMB 4700)</td>
+              <td rowspan="4" class="benefits-cell">
+                <ul>
+                  <li>Access to all conference sessions</li>
+                  <li>A copy of the proceedings</li>
+                  <li>Program brochure and conference goodies (e.g., bags/paper/pens)</li>
+                  <li>Lunch, coffee breaks, banquet and reception</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Student-Non-IEEE Member</td>
+              <td class="price-cell highlight">$610 (RMB 4400)</td>
+              <td class="price-cell">$760 (RMB 5500)</td>
+            </tr>
+            <tr>
+              <td>IEEE-Member</td>
+              <td class="price-cell highlight">$610 (RMB 4400)</td>
+              <td class="price-cell">$760 (RMB 5500)</td>
+            </tr>
+            <tr>
+              <td>Non-IEEE Member</td>
+              <td class="price-cell highlight">$700 (RMB 5000)</td>
+              <td class="price-cell">$850 (RMB 6100)</td>
+            </tr>
+
+            <!-- Additional Fee -->
+            <tr>
+              <td rowspan="2" class="category-cell">Additional Fee</td>
+              <td>Extra page fee (per page)</td>
+              <td class="price-cell">$80 (RMB 600)</td>
+              <td class="price-cell">$80 (RMB 600)</td>
+              <td>One additional page (no more than 10 pages in total)</td>
+            </tr>
+            <tr>
+              <td>Extra banquet tickets (per ticket)</td>
+              <td class="price-cell">$150 (RMB 1100)</td>
+              <td class="price-cell">$150 (RMB 1100)</td>
+              <td>One additional banquet ticket</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div class="price-note">
+          <strong>Note:</strong> Early Bird Registration deadline is October 31, 2025.
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -149,8 +256,9 @@ export default {
       proofPreview: null,
       currentUserId: null, // 添加当前用户ID跟踪
       editMode: false,
+      priceDialogVisible: false, // 价格对比弹窗显示状态
       products: [
-        // Full Registration (3 types)
+        // Full Registration (2 types)
         { 
           code: 'IEEE Member', 
           price: 700,
@@ -163,18 +271,24 @@ export default {
           priceRMB: 6000,
           description: 'For non-IEEE members'
         },
+        // Attendee Registration (4 types)
         { 
-          code: 'Life Member', 
-          price: 500,
-          priceRMB: 3600,
-          description: 'For IEEE life members'
+          code: 'Attendee - IEEE Member', 
+          price: 610,
+          priceRMB: 4400,
+          description: 'For attendees with IEEE membership'
         },
-        // Student Registration (2 types)
         { 
-          code: 'Student - IEEE Member', 
+          code: 'Attendee - Non-IEEE Member', 
+          price: 700,
+          priceRMB: 5000,
+          description: 'For attendees without IEEE membership'
+        },
+        { 
+          code: 'IEEE Student Member/Life Member', 
           price: 500,
           priceRMB: 3600,
-          description: 'For students with IEEE membership'
+          description: 'For IEEE student members or life members'
         },
         { 
           code: 'Student - Non-IEEE Member', 
@@ -185,17 +299,17 @@ export default {
       ],
       proofTypes: {
         'IEEE Member': 'IEEE membership verification',
-        'Life Member': 'IEEE life membership verification',
-        'Student - IEEE Member': 'Student IEEE membership verification'
+        'Attendee - IEEE Member': 'IEEE membership verification',
+        'IEEE Student Member/Life Member': 'IEEE membership verification (If IEEE student member, PDF should also include student ID card photo or other proof materials in addition to IEEE membership certificate; Life members only need to provide IEEE life membership proof)'
       }
     }
   },
   computed: {
     fullRegistrationProducts() {
-      return this.products.slice(0, 3); // First 3 products are Full Registration
+      return this.products.slice(0, 2); // First 2 products are Full Registration
     },
-    studentRegistrationProducts() {
-      return this.products.slice(3, 5); // Last 2 products are Student Registration
+    attendeeRegistrationProducts() {
+      return this.products.slice(2, 6); // Products 2-5 are Attendee Registration
     },
     selectedProductRequiresProof() {
       if (this.selectedProduct === null) return false;
@@ -204,7 +318,7 @@ export default {
     },
     canProceed() {
       if (this.selectedProduct === null) return false;
-      if (this.selectedProductRequiresProof && !this.proofPreview) return false;
+      if (this.selectedProductRequiresProof && !this.proofFile) return false;
       return true;
     }
   },
@@ -401,16 +515,20 @@ export default {
           const regData = response.data.registration_data;
           const images = response.data.images || {};
           
-          // 保存产品选择数据到 localStorage
+          // 保存产品选择数据到 localStorage（包含 registration_category）
           const productData = {
             code: regData.product_code,
             price: regData.product_price,
-            description: this.products.find(p => p.code === regData.product_code)?.description || ''
+            priceRMB: regData.product_price_rmb,
+            description: this.products.find(p => p.code === regData.product_code)?.description || '',
+            registration_category: regData.registration_category || 'full' // 从后端获取，或默认为 full
           };
           localStorage.setItem(
             this.getStorageKey('conferenceProductSelection'), 
             JSON.stringify(productData)
           );
+          
+          console.log('Step1 - Product data loaded from backend:', productData);
           
           // 如果有证明文件，加载并保存
           if (images.proof) {
@@ -490,17 +608,21 @@ export default {
           }
         }
 
-        // 加载证明文件
-        const savedProof = localStorage.getItem(this.getStorageKey('conferenceProofFile'));
-        console.log('savedProof exists:', !!savedProof);
-        if (savedProof) {
-          console.log('Loading proof image from localStorage...');
-          this.proofPreview = savedProof;
-          // 从base64创建一个虚拟的File对象（用于验证）
-          this.createFileFromBase64(savedProof);
-          console.log('Proof image loaded and file object created');
+        // 加载证明文件信息（只加载元数据，不加载文件内容）
+        const savedProofInfo = localStorage.getItem(this.getStorageKey('conferenceProofFileInfo'));
+        console.log('savedProofInfo exists:', !!savedProofInfo);
+        if (savedProofInfo) {
+          try {
+            const fileInfo = JSON.parse(savedProofInfo);
+            this.proofPreview = fileInfo.name;
+            console.log('Proof file info restored:', fileInfo);
+            // 注意：实际的 proofFile 对象无法从 localStorage 恢复
+            // 用户需要重新上传文件（这是编辑模式的限制）
+          } catch (error) {
+            console.warn('Failed to parse proof file info:', error);
+          }
         } else {
-          console.log('No proof image found in localStorage');
+          console.log('No proof file info found in localStorage');
         }
         
         console.log('=== Step1 - Data loading complete ===');
@@ -513,42 +635,10 @@ export default {
       }
     },
 
+    // 注意：此方法已废弃，不再从 base64 创建 File 对象
+    // PDF 文件应该保持在内存中，不通过 localStorage 传递
     createFileFromBase64(base64Data) {
-      try {
-        // 从base64数据创建File对象（用于表单验证）
-        const arr = base64Data.split(',');
-        if (arr.length !== 2) {
-          throw new Error('Invalid base64 format');
-        }
-        
-        const mimeMatch = arr[0].match(/:(.*?);/);
-        if (!mimeMatch) {
-          throw new Error('Cannot extract MIME type');
-        }
-        
-        const mime = mimeMatch[1];
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n);
-        }
-        this.proofFile = new File([u8arr], 'proof.jpg', { type: mime });
-        console.log('Step1 - Created file object from base64 data:', {
-          fileName: 'proof.jpg',
-          fileSize: this.proofFile.size,
-          fileType: this.proofFile.type
-        });
-        
-        // 强制Vue更新响应式数据
-        this.$nextTick(() => {
-          this.$forceUpdate();
-        });
-        
-      } catch (error) {
-        console.warn('Step1 - Failed to create file from base64:', error);
-        // 即使文件创建失败，图片预览仍应正常显示
-      }
+      console.warn('Step1 - createFileFromBase64 is deprecated. Files should not be stored in localStorage.');
     },
 
     saveData() {
@@ -558,19 +648,31 @@ export default {
         // 保存产品选择（使用带用户ID的键名）
         if (this.selectedProduct !== null) {
           const productData = this.products[this.selectedProduct];
+          
+          // 确定 registration_category
+          // 索引 0-1: Full Registration
+          // 索引 2-5: Attendee Registration
+          const registrationCategory = this.selectedProduct < 2 ? 'full' : 'attendee';
+          
+          // 保存产品数据，包含 category
+          const dataToSave = {
+            ...productData,
+            registration_category: registrationCategory
+          };
+          
           localStorage.setItem(
             this.getStorageKey('conferenceProductSelection'), 
-            JSON.stringify(productData)
+            JSON.stringify(dataToSave)
           );
+          
+          console.log('Product data saved with category:', {
+            productCode: productData.code,
+            category: registrationCategory
+          });
         }
         
-        // 保存证明文件预览
-        if (this.proofPreview) {
-          localStorage.setItem(
-            this.getStorageKey('conferenceProofFile'), 
-            this.proofPreview
-          );
-        }
+        // 注意：证明文件的 base64 数据已经在 handleProofUpload 中保存了
+        // 这里不需要再次保存，因为 proofPreview 只是文件名
         
         console.log('Data saved for user:', this.currentUserId);
       } catch (error) {
@@ -583,44 +685,65 @@ export default {
       this.saveData();
     },
 
+    showPriceComparison() {
+      this.priceDialogVisible = true;
+    },
+
     handleProofUpload(file) {
-      const isImage = ['image/jpeg', 'image/png', 'image/jpg'].includes(file.raw.type);
-      const isLt2M = file.raw.size / 1024 / 1024 < 2;
+      const isPDF = file.raw.type === 'application/pdf';
+      const isLt10M = file.raw.size / 1024 / 1024 < 10;
 
-      if (!isImage) {
-        this.$message.error('Only image files (JPG/PNG) are allowed!');
+      if (!isPDF) {
+        this.$message.error('Only PDF files are allowed!');
         return;
       }
 
-      if (!isLt2M) {
-        this.$message.error('File size must be less than 2MB!');
+      if (!isLt10M) {
+        this.$message.error('File size must be less than 10MB!');
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.proofFile = file.raw;
-        this.proofPreview = e.target.result;
-        this.saveData(); // 保存数据
-      };
-      reader.readAsDataURL(file.raw);
+      this.proofFile = file.raw;
+      this.proofPreview = file.name; // 存储文件名用于显示
+      
+      // 不再保存 PDF 到 localStorage（文件可能很大）
+      // 只保存文件名，实际文件保存在组件内存中
+      if (this.currentUserId) {
+        const fileInfo = {
+          name: file.name,
+          size: file.raw.size,
+          type: file.raw.type
+        };
+        localStorage.setItem(
+          this.getStorageKey('conferenceProofFileInfo'), 
+          JSON.stringify(fileInfo)
+        );
+        console.log('Step1 - PDF file info saved:', fileInfo);
+      }
+      
+      this.$message.success('PDF file uploaded successfully!');
     },
     
     removeProof() {
       this.proofFile = null;
       this.proofPreview = null;
       if (this.currentUserId) {
-        localStorage.removeItem(this.getStorageKey('conferenceProofFile'));
+        localStorage.removeItem(this.getStorageKey('conferenceProofFileInfo'));
       }
     },
     
     nextStep() {
       this.saveData();
       
-      // 如果有图片预览但没有文件对象，尝试创建文件对象
-      if (this.proofPreview && !this.proofFile) {
-        console.log('Step1 - Creating file object before proceeding to next step');
-        this.createFileFromBase64(this.proofPreview);
+      // 将 proofFile 存储到 window 对象（临时内存存储，避免 localStorage 大小限制）
+      if (this.proofFile && this.currentUserId) {
+        const proofFileKey = `proofFile_${this.currentUserId}`;
+        window[proofFileKey] = this.proofFile;
+        console.log('Step1 - Proof file stored in memory:', {
+          key: proofFileKey,
+          fileName: this.proofFile.name,
+          fileSize: this.proofFile.size
+        });
       }
       
       this.$emit('step-complete', {
@@ -643,6 +766,14 @@ export default {
     },
     goBack() {
       this.$router.push('/conference');
+    },
+    
+    formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     }
   }
 }
@@ -723,6 +854,42 @@ export default {
   margin: 0 auto;
 }
 
+.early-bird-notice {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.early-bird-notice:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.early-bird-notice i {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.early-bird-notice strong {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.early-bird-notice .click-hint {
+  font-size: 13px;
+  opacity: 0.9;
+  font-style: italic;
+}
+
 .product-group {
   margin-bottom: 20px;
 }
@@ -749,10 +916,10 @@ export default {
 }
 
 .full-registration-grid {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
 }
 
-.student-registration-grid {
+.attendee-registration-grid {
   grid-template-columns: repeat(2, 1fr);
 }
 
@@ -894,6 +1061,39 @@ export default {
 .preview-area {
   position: relative;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.file-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 15px;
+  background: #f5f7fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.file-preview i {
+  font-size: 24px;
+  color: #409EFF;
+}
+
+.file-name {
+  color: #303133;
+  font-weight: 500;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  color: #909399;
+  font-size: 12px;
 }
 
 .preview-image {
@@ -905,9 +1105,7 @@ export default {
 }
 
 .remove-btn {
-  position: absolute;
-  top: -6px;
-  right: -6px;
+  flex-shrink: 0;
 }
 
 .important-notes {
@@ -964,13 +1162,97 @@ export default {
   margin-top: 20px;
 }
 
+/* Price Comparison Dialog Styles */
+.price-comparison-dialog {
+  max-width: 1200px;
+}
+
+.price-table-container {
+  overflow-x: auto;
+}
+
+.price-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.price-comparison-table th,
+.price-comparison-table td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.price-comparison-table thead {
+  background: #409EFF;
+  color: white;
+}
+
+.price-comparison-table th {
+  font-weight: 600;
+  text-align: center;
+}
+
+.price-comparison-table tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.price-comparison-table tbody tr:hover {
+  background: #f0f7ff;
+}
+
+.category-cell {
+  font-weight: 600;
+  background: #e8f4ff;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.price-cell {
+  text-align: center;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.price-cell.highlight {
+  background: #fff3cd;
+  color: #856404;
+  font-weight: 600;
+}
+
+.benefits-cell ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.8;
+}
+
+.benefits-cell li {
+  margin-bottom: 4px;
+}
+
+.price-note {
+  background: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 4px;
+  padding: 12px;
+  color: #8c4a00;
+  font-size: 14px;
+}
+
+.price-note strong {
+  color: #d48806;
+}
+
 /* 平板端优化 */
 @media (max-width: 1024px) and (min-width: 769px) {
   .full-registration-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .student-registration-grid {
+  .attendee-registration-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -1013,6 +1295,35 @@ export default {
     max-width: none;
   }
 
+  .early-bird-notice {
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  .early-bird-notice i {
+    font-size: 18px;
+  }
+
+  .early-bird-notice .click-hint {
+    font-size: 11px;
+  }
+
+  .price-comparison-table {
+    font-size: 12px;
+  }
+
+  .price-comparison-table th,
+  .price-comparison-table td {
+    padding: 8px;
+  }
+
+  .benefits-cell ul {
+    padding-left: 16px;
+    font-size: 12px;
+  }
+
   .product-group {
     margin-bottom: 20px;
   }
@@ -1033,7 +1344,7 @@ export default {
     gap: 8px;
   }
 
-  .student-registration-grid {
+  .attendee-registration-grid {
     grid-template-columns: 1fr;
     gap: 8px;
   }
@@ -1139,6 +1450,27 @@ export default {
 
   .preview-area {
     margin-left: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .file-preview {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .file-preview i {
+    font-size: 20px;
+  }
+
+  .file-name {
+    max-width: 150px;
+    font-size: 12px;
+  }
+
+  .file-size {
+    font-size: 11px;
   }
 
   .preview-image {
@@ -1190,6 +1522,49 @@ export default {
 
   .header h1 {
     font-size: 18px;
+  }
+
+  .early-bird-notice {
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    gap: 6px;
+    flex-direction: row;
+    text-align: left;
+  }
+
+  .early-bird-notice i {
+    font-size: 16px;
+  }
+
+  .early-bird-notice .click-hint {
+    font-size: 10px;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .price-comparison-table {
+    font-size: 11px;
+  }
+
+  .price-comparison-table th,
+  .price-comparison-table td {
+    padding: 6px 4px;
+  }
+
+  .benefits-cell ul {
+    padding-left: 12px;
+    font-size: 10px;
+    line-height: 1.6;
+  }
+
+  .benefits-cell li {
+    margin-bottom: 2px;
+  }
+
+  .price-note {
+    font-size: 11px;
+    padding: 8px;
   }
 
   .product-group {
