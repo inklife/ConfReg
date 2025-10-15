@@ -259,9 +259,9 @@
                               placeholder="Enter company registered address / 请输入单位注册地址"></el-input>
                   </el-form-item>
 
-                  <el-form-item label="Registered Phone (注册电话)" required>
+                  <el-form-item label="Phone (电话)" required>
                     <el-input v-model="form.registeredPhone" 
-                              placeholder="Enter company registered phone / 请输入单位注册电话"></el-input>
+                              placeholder="Enter company phone / 请输入单位电话"></el-input>
                   </el-form-item>
 
                   <el-form-item label="Bank Name (开户行)" required>

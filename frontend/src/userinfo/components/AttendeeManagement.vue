@@ -323,8 +323,11 @@
                     
                     <div class="detail-group">
                       <h5>Transfer Reference</h5>
-                      <p><strong>Format:</strong> <code>Name+ICPADS 2025+TransferFee</code></p>
-                      <p class="reference-example">Example: JohnDoe+ICPADS 2025+TransferFee</p>
+                      <p><strong>Format:</strong> <code>Name+PaperID+ICPADS 2025+TransferFee</code></p>
+                      <p class="reference-example">Example: JohnDoe+123+ICPADS 2025+TransferFee</p>
+                      <p class="reference-example" v-if="selectedRegistration && selectedRegistration.paperId">
+                        Your reference: <strong>{{ selectedRegistration.name }}+{{ selectedRegistration.paperId }}+ICPADS 2025+TransferFee</strong>
+                      </p>
                     </div>
                   </div>
                   <div class="payment-note">
@@ -345,8 +348,11 @@
                     
                     <div class="detail-group">
                       <h5>转账附言</h5>
-                      <p><strong>格式：</strong> <code>姓名+ICPADS 2025+转让手续费</code></p>
-                      <p class="reference-example">示例：张三+ICPADS 2025+转让手续费</p>
+                      <p><strong>格式：</strong> <code>姓名+论文编号+ICPADS 2025+转让手续费</code></p>
+                      <p class="reference-example">示例：张三+123+ICPADS 2025+转让手续费</p>
+                      <p class="reference-example" v-if="selectedRegistration && selectedRegistration.paperId">
+                        您的附言：<strong>{{ selectedRegistration.name }}+{{ selectedRegistration.paperId }}+ICPADS 2025+转让手续费</strong>
+                      </p>
                     </div>
                   </div>
                   <div class="payment-note">

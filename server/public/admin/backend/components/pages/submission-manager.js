@@ -51,6 +51,26 @@ class SubmissionManager extends BaseComponent {
                 text-overflow: initial;
             }
 
+            /* 注册类别角标 */
+            .category-badge {
+                display: inline-flex;
+                align-items: center;
+                padding: 2px 6px;
+                margin-right: 6px;
+                border-radius: 9999px;
+                font-size: 11px;
+                font-weight: 700;
+                line-height: 1;
+                vertical-align: middle;
+                user-select: none;
+            }
+
+            .category-full {
+                background: #e0f2fe; /* light blue */
+                color: #0369a1;      /* deep blue */
+                border: 1px solid #7dd3fc;
+            }
+
             /* 手机端隐藏特定列 */
             @media (max-width: 768px) {
                 .submissions-content .data-table th:nth-child(4),
@@ -393,7 +413,10 @@ class SubmissionManager extends BaseComponent {
                 <td class="text-ellipsis" title="${submission.email || '未提供'}">${submission.email || '未提供'}</td>
                 <td class="text-ellipsis" title="${submission.affiliation || '未提供'}">${submission.affiliation || '未提供'}</td>
                 <td class="text-ellipsis" title="${submission.paper_id || '未提供'}">${submission.paper_id || '未提供'}</td>
-                <td>${submission.product_code || '未知'}</td>
+                <td>
+                    ${submission.registration_category === 'full' ? '<span class="category-badge category-full">FULL</span>' : ''}
+                    ${submission.product_code || '未知'}
+                </td>
                 <td>${priceDisplay}</td>
                 <td>
                     <span class="status-badge status-${displayStatus}">
@@ -493,6 +516,15 @@ class SubmissionManager extends BaseComponent {
             'refunded': '已退款'
         };
         return statusMap[status] || '未知';
+    }
+
+    // 注册类别中文映射：full -> 全额注册；attendee -> 参会注册；其他保持原文
+    getRegistrationCategoryText(category) {
+        if (!category) return '';
+        const value = String(category).toLowerCase();
+        if (value === 'full') return '全额注册';
+        if (value === 'attendee') return '参会注册';
+        return category; // 其他英文保持原样
     }
 
     formatDate(dateString) {
@@ -1127,6 +1159,10 @@ class SubmissionManager extends BaseComponent {
                     <div class="detail-item">
                         <div class="detail-label">Paper ID</div>
                         <div class="detail-value">${this.escapeHtml(submission.paper_id || '未填写')}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">注册类别</div>
+                        <div class="detail-value">${this.escapeHtml(this.getRegistrationCategoryText(submission.registration_category) || '未知')}</div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">产品代码</div>
