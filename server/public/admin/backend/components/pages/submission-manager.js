@@ -1125,6 +1125,61 @@ class SubmissionManager extends BaseComponent {
         this.initializePixelVoyager(modal);
     }
 
+    // 验证批准检查清单
+    validateApprovalChecklist() {
+        const modal = document.getElementById('submission-modal-global');
+        if (!modal) return true; // 如果没有模态框，直接通过
+        
+        const checkboxes = modal.querySelectorAll('.checklist-checkbox');
+        if (checkboxes.length === 0) return true; // 如果没有检查项，直接通过
+        
+        // 检查是否所有复选框都被选中
+        return Array.from(checkboxes).every(cb => cb.checked);
+    }
+
+    // 生成检查清单项
+    generateChecklistItems(submission) {
+        const items = [
+            {
+                id: 'payment-received',
+                label: '是否到账',
+                hint: '确认款项已到账'
+            },
+            {
+                id: 'registration-type-valid',
+                label: '注册类型是否符合',
+                hint: '覆盖paper的必须是full registration'
+            },
+            {
+                id: 'early-bird-price',
+                label: '价格是否是早鸟价',
+                hint: '到账时间31日前适用早鸟价'
+            },
+            {
+                id: 'identity-documents',
+                label: '身份证明材料是否齐全',
+                hint: '检查学生证、IEEE会员等证明文件'
+            },
+            {
+                id: 'paper-id-valid',
+                label: 'Paper ID是否在收录论文列表中',
+                hint: '如适用，验证论文ID的有效性'
+            }
+        ];
+
+        return items.map(item => `
+            <div class="checklist-item">
+                <label class="checklist-label">
+                    <input type="checkbox" class="checklist-checkbox" data-check-id="${item.id}">
+                    <span class="checklist-text">
+                        <strong>${item.label}</strong>
+                        <small>${item.hint}</small>
+                    </span>
+                </label>
+            </div>
+        `).join('');
+    }
+
     generateModalContent(submission) {
         return `
             <!-- 基本信息 -->
@@ -1289,6 +1344,20 @@ class SubmissionManager extends BaseComponent {
                     </div>
                 </div>
             ` : ''}
+
+            <!-- 批准检查项 -->
+            ${submission.status === 'pending' ? `
+                <div class="detail-group" id="approval-checklist-section">
+                    <h4 class="detail-group-title" style="color: #dc2626;">
+                        <i class="fas fa-clipboard-check"></i>
+                        批准前检查清单
+                        <small style="color: #6b7280; font-weight: 400;">（所有项目必须勾选才能批准）</small>
+                    </h4>
+                    <div class="checklist-container">
+                        ${this.generateChecklistItems(submission)}
+                    </div>
+                </div>
+            ` : ''}
         `;
     }
 
@@ -1338,8 +1407,64 @@ class SubmissionManager extends BaseComponent {
         });
     }
 
+    // 显示批准前的检查清单弹窗
+    async showApprovalChecklist(submissionId) {
+        // 获取提交信息
+        const submission = this.submissions.find(s => s.id === submissionId);
+        if (!submission) {
+            alert('未找到注册信息');
+            return false;
+        }
+
+        return new Promise((resolve) => {
+            // 创建检查清单弹窗
+            const checklistModal = this.createChecklistModal(submission, resolve);
+            document.body.appendChild(checklistModal);
+        });
+    }
+
+    // 创建检查清单弹窗
+    createChecklistModal(submission, resolve) {
+        const modal = document.createElement('div');
+        modal.id = 'approval-checklist-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>批准前检查清单</h3>
+                        <button class="close-btn" type="button">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="margin-bottom: 20px; color: #6b7280; font-size: 14px;">
+                            请仔细检查以下项目，所有项目必须勾选才能批准注册申请。
+                        </p>
+                        <div class="checklist-container">
+                            <!-- 检查项将在这里添加 -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary cancel-btn">取消</button>
+                        <button class="btn btn-success confirm-btn" disabled>确认批准</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 添加事件监听器（下一步实现）
+        this.setupChecklistModalEvents(modal, submission, resolve);
+        
+        return modal;
+    }
+
     // 全局方法：批准
     async approveSubmission(submissionId) {
+        // 检查是否所有检查项都已勾选
+        const allChecked = this.validateApprovalChecklist();
+        if (!allChecked) {
+            alert('请完成下方所有检查项后再批准');
+            return;
+        }
+
         const notes = prompt('请输入批准备注（可选）:');
         if (notes === null) return; // 用户点击了取消
 

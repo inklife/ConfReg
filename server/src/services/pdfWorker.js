@@ -356,16 +356,97 @@ async function generateReceiptPDF(submission, customOptions = {}) {
     
     // 构建完整的金额显示字符串
     amountDisplay = `${currencySymbol}${amountPaid} ${currency}`;
+    
+    // 读取两张签名图片并转换为base64
+    let signatureBase64_1 = '';
+    let signatureBase64_2 = '';
+    try {
+      const signaturePath1 = path.join(__dirname, '../templates/assets/junwang.jpg');
+      const signatureBuffer1 = await fs.readFile(signaturePath1);
+      signatureBase64_1 = signatureBuffer1.toString('base64');
+      
+      const signaturePath2 = path.join(__dirname, '../templates/assets/yunyunfeng.jpg');
+      const signatureBuffer2 = await fs.readFile(signaturePath2);
+      signatureBase64_2 = signatureBuffer2.toString('base64');
+    } catch (error) {
+      console.error('Error reading signature images:', error);
+    }
+    
+    // 格式化订单日期 - 使用北京时间
+    const orderDate = submission.submission_time ? 
+      new Date(submission.submission_time).toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Shanghai'
+      }) + ' (UTC+8)' : 'N/A';
+    
+    // 根据registration_category确定产品描述
+    let productDescription = 'Conference Registration';
+    if (submission.registration_category === 'author' || submission.registration_category === 'full') {
+      productDescription = 'Full Registration';
+    } else if (submission.registration_category === 'attendee') {
+      productDescription = 'Attendee Registration';
+    }
+    
+    // 如果有product_code,使用更详细的描述
+    if (submission.product_code) {
+      productDescription = convertChineseToReadable(submission.product_code);
+    }
 
     const templateData = {
+      // Event Information
+      eventTitle: 'ICPADS 2025 - International Conference on Parallel and Distributed Systems',
+      eventLocation: 'Hefei, China',
+      eventDates: 'December 14-18, 2025',
+      confirmationNumber: receiptNumber,
+      
+      // Recipient Information
+      attendeeName: convertChineseToReadable(submission.name),
+      attendeeAffiliation: convertChineseToReadable(submission.affiliation) || 'No affiliation provided',
+      attendeeEmail: submission.email,
+      
+      // Order Information
+      orderNumber: crypto.createHash('md5').update(`${submission.id}-order`).digest('hex').toUpperCase().slice(0, 11),
+      invoiceNumber: `ICPADS25-${crypto.createHash('md5').update(`${submission.id}-invoice`).digest('hex').slice(0, 12)}`,
+      orderDate: orderDate,
+      
+      // Product Information
+      productDescription: productDescription,
+      registrationCategory: submission.registration_category === 'author' || submission.registration_category === 'full' ? 'Full Registration' : 
+                           submission.registration_category === 'attendee' ? 'Attendee Registration' : 
+                           'Conference Registration',
+      productPrice: `${currencySymbol}${amountPaid}`,
+      quantity: '1',
+      itemAmount: `${currencySymbol}${amountPaid}`,
+      orderTotal: `${currencySymbol}${amountPaid}`,
+      
+      // Payment Information
+      paymentDate: submission.submission_time ? 
+        new Date(submission.submission_time).toLocaleDateString('en-US', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          timeZone: 'Asia/Shanghai'
+        }) : 'N/A',
+      paymentType: submission.payment_method === 'domestic' ? 'Alipay/WeChat' : 'International Payment',
+      paymentReference: `${submission.id}`,
+      amountPaid: `${currencySymbol}${amountPaid}`,
+      
+      // Signatures
+      signatureImage1: signatureBase64_1,
+      signatureImage2: signatureBase64_2,
+      signerNames: 'Jun Wang, Yunyun Feng',
+      
+      // Legacy fields (kept for compatibility)
       receiptNumber,
       issueDate: `${formatBeijingDateTime(now, 'date')} (UTC+8)`,
       issueTime: formatBeijingDateTime(now, 'time'),
-      attendeeName: convertChineseToReadable(submission.name),
-      attendeeEmail: submission.email,
       paperTitle: submission.paper_id || 'N/A',
       productCode: convertChineseToReadable(submission.product_code),
-      amountPaid: amountDisplay,
       transactionDate: submission.submission_time ? 
         formatBeijingDateTime(submission.submission_time, 'datetime') : 'N/A',
       generationDateTime: `${formatBeijingDateTime(now, 'datetime')} (UTC+8)`,

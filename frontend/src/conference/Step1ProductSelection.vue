@@ -229,7 +229,10 @@
         </table>
         
         <div class="price-note">
-          <strong>Note:</strong> Early Bird Registration deadline is October 31, 2025.
+          <strong>Note:</strong> Early Bird Registration deadline is October 31, 2025.<br>
+          The Early Bird rate eligibility is determined by the <strong>actual payment arrival date</strong>, not the registration submission date. 
+          You may complete the payment first and fill in the registration information later. 
+          As long as the payment arrives before October 31, 2025 (Beijing Time), the Early Bird rate will apply.
         </div>
       </div>
     </el-dialog>

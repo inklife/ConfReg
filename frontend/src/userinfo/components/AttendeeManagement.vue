@@ -195,7 +195,7 @@
             </div>
             <el-collapse-transition>
               <div v-show="showNotice" class="notice-content">
-                <p>• <strong>Transfer Processing Fee:</strong> A fee of <strong>$100 USD</strong> or <strong>¥750 RMB</strong> is required for each attendee transfer request</p>
+                <p>• <strong>Transfer Processing Fee:</strong> A fee of <strong>$150 USD</strong> or <strong>¥1100 RMB</strong> is required for each attendee transfer request</p>
                 <p>• Each registration can be transferred independently</p>
                 <p>• <strong>Each registration can only be transferred once</strong></p>
                 <p>• Only one pending transfer request per registration at a time</p>
@@ -268,13 +268,13 @@
         
         <el-alert type="info" :closable="false" show-icon style="margin-bottom: 20px;">
           <div slot="title">Processing Fee Required</div>
-          <p>A processing fee of <strong>$100 USD</strong> or <strong>¥750 RMB</strong> is required for attendee transfer.</p>
+          <p>A processing fee of <strong>$150 USD</strong> or <strong>¥1100 RMB</strong> is required for attendee transfer.</p>
         </el-alert>
 
         <el-form-item label="Payment Method" prop="feePaymentMethod">
           <el-radio-group v-model="transferForm.feePaymentMethod" size="medium">
-            <el-radio label="international">International Bank Transfer ($100 USD)</el-radio>
-            <el-radio label="domestic">China Mainland Payment (¥750 RMB)</el-radio>
+            <el-radio label="international">International Bank Transfer ($150 USD)</el-radio>
+            <el-radio label="domestic">China Mainland Payment (¥1100 RMB)</el-radio>
           </el-radio-group>
         </el-form-item>
 

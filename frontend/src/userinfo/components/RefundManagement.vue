@@ -17,7 +17,7 @@
           <p><strong>Important Notes:</strong></p>
           <ul>
             <li>If this registration is the <strong>only full registration</strong> (not student registration) for a paper ID, refund is <strong>NOT allowed</strong>.</li>
-            <li>All refunds are subject to a processing fee of <strong>$100 USD</strong> or <strong>¥750 RMB</strong> (automatically deducted from the refund amount).</li>
+            <li>All refunds are subject to a processing fee of <strong>$150 USD</strong> or <strong>¥1100 RMB</strong> (automatically deducted from the refund amount).</li>
           </ul>
         </div>
       </el-alert>
@@ -198,7 +198,7 @@
         show-icon>
         <div>
           <p>Refund requests must be submitted at least 30 days before the conference begins. Processing time is 5-10 business days.</p>
-          <p><strong>Refund Fee:</strong> A processing fee of $100 USD or ¥750 RMB will be deducted from your refund amount.</p>
+          <p><strong>Refund Fee:</strong> A processing fee of $150 USD or ¥1100 RMB will be deducted from your refund amount.</p>
         </div>
       </el-alert>
       
@@ -960,17 +960,17 @@ export default {
       if (!registration) return 'N/A';
       // 根据支付方式确定手续费
       if (registration.paymentMethod === 'domestic') {
-        return '¥750 RMB';
+        return '¥1100 RMB';
       }
-      return '$100 USD';
+      return '$150 USD';
     },
     
     // 获取实际退款金额文本
     getActualRefundText(registration) {
       if (!registration) return 'N/A';
       
-      const REFUND_FEE_USD = 100;
-      const REFUND_FEE_RMB = 750;
+      const REFUND_FEE_USD = 150;
+      const REFUND_FEE_RMB = 1100;
       
       let actualAmount;
       let currency;
