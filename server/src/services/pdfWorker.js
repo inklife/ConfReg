@@ -406,7 +406,7 @@ async function generateReceiptPDF(submission, customOptions = {}) {
       
       // Recipient Information
       attendeeName: convertChineseToReadable(submission.name),
-      attendeeAffiliation: convertChineseToReadable(submission.affiliation) || 'No affiliation provided',
+      attendeeAffiliation: convertChineseToReadable(submission.affiliation) || '-', // No affiliation provided
       attendeeEmail: submission.email,
       
       // Order Information
@@ -416,7 +416,7 @@ async function generateReceiptPDF(submission, customOptions = {}) {
       
       // Product Information
       productDescription: productDescription,
-      registrationCategory: submission.registration_category === 'author' || submission.registration_category === 'full' ? 'Full Registration' : 
+      registrationCategory: submission.registration_category === 'full' ? 'Full Registration' : 
                            submission.registration_category === 'attendee' ? 'Attendee Registration' : 
                            'Conference Registration',
       productPrice: `${currencySymbol}${amountPaid}`,
@@ -432,7 +432,7 @@ async function generateReceiptPDF(submission, customOptions = {}) {
           year: 'numeric',
           timeZone: 'Asia/Shanghai'
         }) : 'N/A',
-      paymentType: submission.payment_method === 'domestic' ? 'Alipay/WeChat' : 'International Payment',
+      paymentType: submission.payment_method === 'domestic' ? 'China Mainland Payment' : 'International Payment',
       paymentReference: `${submission.id}`,
       amountPaid: `${currencySymbol}${amountPaid}`,
       
