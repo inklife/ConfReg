@@ -610,6 +610,12 @@ class SubmissionManager extends BaseComponent {
                                 重新审核
                             </button>
                         ` : ''}
+                        <div class="delete-trigger-area" style="margin-right: auto;"></div>
+                        <button class="btn btn-danger-outline delete-submission-btn" data-submission-id="${submission.id}" 
+                                style="margin-right: auto; display: none;">
+                            <i class="fas fa-trash-alt"></i>
+                            删除注册
+                        </button>
                         <button class="btn btn-secondary close-modal-btn">
                             关闭
                         </button>
@@ -1011,6 +1017,26 @@ class SubmissionManager extends BaseComponent {
                 border-color: #9ca3af;
             }
 
+            #submission-modal-global .btn-danger-outline {
+                background: white;
+                color: #dc2626;
+                border: 2px solid #dc2626;
+            }
+
+            #submission-modal-global .btn-danger-outline:hover {
+                background: #dc2626;
+                color: white;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+            }
+
+            #submission-modal-global .delete-trigger-area {
+                width: 100px;
+                height: 42px;
+                cursor: default;
+                flex-shrink: 0;
+            }
+
             #submission-modal-global .status-badge {
                 display: inline-flex;
                 align-items: center;
@@ -1219,13 +1245,27 @@ class SubmissionManager extends BaseComponent {
                         <div class="detail-label">Paper Type</div>
                         <div class="detail-value">
                             ${(() => {
-                                const paperType = submission.paper_type || 'research';
+                                const paperType = submission.paper_type;
                                 const typeMap = {
                                     'research': '<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px;">Research Paper</span>',
                                     'poster': '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px;">Poster</span>',
-                                    'none': '<span style="background: #f3f4f6; color: #6b7280; padding: 2px 8px; border-radius: 4px;">None</span>'
+                                    'none': '<span style="background: #f3f4f6; color: #6b7280; padding: 2px 8px; border-radius: 4px;">None</span>',
+                                    'undefined': '<span style="background: #fecaca; color: #991b1b; padding: 2px 8px; border-radius: 4px;">未定义 (undefined)</span>',
+                                    'null': '<span style="background: #fed7aa; color: #9a3412; padding: 2px 8px; border-radius: 4px;">空值 (null)</span>',
+                                    '': '<span style="background: #e5e7eb; color: #374151; padding: 2px 8px; border-radius: 4px;">空字符串</span>'
                                 };
-                                return typeMap[paperType] || typeMap['research'];
+                                // 直接检查真实值，不使用默认值
+                                if (paperType === null) {
+                                    return typeMap['null'];
+                                } else if (paperType === undefined) {
+                                    return typeMap['undefined'];
+                                } else if (paperType === '') {
+                                    return typeMap[''];
+                                } else if (typeMap[paperType]) {
+                                    return typeMap[paperType];
+                                } else {
+                                    return `<span style="background: #fee2e2; color: #7f1d1d; padding: 2px 8px; border-radius: 4px;">未知类型: ${this.escapeHtml(String(paperType))}</span>`;
+                                }
                             })()}
                         </div>
                     </div>
@@ -1419,6 +1459,27 @@ class SubmissionManager extends BaseComponent {
                 this.reReviewSubmission(submissionId);
             });
         });
+
+        // 删除触发区域 - 双击显示删除按钮
+        const deleteTriggerArea = modal.querySelector('.delete-trigger-area');
+        const deleteBtn = modal.querySelector('.delete-submission-btn');
+        
+        if (deleteTriggerArea && deleteBtn) {
+            deleteTriggerArea.addEventListener('dblclick', () => {
+                // 隐藏触发区域
+                deleteTriggerArea.style.display = 'none';
+                // 显示删除按钮
+                deleteBtn.style.display = 'inline-flex';
+            });
+        }
+
+        // 删除按钮
+        modal.querySelectorAll('.delete-submission-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const submissionId = btn.getAttribute('data-submission-id');
+                this.deleteSubmission(submissionId);
+            });
+        });
     }
 
     // 显示批准前的检查清单弹窗
@@ -1563,6 +1624,55 @@ class SubmissionManager extends BaseComponent {
         } catch (error) {
             console.error('Error re-reviewing submission:', error);
             alert('重新审核失败，请稍后重试');
+        }
+    }
+
+    // 全局方法：删除注册（高危操作）
+    async deleteSubmission(submissionId) {
+        // 第一次确认
+        if (!confirm('⚠️ 警告：删除操作不可恢复！\n\n确定要删除这条注册记录吗？')) {
+            return;
+        }
+
+        // 要求输入确认文本
+        const confirmationText = prompt(
+            '这是一个高危操作，删除后将无法恢复！\n\n' +
+            '如果确定要删除，请在下方输入【确认删除】四个字：'
+        );
+
+        // 检查是否取消或输入为空
+        if (confirmationText === null || confirmationText.trim() === '') {
+            return;
+        }
+
+        // 验证确认文本
+        if (confirmationText.trim() !== '确认删除') {
+            alert('❌ 确认文本不正确，删除操作已取消');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/admin/submissions/${submissionId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({ confirmation: confirmationText.trim() })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                alert('✅ 注册记录已成功删除');
+                const modal = document.getElementById('submission-modal-global');
+                if (modal) modal.remove();
+                this.loadSubmissions();
+            } else {
+                alert('❌ 删除失败：' + (data.message || '未知错误'));
+            }
+        } catch (error) {
+            console.error('Error deleting submission:', error);
+            alert('❌ 删除失败，请稍后重试');
         }
     }
 
@@ -1753,6 +1863,13 @@ window.reReviewSubmission = (submissionId) => {
     const manager = document.querySelector('submission-manager');
     if (manager) {
         manager.reReviewSubmission(submissionId);
+    }
+};
+
+window.deleteSubmission = (submissionId) => {
+    const manager = document.querySelector('submission-manager');
+    if (manager) {
+        manager.deleteSubmission(submissionId);
     }
 };
 

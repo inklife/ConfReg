@@ -620,6 +620,56 @@ router.post('/submissions/:id/re-review', requireAdmin, async (req, res) => {
   }
 });
 
+// 删除注册记录（高危操作，需要确认）
+router.delete('/submissions/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { confirmation } = req.body;
+
+    // 验证确认文本
+    if (confirmation !== '确认删除') {
+      return res.status(400).json({
+        success: false,
+        message: '请输入正确的确认文本'
+      });
+    }
+
+    const submission = await RegistrationSubmission.findByPk(id);
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
+      });
+    }
+
+    // 记录删除日志
+    console.log(`[DELETE] Admin ${req.user.email} is deleting submission #${id}`, {
+      submissionData: {
+        name: submission.name,
+        email: submission.email,
+        paper_id: submission.paper_id,
+        status: submission.status,
+        product_code: submission.product_code
+      }
+    });
+
+    // 删除记录
+    await submission.destroy();
+
+    res.json({
+      success: true,
+      message: '注册记录已成功删除'
+    });
+
+  } catch (error) {
+    console.error('Delete submission error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // 获取统计数据（管理员）
 router.get('/statistics', requireAdmin, async (req, res) => {
   try {

@@ -117,7 +117,7 @@ router.post('/submit', requireAuth, upload.fields([
       name, 
       phone = '', 
       affiliation = '', 
-      paper_type = 'research',
+      paper_type,
       paper_id = '', 
       paper_pages = '', 
       productCode, 
@@ -130,6 +130,15 @@ router.post('/submit', requireAuth, upload.fields([
       registrationCategory = 'full', 
       paymentMethod = 'international' 
     } = req.body;
+
+    // 验证 paper_type 字段是否存在（拒绝老版本前端提交）
+    if (paper_type === undefined || paper_type === null) {
+      return res.status(400).json({
+        status: 7,
+        success: false,
+        message: 'Paper Type field is required. If you cannot see this field on the form, please clear your browser cache or try using an incognito/private window, or switch to a different browser to access the latest version of the registration form.'
+      });
+    }
 
     // 修复：如果 registrationCategory 是字符串 "undefined" 或无效值，日志中警告但不强制修改
     if (!registrationCategory || registrationCategory === 'undefined' || !['full', 'attendee'].includes(registrationCategory)) {
