@@ -15,6 +15,9 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const asyncPDFManager = require('../services/asyncPdfManager');
 const { sequelize } = require('../config/database');
 
+// 导入模拟登录缓存
+const simulateLoginCache = require('../utils/cache/simulateLoginCache');
+
 // 导入其他管理员路由
 const adminInvoiceRoutes = require('./admin-invoices');
 const adminTransferRoutes = require('./admin-transfers');
@@ -1168,6 +1171,61 @@ router.post('/users/:id/remove-admin', requireAdmin, async (req, res) => {
 
   } catch (error) {
     console.error('Remove admin error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// 模拟登录用户（管理员）
+router.post('/users/:id/simulate-login', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 获取目标用户
+    const targetUser = await User.findByPk(id);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // 检查目标用户是否为管理员
+    if (targetUser.is_superuser || targetUser.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot simulate login as an administrator'
+      });
+    }
+
+    // 检查目标用户是否被冻结
+    if (!targetUser.is_active) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot simulate login as a frozen user'
+      });
+    }
+
+    // 生成一次性登录 ticket
+    const ticket = simulateLoginCache.createTicket(targetUser.id);
+
+    console.log(`[Admin] Admin user ${req.session.userId} created simulate login ticket for user ${targetUser.id}`);
+
+    res.json({
+      success: true,
+      message: 'Simulate login ticket created successfully',
+      data: {
+        ticket,
+        userId: targetUser.id,
+        username: targetUser.username,
+        expiresIn: 60 // 秒
+      }
+    });
+
+  } catch (error) {
+    console.error('Simulate login error:', error);
     res.status(500).json({
       success: false,
       message: error.message

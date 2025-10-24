@@ -94,7 +94,7 @@ router.get('/requests', requireAdmin, async (req, res) => {
       {
         model: RegistrationSubmission,
         as: 'registration',
-        attributes: ['id', 'name', 'product_code', 'product_price', 'submission_time']
+        attributes: ['id', 'name', 'email', 'phone', 'affiliation', 'paper_type', 'paper_id', 'paper_pages', 'product_code', 'product_price', 'product_price_rmb', 'total_amount_usd', 'total_amount_rmb', 'extra_page_fee_usd', 'extra_page_fee_rmb', 'registration_category', 'payment_method', 'status', 'submission_time', 'review_time']
       },
       {
         model: InvoiceFile,
@@ -184,7 +184,7 @@ router.get('/request/:id', requireAdmin, async (req, res) => {
         {
           model: RegistrationSubmission,
           as: 'registration',
-          attributes: ['id', 'name', 'email', 'phone', 'affiliation', 'product_code', 'product_price', 'submission_time']
+          attributes: ['id', 'name', 'email', 'phone', 'affiliation', 'paper_type', 'paper_id', 'paper_pages', 'product_code', 'product_price', 'product_price_rmb', 'total_amount_usd', 'total_amount_rmb', 'extra_page_fee_usd', 'extra_page_fee_rmb', 'registration_category', 'payment_method', 'status', 'submission_time', 'review_time']
         },
         {
           model: InvoiceFile,
@@ -264,7 +264,7 @@ router.put('/request/:id/status', requireAdmin, async (req, res) => {
           {
             model: RegistrationSubmission,
             as: 'registration',
-            attributes: ['id', 'name', 'product_code', 'product_price']
+            attributes: ['id', 'name', 'email', 'phone', 'affiliation', 'paper_type', 'paper_id', 'paper_pages', 'product_code', 'product_price', 'product_price_rmb', 'total_amount_usd', 'total_amount_rmb', 'extra_page_fee_usd', 'extra_page_fee_rmb', 'registration_category', 'payment_method', 'status', 'submission_time', 'review_time']
           }
         ]
       })
@@ -317,7 +317,7 @@ router.post('/request/:id/re-review', requireAdmin, async (req, res) => {
           {
             model: RegistrationSubmission,
             as: 'registration',
-            attributes: ['id', 'name', 'product_code', 'product_price']
+            attributes: ['id', 'name', 'email', 'phone', 'affiliation', 'paper_type', 'paper_id', 'paper_pages', 'product_code', 'product_price', 'product_price_rmb', 'total_amount_usd', 'total_amount_rmb', 'extra_page_fee_usd', 'extra_page_fee_rmb', 'registration_category', 'payment_method', 'status', 'submission_time', 'review_time']
           }
         ]
       })

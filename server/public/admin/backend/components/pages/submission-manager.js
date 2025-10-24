@@ -1216,6 +1216,20 @@ class SubmissionManager extends BaseComponent {
                         <div class="detail-value">${this.escapeHtml(submission.paper_id || '未填写')}</div>
                     </div>
                     <div class="detail-item">
+                        <div class="detail-label">Paper Type</div>
+                        <div class="detail-value">
+                            ${(() => {
+                                const paperType = submission.paper_type || 'research';
+                                const typeMap = {
+                                    'research': '<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px;">Research Paper</span>',
+                                    'poster': '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px;">Poster</span>',
+                                    'none': '<span style="background: #f3f4f6; color: #6b7280; padding: 2px 8px; border-radius: 4px;">None</span>'
+                                };
+                                return typeMap[paperType] || typeMap['research'];
+                            })()}
+                        </div>
+                    </div>
+                    <div class="detail-item">
                         <div class="detail-label">注册类别</div>
                         <div class="detail-value">${this.escapeHtml(this.getRegistrationCategoryText(submission.registration_category) || '未知')}</div>
                     </div>

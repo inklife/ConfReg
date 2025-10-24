@@ -75,34 +75,46 @@
             ></el-input>
           </el-form-item>
 
-          <el-form-item label="Paper ID" prop="paperId">
-            <el-input 
-              v-model="userInfo.paperId" 
-              placeholder="Enter paper ID (numbers only, if applicable)"
+          <el-form-item label="Paper Type" prop="paperType" required class="paper-type-item">
+            <el-radio-group 
+              v-model="userInfo.paperType" 
               size="large"
-            ></el-input>
-            <div class="field-hint">
-              <i class="el-icon-warning"></i>
-              <strong>Note:</strong> Paper ID and Paper Pages must be filled together or left empty together.
+              :disabled="!isFullRegistration"
+            >
+              <el-radio label="research">Research Paper</el-radio>
+              <el-radio label="poster">Poster</el-radio>
+              <el-radio label="none">None</el-radio>
+            </el-radio-group>
+            <div class="field-hint" v-if="!isFullRegistration">
+              <i class="el-icon-info"></i>
+              Paper publication is only available for Full Registration.
             </div>
           </el-form-item>
 
-          <el-form-item label="Paper Pages" prop="paperPages">
+          <el-form-item label="Paper ID" prop="paperId" v-if="userInfo.paperType !== 'none'" required>
+            <el-input 
+              v-model="userInfo.paperId" 
+              placeholder="Enter paper ID (numbers only)"
+              size="large"
+            ></el-input>
+          </el-form-item>
+
+          <el-form-item label="Paper Pages" prop="paperPages" v-if="userInfo.paperType !== 'none'" required>
             <el-input 
               v-model="userInfo.paperPages" 
-              placeholder="Enter number of pages (1-10)"
+              placeholder="Enter number of pages"
               size="large"
               type="number"
               min="1"
-              max="10"
             ></el-input>
             <div class="field-hint">
               <i class="el-icon-info"></i>
-              Papers are limited to 8 pages, including figures and references. Authors may include up to 2 additional pages subject to an overlength page charge. <strong style="color: #f56c6c;">Extra page fee: $80 (RMB 600) for pages 9-10</strong>
-            </div>
-            <div class="field-hint">
-              <i class="el-icon-warning"></i>
-              <strong>Note:</strong> Paper ID and Paper Pages must be filled together or left empty together.
+              <template v-if="userInfo.paperType === 'research'">
+                Papers are limited to 8 pages, including figures and references. Authors may include additional pages subject to an overlength page charge. <strong style="color: #f56c6c;">Extra page fee: $80 (RMB 600) per page beyond 8 pages</strong>
+              </template>
+              <template v-else-if="userInfo.paperType === 'poster'">
+                Posters are limited to 2 pages. Authors may include additional pages subject to an overlength page charge. <strong style="color: #f56c6c;">Extra page fee: $80 (RMB 600) per page beyond 2 pages</strong>
+              </template>
             </div>
           </el-form-item>
         </el-form>
@@ -138,12 +150,14 @@ export default {
         email: '',
         phone: '',
         affiliation: '',
+        paperType: 'research', // 默认为 research paper
         paperId: '',
         paperPages: ''
       },
       currentUserId: null,
       editMode: false,
       labelWidth: '120px',
+      registrationCategory: null, // 保存注册类型
       rules: {
         name: [
           { required: true, message: 'Please enter your full name', trigger: 'blur' }
@@ -151,40 +165,31 @@ export default {
         phone: [
           { required: true, message: 'Please enter your phone number', trigger: 'blur' }
         ],
+        paperType: [
+          { required: true, message: 'Please select paper type', trigger: 'change' }
+        ],
         paperId: [
+          { 
+            required: true, 
+            message: 'Please enter paper ID', 
+            trigger: 'blur' 
+          },
           { 
             pattern: /^[1-9]\d*$/, 
             message: 'Paper ID must be a number without leading zeros', 
             trigger: 'blur' 
-          },
-          {
-            validator: (rule, value, callback) => {
-              // 如果 Paper ID 有值，Paper Pages 必须也有值
-              if (value && value.trim() && (!this.userInfo.paperPages || !this.userInfo.paperPages.trim())) {
-                callback(new Error('If you provide Paper ID, you must also provide Paper Pages'));
-              } else {
-                callback();
-              }
-            },
-            trigger: 'blur'
           }
         ],
         paperPages: [
           { 
-            pattern: /^([1-9]|10)$/, 
-            message: 'Paper pages must be a number from 1 to 10', 
+            required: true, 
+            message: 'Please enter number of pages', 
             trigger: 'blur' 
           },
-          {
-            validator: (rule, value, callback) => {
-              // 如果 Paper Pages 有值，Paper ID 必须也有值
-              if (value && value.trim() && (!this.userInfo.paperId || !this.userInfo.paperId.trim())) {
-                callback(new Error('If you provide Paper Pages, you must also provide Paper ID'));
-              } else {
-                callback();
-              }
-            },
-            trigger: 'blur'
+          { 
+            pattern: /^([1-9]|1[0-6])$/, 
+            message: 'Paper pages must be a valid number', 
+            trigger: 'blur' 
           }
         ]
         // 移除email验证规则，因为email现在是只读的，从用户账户信息中获取
@@ -193,12 +198,19 @@ export default {
   },
   computed: {
     canProceed() {
-      // 检查必填字段：name, email, phone
-      return this.userInfo.name.trim() && this.userInfo.email.trim() && this.userInfo.phone.trim();
+      // 检查必填字段：name, email, phone, paperType
+      return this.userInfo.name.trim() && 
+             this.userInfo.email.trim() && 
+             this.userInfo.phone.trim() &&
+             this.userInfo.paperType;
     },
     // 避免与ElementUI Form组件的内部fields属性冲突
     formFields() {
       return this.userInfo;
+    },
+    // 判断是否为 Full Registration
+    isFullRegistration() {
+      return this.registrationCategory === 'full';
     }
   },
   mounted() {
@@ -208,11 +220,57 @@ export default {
       console.log('Step2 - Edit mode detected, registration ID:', this.id);
     }
     
+    this.loadRegistrationCategory();
     this.initializeUserData();
     this.updateLabelWidth();
     window.addEventListener('resize', this.updateLabelWidth);
   },
   methods: {
+    loadRegistrationCategory() {
+      // 从 localStorage 中加载注册类型
+      if (!this.currentUserId) {
+        const currentUser = this.$store.state.account.user;
+        if (currentUser && currentUser.id) {
+          this.currentUserId = currentUser.id;
+        }
+      }
+
+      const storageKey = this.id && this.id !== 'new' 
+        ? `conferenceProductSelection_${this.currentUserId}_${this.id}`
+        : `conferenceProductSelection_${this.currentUserId}`;
+      
+      const savedProduct = localStorage.getItem(storageKey);
+      if (savedProduct) {
+        try {
+          const productData = JSON.parse(savedProduct);
+          this.registrationCategory = productData.registration_category || null;
+          console.log('Loaded registration category:', this.registrationCategory);
+          
+          // 不在这里应用规则，等数据加载完成后再应用
+        } catch (error) {
+          console.warn('Failed to parse saved product data:', error);
+        }
+      }
+    },
+
+    applyPaperTypeRules() {
+      // 根据注册类型应用 Paper Type 规则
+      if (!this.isFullRegistration) {
+        // 如果不是 Full Registration，强制设置为 none
+        this.userInfo.paperType = 'none';
+        console.log('Paper Type set to none (not Full Registration)');
+      } else {
+        // 如果是 Full Registration，只在 paperType 为 none 时才设置默认值
+        // 不要覆盖用户已选择的 poster 或 research
+        if (this.userInfo.paperType === 'none' || !this.userInfo.paperType) {
+          this.userInfo.paperType = 'research';
+          console.log('Paper Type set to research (Full Registration, was none or empty)');
+        } else {
+          console.log('Paper Type kept as:', this.userInfo.paperType, '(user selection preserved)');
+        }
+      }
+    },
+
     updateLabelWidth() {
       if (window.innerWidth <= 480) {
         this.labelWidth = '80px';
@@ -289,6 +347,7 @@ export default {
             email: regData.email,
             phone: regData.phone,
             affiliation: regData.affiliation,
+            paperType: regData.paper_type || 'research',
             paperId: regData.paper_id,
             paperPages: regData.paper_pages
           };
@@ -339,12 +398,17 @@ export default {
         // 3. 最后尝试从服务器获取更完整的用户信息
         await this.loadUserInfoFromServer();
         
+        // 4. 加载完成后，应用 Paper Type 规则
+        this.applyPaperTypeRules();
+        
       } catch (error) {
         console.warn('Failed to load user info:', error);
         // 如果出错，至少确保有基础的预填充数据
         if (!this.userInfo.name && !this.userInfo.email) {
           this.prefillFromStore();
         }
+        // 即使出错也应用 Paper Type 规则
+        this.applyPaperTypeRules();
       }
     },
 
@@ -415,6 +479,7 @@ export default {
         email: '',
         phone: '',
         affiliation: '',
+        paperType: 'research',
         paperId: '',
         paperPages: ''
       };
@@ -435,15 +500,6 @@ export default {
     },
 
     nextStep() {
-      // 额外检查：Paper ID 和 Paper Pages 必须同时填写或同时留空
-      const hasPaperId = this.userInfo.paperId && this.userInfo.paperId.trim();
-      const hasPaperPages = this.userInfo.paperPages && this.userInfo.paperPages.trim();
-      
-      if ((hasPaperId && !hasPaperPages) || (!hasPaperId && hasPaperPages)) {
-        this.$message.error('Paper ID and Paper Pages must be filled together or left empty together');
-        return;
-      }
-      
       this.$refs.userForm.validate((valid) => {
         if (valid) {
           this.saveUserInfo();
@@ -488,6 +544,32 @@ export default {
         }, 1000);
       },
       deep: true
+    },
+    // 监听注册类型变化
+    isFullRegistration(newVal, oldVal) {
+      // 只在注册类型真正改变时处理，避免初始化时覆盖已加载的数据
+      if (oldVal === undefined) {
+        // 初始化阶段，不做任何修改
+        return;
+      }
+      
+      if (!newVal) {
+        // 如果不是 Full Registration，强制设置为 none
+        this.userInfo.paperType = 'none';
+        console.log('Paper Type changed to none (registration type changed to non-full)');
+      } else if (this.userInfo.paperType === 'none') {
+        // 如果是 Full Registration 且当前是 none，设置为默认的 research
+        // 但不要覆盖用户已选择的 poster
+        this.userInfo.paperType = 'research';
+        console.log('Paper Type changed to research (registration type changed to full)');
+      }
+    },
+    // 监听 paperType 变化，清空相关字段
+    'userInfo.paperType'(newVal) {
+      if (newVal === 'none') {
+        this.userInfo.paperId = '';
+        this.userInfo.paperPages = '';
+      }
     }
   },
 
@@ -629,6 +711,51 @@ export default {
   text-decoration: underline;
 }
 
+/* Paper Type Radio 样式 */
+.user-form >>> .paper-type-item .el-form-item__content {
+  line-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.user-form >>> .el-radio-group {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.user-form >>> .el-radio {
+  margin-right: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+}
+
+.user-form >>> .el-radio__input {
+  line-height: 1;
+}
+
+.user-form >>> .el-radio__label {
+  padding-left: 8px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.user-form >>> .el-radio__input.is-checked .el-radio__inner {
+  border-color: #409EFF;
+  background: #409EFF;
+}
+
+.user-form >>> .el-radio__inner {
+  width: 16px;
+  height: 16px;
+}
+
+.user-form >>> .el-radio__inner::after {
+  width: 6px;
+  height: 6px;
+}
+
 /* 移动端优化 */
 @media (max-width: 768px) {
   .step-container {
@@ -691,6 +818,15 @@ export default {
     padding: 8px 12px;
     font-size: 16px;
     line-height: 1.4;
+  }
+
+  .user-form >>> .el-radio-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .user-form >>> .el-radio__label {
+    font-size: 13px;
   }
 
   .actions {

@@ -97,9 +97,20 @@
               <span class="label">Phone:</span>
               <span class="value">{{ userInfo.phone }}</span>
             </div>
+            <div class="info-item" v-if="userInfo.paperType && userInfo.paperType !== 'none'">
+              <span class="label">Paper Type:</span>
+              <span class="value">
+                <span v-if="userInfo.paperType === 'research'" style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Research Paper</span>
+                <span v-else-if="userInfo.paperType === 'poster'" style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Poster</span>
+              </span>
+            </div>
             <div class="info-item" v-if="userInfo.paperID">
               <span class="label">Paper ID:</span>
               <span class="value">{{ userInfo.paperID }}</span>
+            </div>
+            <div class="info-item" v-if="userInfo.paperPages">
+              <span class="label">Paper Pages:</span>
+              <span class="value">{{ userInfo.paperPages }} pages</span>
             </div>
           </div>
         </div>
@@ -112,6 +123,7 @@
               <span class="value registration-category">
                 {{ getRegistrationCategory() }}
                 <el-tag 
+                  v-if="getRegistrationCategory() !== 'Not selected'"
                   :type="getRegistrationCategory().includes('Student') ? 'warning' : 'success'" 
                   size="mini" 
                   style="margin-left: 8px;">
@@ -124,7 +136,7 @@
               <span class="value membership-type">
                 {{ selectedProduct && selectedProduct.code }}
                 <el-tag 
-                  v-if="selectedProduct && selectedProduct.code && selectedProduct.code.includes('IEEE')"
+                  v-if="selectedProduct && selectedProduct.code && !selectedProduct.code.includes('Non') && selectedProduct.code.includes('IEEE')"
                   type="info" 
                   size="mini" 
                   style="margin-left: 8px;">
@@ -136,8 +148,11 @@
               <span class="label">Paper Pages:</span>
               <span class="value">
                 {{ userInfo.paperPages }} pages
+                <span v-if="paperPageLimit > 0" style="color: #909399; font-size: 12px;">
+                  (limit: {{ paperPageLimit }})
+                </span>
                 <span v-if="extraPagesCount > 0" class="extra-pages">
-                  ({{ extraPagesCount }} extra)
+                  - {{ extraPagesCount }} extra
                 </span>
               </span>
             </div>
@@ -336,11 +351,22 @@ export default {
       // 首先尝试从后端获取的数据
       if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
         const regData = this.backendRegistrationData.registration_data;
+        const paperType = regData.paper_type || 'none';
+        
+        // 调试日志
+        if (!regData.paper_type) {
+          console.warn('⚠️ Step5: paper_type is missing from backend data, using default:', paperType);
+          console.log('📊 Backend regData:', regData);
+        } else {
+          console.log('✅ Step5: paper_type from backend:', regData.paper_type);
+        }
+        
         return {
           fullName: regData.name || '',
           email: regData.email || '',
           organization: regData.affiliation || '',
           phone: regData.phone || '',
+          paperType: paperType,
           paperID: regData.paper_id || '',
           paperPages: regData.paper_pages || 0
         };
@@ -355,12 +381,19 @@ export default {
         
         // Step4保存的数据结构：regData.userInfo包含用户信息
         if (regData.userInfo) {
+          const paperType = regData.userInfo.paperType || 'none';
+          
+          console.log('📦 Step5: Loading from localStorage conferenceRegistrationData');
+          console.log('📊 paperType from localStorage:', paperType);
+          
           return {
             fullName: regData.userInfo.name || '',
             email: regData.userInfo.email || '',
             organization: regData.userInfo.affiliation || '',
             phone: regData.userInfo.phone || '',
-            paperID: regData.userInfo.paperId || regData.userInfo.paper_id || ''
+            paperType: paperType,
+            paperID: regData.userInfo.paperId || regData.userInfo.paper_id || '',
+            paperPages: regData.userInfo.paperPages || 0
           };
         }
       }
@@ -369,21 +402,31 @@ export default {
       const saved = localStorage.getItem(this.getStorageKey('conferenceUserInfo'));
       if (saved) {
         const userInfo = JSON.parse(saved);
+        const paperType = userInfo.paperType || 'none';
+        
+        console.log('📦 Step5: Loading from localStorage conferenceUserInfo');
+        console.log('📊 paperType from localStorage:', paperType);
+        
         return {
           fullName: userInfo.name || userInfo.fullName || '',
           email: userInfo.email || '',
           organization: userInfo.invoiceTitle || userInfo.organization || userInfo.affiliation || '',
           phone: userInfo.phone || '',
-          paperID: userInfo.paperID || userInfo.paper_id || userInfo.paperId || ''
+          paperType: paperType,
+          paperID: userInfo.paperID || userInfo.paper_id || userInfo.paperId || '',
+          paperPages: userInfo.paperPages || 0
         };
       }
       
+      console.log('⚠️ Step5: No data source found, returning empty userInfo');
       return {
         fullName: '',
         email: '',
         organization: '',
         phone: '',
-        paperID: ''
+        paperType: 'none',
+        paperID: '',
+        paperPages: 0
       };
     },
     paymentMethod() {
@@ -424,15 +467,46 @@ export default {
     // 计算超页数
     extraPagesCount() {
       let paperPages = 0;
+      let paperType = 'research'; // 默认为 research
       
       // 首先从后端数据获取
       if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
         paperPages = this.backendRegistrationData.registration_data.paper_pages || 0;
+        paperType = this.backendRegistrationData.registration_data.paper_type || 'research';
       } else if (this.userInfo.paperPages) {
         paperPages = parseInt(this.userInfo.paperPages);
+        paperType = this.userInfo.paperType || 'research';
       }
       
-      return paperPages > 8 ? (paperPages - 8) : 0;
+      // 如果 paper type 是 none，则没有超页费用
+      if (paperType === 'none') {
+        return 0;
+      }
+      
+      // 根据不同的 paper type 设置页数限制
+      let pageLimit = 8; // research paper 默认 8 页
+      if (paperType === 'poster') {
+        pageLimit = 2; // poster 限制 2 页
+      }
+      
+      return paperPages > pageLimit ? (paperPages - pageLimit) : 0;
+    },
+    // 获取当前 paper type 的页数限制
+    paperPageLimit() {
+      let paperType = 'research';
+      
+      if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
+        paperType = this.backendRegistrationData.registration_data.paper_type || 'research';
+      } else if (this.userInfo.paperType) {
+        paperType = this.userInfo.paperType;
+      }
+      
+      if (paperType === 'poster') {
+        return 2;
+      } else if (paperType === 'research') {
+        return 8;
+      }
+      return 0; // none
     },
     // 基础价格
     basePriceUSD() {
@@ -622,7 +696,13 @@ export default {
       // 首先尝试从后端数据获取
       if (this.backendRegistrationData && this.backendRegistrationData.registration_data && this.backendRegistrationData.registration_data.registration_category) {
         const category = this.backendRegistrationData.registration_data.registration_category;
-        return category === 'student' ? 'Student Registration' : 'Full Registration';
+        // 只有当 category 是有效值时才使用，否则回退到根据产品代码判断
+        if (category === 'attendee' || category === 'student') {
+          return 'Attendee Registration';
+        } else if (category === 'full') {
+          return 'Full Registration';
+        }
+        // 如果是 'undefined' 或其他无效值，继续执行下面的兜底逻辑
       }
       
       // 兜底：根据产品代码判断
@@ -630,9 +710,9 @@ export default {
       
       const productCode = this.selectedProduct.code;
       if (productCode && productCode.includes('Student')) {
-        return 'Student Registration';
+        return 'Attendee Registration';
       } else {
-        return 'Full Registration';
+        return 'Not selected';
       }
     },
     initializeUserData() {

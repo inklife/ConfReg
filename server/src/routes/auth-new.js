@@ -9,6 +9,7 @@ const emailService = require('../utils/emailService');
 const { getRealClientIP } = require('../utils/ipUtils');
 const adminTokens = require('../utils/cache/adminTokensCache');
 const passwordResetCache = require('../utils/cache/passwordResetCache');
+const simulateLoginCache = require('../utils/cache/simulateLoginCache');
 const { validateUsername, generateUsernameSuggestions } = require('../utils/usernameValidator');
 const { 
   passwordResetLimiter, 
@@ -66,6 +67,188 @@ const cleanupFailedAttempts = () => {
 
 // 每小时清理一次过期记录
 setInterval(cleanupFailedAttempts, 60 * 60 * 1000);
+
+// Simulate login endpoint - 管理员模拟用户登录
+router.get('/login', async (req, res) => {
+  try {
+    const { mock, userid, ticket } = req.query;
+
+    // 检查是否为模拟登录请求
+    if (mock !== '1' || !userid || !ticket) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request parameters'
+      });
+    }
+
+    console.log(`[SimulateLogin] Attempting to simulate login for user ${userid} with ticket ${ticket.substring(0, 8)}...`);
+
+    // 验证 ticket
+    const isValid = simulateLoginCache.validateAndUseTicket(ticket, userid);
+    
+    if (!isValid) {
+      console.log(`[SimulateLogin] Invalid or expired ticket for user ${userid}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid or expired login ticket'
+      });
+    }
+
+    // 获取用户信息
+    const user = await User.findByPk(userid);
+    
+    if (!user) {
+      console.log(`[SimulateLogin] User not found: ${userid}`);
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // 再次检查用户是否为管理员（安全检查）
+    if (user.is_superuser || user.role === 'admin') {
+      console.log(`[SimulateLogin] Attempted to simulate login as admin user: ${userid}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot simulate login as administrator'
+      });
+    }
+
+    // 检查用户是否被冻结
+    if (!user.is_active) {
+      console.log(`[SimulateLogin] Attempted to simulate login as frozen user: ${userid}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot simulate login as frozen user'
+      });
+    }
+
+    // 设置 session，模拟登录成功
+    req.session.userId = user.id;
+    req.session.user = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      fullname: user.fullname,
+      is_superuser: user.is_superuser
+    };
+
+    console.log(`[SimulateLogin] Simulate login successful for user: ${user.username} (ID: ${user.id})`);
+
+    // 保存 session 并返回成功页面
+    req.session.save((err) => {
+      if (err) {
+        console.error('[SimulateLogin] Session save error:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'Session save failed'
+        });
+      }
+
+      console.log(`[SimulateLogin] Session saved successfully, redirecting to user dashboard`);
+      
+      // 返回一个HTML页面，先获取用户信息再跳转
+      res.send(`
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>模拟登录成功</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .container {
+              text-align: center;
+              background: white;
+              padding: 40px;
+              border-radius: 20px;
+              box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            }
+            .spinner {
+              width: 50px;
+              height: 50px;
+              border: 4px solid #f3f3f3;
+              border-top: 4px solid #667eea;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+              margin: 0 auto 20px;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            h2 {
+              color: #333;
+              margin: 0 0 10px 0;
+            }
+            p {
+              color: #666;
+              margin: 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="spinner"></div>
+            <h2>模拟登录成功</h2>
+            <p>正在跳转到用户主页...</p>
+          </div>
+          <script>
+            // 先从服务器获取当前用户信息，然后更新localStorage，最后跳转
+            fetch('/api/auth/me', {
+              method: 'GET',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success && data.user) {
+                // 清除旧的localStorage数据
+                localStorage.clear();
+                
+                // 保存新用户信息到localStorage
+                localStorage.setItem('user', JSON.stringify(data.user));
+                
+                console.log('模拟登录成功，用户信息已更新:', data.user);
+                
+                // 跳转到dashboard
+                window.location.href = '/dashboard';
+              } else {
+                console.error('获取用户信息失败:', data);
+                alert('模拟登录失败，请重试');
+                window.location.href = '/admin/backend#/users';
+              }
+            })
+            .catch(error => {
+              console.error('获取用户信息出错:', error);
+              alert('模拟登录失败，请重试');
+              window.location.href = '/admin/backend#/users';
+            });
+          </script>
+        </body>
+        </html>
+      `);
+    });
+
+  } catch (error) {
+    console.error('[SimulateLogin] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: `Server error: ${error.message}`
+    });
+  }
+});
 
 // Login endpoint with rate limiting and account lockout
 router.post('/login', loginLimiter, async (req, res) => {

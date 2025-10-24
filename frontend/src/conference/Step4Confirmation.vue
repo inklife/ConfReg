@@ -55,6 +55,13 @@
               <strong class="price-rmb" v-if="isDomestic">¥{{ extraPageFeeRMB }} RMB</strong>
             </div>
           </div>
+          <div class="info-row" v-if="userInfo.paperType && userInfo.paperType !== 'none'">
+            <span>Paper Type:</span>
+            <strong>
+              <span v-if="userInfo.paperType === 'research'" style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Research Paper</span>
+              <span v-else-if="userInfo.paperType === 'poster'" style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Poster</span>
+            </strong>
+          </div>
           <div class="info-row" v-if="userInfo.paperId">
             <span>Paper ID:</span>
             <strong>{{ userInfo.paperId }}</strong>
@@ -62,8 +69,8 @@
           <div class="info-row" v-if="userInfo.paperPages">
             <span>Paper Pages:</span>
             <strong>{{ userInfo.paperPages }}</strong>
-            <span v-if="parseInt(userInfo.paperPages) > 8" class="extra-fee-note">
-              (Extra page fee applies: $80 / RMB 600)
+            <span v-if="needsExtraPageFee" class="extra-fee-note">
+              (Extra page fee applies: $80 / RMB 600 per page)
             </span>
           </div>
           <div class="info-row">
@@ -276,9 +283,28 @@ export default {
     },
     // 计算超页和金额（与第三步逻辑一致）
     extraPagesCount() {
-      if (!this.userInfo.paperPages) return 0;
+      if (!this.userInfo.paperPages || !this.userInfo.paperType || this.userInfo.paperType === 'none') return 0;
       const pages = parseInt(this.userInfo.paperPages);
-      return pages > 8 ? (pages - 8) : 0;
+      const paperType = this.userInfo.paperType;
+      
+      if (paperType === 'research') {
+        return pages > 8 ? (pages - 8) : 0;
+      } else if (paperType === 'poster') {
+        return pages > 2 ? (pages - 2) : 0;
+      }
+      return 0;
+    },
+    needsExtraPageFee() {
+      if (!this.userInfo.paperPages || !this.userInfo.paperType || this.userInfo.paperType === 'none') return false;
+      const pages = parseInt(this.userInfo.paperPages);
+      const paperType = this.userInfo.paperType;
+      
+      if (paperType === 'research') {
+        return pages > 8;
+      } else if (paperType === 'poster') {
+        return pages > 2;
+      }
+      return false;
     },
     basePriceUSD() {
       return this.selectedProduct ? (this.selectedProduct.price || 0) : 0;
@@ -477,7 +503,9 @@ export default {
           const productData = {
             code: regData.product_code,
             price: regData.product_price,
-            description: this.getProductDescription(regData.product_code)
+            priceRMB: regData.product_price_rmb,
+            description: this.getProductDescription(regData.product_code),
+            registration_category: regData.registration_category // 从后端获取
           };
           localStorage.setItem(
             this.getStorageKey('conferenceProductSelection'), 
@@ -893,6 +921,7 @@ export default {
         formData.append('name', this.userInfo.name || '');
         formData.append('phone', this.userInfo.phone || '');
         formData.append('affiliation', this.userInfo.affiliation || '');
+        formData.append('paper_type', this.userInfo.paperType || 'none');
         formData.append('paper_id', this.userInfo.paperId || '');
         formData.append('paper_pages', this.userInfo.paperPages || '');
         
@@ -910,9 +939,15 @@ export default {
         formData.append('extraPageFeeRMB', this.extraPageFeeRMB);
         
         // 添加注册类别信息（直接使用 Step1 保存的类别）
-        const registrationCategory = this.selectedProduct.registration_category;
+        let registrationCategory = this.selectedProduct.registration_category;
+        
+        // 修复：如果 registration_category 未定义或无效，根据产品代码推断
+        if (!registrationCategory || registrationCategory === 'undefined') {
+          console.warn('Registration category was undefined, inferred as:', registrationCategory);
+        }
+        
         formData.append('registrationCategory', registrationCategory);
-        console.log('Registration category from Step1:', registrationCategory);
+        console.log('Registration category:', registrationCategory);
         
         // 添加支付方式信息
         formData.append('paymentMethod', this.paymentMethod || 'international');

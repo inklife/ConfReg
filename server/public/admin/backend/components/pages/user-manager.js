@@ -112,6 +112,17 @@ class UserManager extends BaseComponent {
                 border-color: #dc2626;
             }
             
+            .btn-info {
+                background: #06b6d4;
+                color: white;
+                border: 1px solid #06b6d4;
+            }
+            
+            .btn-info:hover {
+                background: #0891b2;
+                border-color: #0891b2;
+            }
+            
             /* 空状态样式 */
             .empty-state {
                 display: flex;
@@ -411,12 +422,12 @@ class UserManager extends BaseComponent {
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 25%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">用户信息</th>
-                                    <th style="width: 25%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">邮箱</th>
-                                    <th style="width: 12%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">角色</th>
-                                    <th style="width: 10%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">状态</th>
-                                    <th style="width: 15%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">注册时间</th>
-                                    <th style="width: 13%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">操作</th>
+                                    <th style="width: 23%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">用户信息</th>
+                                    <th style="width: 23%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">邮箱</th>
+                                    <th style="width: 10%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">角色</th>
+                                    <th style="width: 9%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">状态</th>
+                                    <th style="width: 13%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">注册时间</th>
+                                    <th style="width: 22%; padding: 18px 16px; font-size: 16px; font-weight: 700; color: #1f2937; letter-spacing: 0.025em;">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="users-tbody">
@@ -1015,6 +1026,11 @@ class UserManager extends BaseComponent {
                             <button class="btn btn-sm btn-secondary" onclick="userManagerInstance.viewUserDetail(${user.id})" title="查看详情" style="padding: 8px 12px; font-size: 13px; font-weight: 500;">
                                 <i class="fas fa-eye"></i>
                             </button>
+                            ${!this.isAdmin(user) && user.is_active ? `
+                                <button class="btn btn-sm btn-info" onclick="userManagerInstance.simulateLogin(${user.id})" title="模拟登录" style="padding: 8px 12px; font-size: 13px; font-weight: 500;">
+                                    <i class="fas fa-user-secret"></i>
+                                </button>
+                            ` : ''}
                             ${user.is_active ? `
                                 <button class="btn btn-sm btn-warning" onclick="userManagerInstance.freezeUser(${user.id})" title="冻结用户" style="padding: 8px 12px; font-size: 13px; font-weight: 500;">
                                     <i class="fas fa-snowflake"></i>
@@ -1214,6 +1230,65 @@ class UserManager extends BaseComponent {
             document.body.style.overflow = '';
         }
         this.currentUserId = null;
+    }
+
+    /**
+     * 模拟登录用户
+     */
+    async simulateLogin(userId) {
+        try {
+            // 获取用户信息以确认
+            const user = this.users.find(u => u.id === userId);
+            if (!user) {
+                this.showError('找不到该用户');
+                return;
+            }
+
+            // 检查用户是否为管理员
+            if (this.isAdmin(user)) {
+                this.showError('不能模拟登录管理员用户');
+                return;
+            }
+
+            // 检查用户是否已冻结
+            if (!user.is_active) {
+                this.showError('不能模拟登录已冻结的用户');
+                return;
+            }
+
+            if (!confirm(`确定要模拟登录用户 "${user.fullname || user.username}" 吗？\n\n模拟登录后将以该用户身份访问前台系统。`)) {
+                return;
+            }
+
+            this.showLoading();
+
+            // 调用后端接口生成 ticket
+            const response = await this.request(`/admin/users/${userId}/simulate-login`, {
+                method: 'POST'
+            });
+
+            if (response.success) {
+                const { ticket, userId: targetUserId } = response.data;
+                
+                // 构建模拟登录URL
+                const loginUrl = `/api/auth/login?mock=1&userid=${targetUserId}&ticket=${ticket}`;
+                
+                this.showSuccess('正在跳转到前台系统...');
+                
+                // 延迟跳转，让用户看到成功提示
+                setTimeout(() => {
+                    // 在当前窗口打开（因为需要设置session）
+                    window.location.href = loginUrl;
+                }, 800);
+            } else {
+                this.showError(response.message || '生成登录票据失败');
+                this.hideLoading();
+            }
+        } catch (error) {
+            console.error('Simulate login error:', error);
+            this.showError('模拟登录失败');
+            this.hideLoading();
+        }
     }
 
     /**

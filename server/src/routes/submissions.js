@@ -113,10 +113,11 @@ router.post('/submit', requireAuth, upload.fields([
       });
     }
 
-    const { 
+    let { 
       name, 
       phone = '', 
       affiliation = '', 
+      paper_type = 'research',
       paper_id = '', 
       paper_pages = '', 
       productCode, 
@@ -129,14 +130,20 @@ router.post('/submit', requireAuth, upload.fields([
       registrationCategory = 'full', 
       paymentMethod = 'international' 
     } = req.body;
+
+    // 修复：如果 registrationCategory 是字符串 "undefined" 或无效值，日志中警告但不强制修改
+    if (!registrationCategory || registrationCategory === 'undefined' || !['full', 'attendee'].includes(registrationCategory)) {
+      console.warn(`Invalid registration category received: "${registrationCategory}"`);
+      // registrationCategory = 'full';
+    }
     const email = currentUser.email; // 使用当前用户的email
 
-    // Validate paper_pages format (must be numeric between 1-10 if provided)
-    if (paper_pages && paper_pages.trim() !== '' && (!/^\d+$/.test(paper_pages.trim()) || parseInt(paper_pages) < 1 || parseInt(paper_pages) > 10)) {
+    // Validate paper_pages format (must be numeric between 1-16 if provided)
+    if (paper_pages && paper_pages.trim() !== '' && (!/^\d+$/.test(paper_pages.trim()) || parseInt(paper_pages) < 1 || parseInt(paper_pages) > 16)) {
       return res.status(400).json({
         status: 6,
         success: false,
-        message: 'Paper pages must be a number between 1 and 10'
+        message: 'Paper pages must be a valid number'
       });
     }
 
@@ -180,6 +187,7 @@ router.post('/submit', requireAuth, upload.fields([
       submission.email = email;
       submission.phone = phone;
       submission.affiliation = affiliation;
+      submission.paper_type = paper_type;
       submission.paper_id = paper_id;
       submission.paper_pages = paper_pages ? parseInt(paper_pages) : 0;
       submission.product_code = productCode;
@@ -226,6 +234,7 @@ router.post('/submit', requireAuth, upload.fields([
         email,
         phone,
         affiliation,
+        paper_type,
         paper_id,
         paper_pages: paper_pages ? parseInt(paper_pages) : 0,
         product_code: productCode,
@@ -296,6 +305,7 @@ router.get('/user-registrations', requireAuth, async (req, res) => {
           email: submission.email,
           phone: submission.phone,
           affiliation: submission.affiliation,
+          paper_type: submission.paper_type,
           paper_id: submission.paper_id,
           paper_pages: submission.paper_pages,
           product_code: submission.product_code,
@@ -376,6 +386,7 @@ router.get('/check-registration', requireAuth, async (req, res) => {
             email: latestSubmission.email,
             phone: latestSubmission.phone,
             affiliation: latestSubmission.affiliation,
+            paper_type: latestSubmission.paper_type,
             paper_id: latestSubmission.paper_id,
             paper_pages: latestSubmission.paper_pages,
             product_code: latestSubmission.product_code,
@@ -408,6 +419,7 @@ router.get('/check-registration', requireAuth, async (req, res) => {
             email: latestSubmission.email,
             phone: latestSubmission.phone,
             affiliation: latestSubmission.affiliation,
+            paper_type: latestSubmission.paper_type,
             paper_id: latestSubmission.paper_id,
             paper_pages: latestSubmission.paper_pages,
             product_code: latestSubmission.product_code,
@@ -1291,6 +1303,7 @@ router.get('/registration/:id', requireAuth, async (req, res) => {
         total_amount_rmb: registration.total_amount_rmb,
         extra_page_fee_usd: registration.extra_page_fee_usd,
         extra_page_fee_rmb: registration.extra_page_fee_rmb,
+        paper_type: registration.paper_type,
         paper_id: registration.paper_id,
         paper_pages: registration.paper_pages,
         payment_method: registration.payment_method,

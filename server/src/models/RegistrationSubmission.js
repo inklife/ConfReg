@@ -37,6 +37,17 @@ const RegistrationSubmission = sequelize.define('RegistrationSubmission', {
     allowNull: false,
     defaultValue: ''
   },
+  paper_type: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+    defaultValue: 'research',
+    validate: {
+      isIn: {
+        args: [['research', 'poster', 'none']],
+        msg: 'Paper type must be research, poster, or none'
+      }
+    }
+  },
   paper_id: {
     type: DataTypes.STRING(300),
     allowNull: false,
@@ -57,8 +68,8 @@ const RegistrationSubmission = sequelize.define('RegistrationSubmission', {
     validate: {
       isValidPageCount(value) {
         // 只有在有值且不为0的时候才验证范围
-        if (value !== null && value !== undefined && value !== 0 && value !== '' && (value < 1 || value > 10)) {
-          throw new Error('Paper pages must be between 1 and 10');
+        if (value !== null && value !== undefined && value !== 0 && value !== '' && (value < 1 || value > 16)) {
+          throw new Error('Paper pages must be between 1 and 16');
         }
       }
     }

@@ -3403,6 +3403,7 @@ class InvoiceManager extends BaseComponent {
         const phone = registration.phone || '未提供';
         const affiliation = registration.affiliation || '未填写';
         const paperId = registration.paper_id || '未提供';
+        const paperType = registration.paper_type || 'research';
         const paperPages = registration.paper_pages || 0;
         const productCode = registration.product_code || '未知';
         const registrationCategory = registration.registration_category || '未知';
@@ -3471,6 +3472,19 @@ class InvoiceManager extends BaseComponent {
                 <div class="detail-section">
                     <div class="detail-title">
                         <i class="fas fa-file-alt"></i> 论文信息
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Paper Type:</span>
+                        <span class="detail-value">
+                            ${(() => {
+                                const typeMap = {
+                                    'research': '<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Research Paper</span>',
+                                    'poster': '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Poster</span>',
+                                    'none': '<span style="background: #f3f4f6; color: #6b7280; padding: 2px 8px; border-radius: 4px; font-size: 12px;">None</span>'
+                                };
+                                return typeMap[paperType] || typeMap['research'];
+                            })()}
+                        </span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">论文ID:</span>

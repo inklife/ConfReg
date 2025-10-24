@@ -12,6 +12,12 @@
 
     <!-- Registration list -->
     <div v-else class="registration-content">
+      <!-- Notice Banner -->
+      <div class="notice-banner">
+        <i class="el-icon-info"></i>
+        <p>Thanks for your registration. If your status shows as "pending," this is a normal occurrence. We will review all registration information after the camera-ready deadline (October 31st).</p>
+      </div>
+
       <!-- No registrations state -->
       <div v-if="registrations.length === 0" class="empty-state">
         <div class="empty-icon">
@@ -67,7 +73,7 @@
             
             <!-- Registration Type -->
             <div class="type-column">
-              <span class="cell-content">{{ registration.registration_type || 'Standard' }}</span>
+              <span class="cell-content">{{ getRegistrationCategoryText(registration) }}</span>
             </div>
             
             <!-- Submitted Date -->
@@ -510,6 +516,27 @@ export default {
       return '$0';
     },
     
+    getRegistrationCategoryText(registration) {
+      // 从 registration_data 中获取 registration_category
+      const regData = registration.registration_data || {};
+      const category = regData.registration_category;
+      
+      // 如果是 undefined 或无效值，显示 "Not selected"
+      if (!category || category === 'undefined') {
+        return 'Not selected';
+      }
+      
+      // 根据类别映射为友好的显示文本
+      if (category === 'full') {
+        return 'Full Registration';
+      } else if (category === 'attendee' || category === 'student') {
+        return 'Attendee自尊心的地方小吃      Registration';
+      }
+      
+      // 其他情况保持原值
+      return category;
+    },
+    
     viewRegistration(registration) {
       // 跳转到详情页面，无论什么状态都跳转到 Step5 页面查看
       // 如果注册有真实的ID，跳转到对应的详情页面
@@ -718,6 +745,32 @@ export default {
 
 .registration-content {
   min-height: 400px;
+}
+
+/* Notice Banner */
+.notice-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
+}
+
+.notice-banner i {
+  font-size: 20px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.notice-banner p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: white;
 }
 
 /* Empty state */

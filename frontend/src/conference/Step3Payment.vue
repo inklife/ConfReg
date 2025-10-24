@@ -36,8 +36,8 @@
           <span>Base Registration Fee:</span>
           <strong>${{ selectedProduct && selectedProduct.price || 0 }} USD</strong>
         </div>
-        <div v-if="userInfo.paperPages && parseInt(userInfo.paperPages) > 8" class="summary-row">
-          <span>Extra Page Fee ({{ parseInt(userInfo.paperPages) - 8 }} pages):</span>
+        <div v-if="extraPagesCount > 0" class="summary-row">
+          <span>Extra Page Fee ({{ extraPagesCount }} page{{ extraPagesCount > 1 ? 's' : '' }}<template v-if="userInfo.paperType === 'research'">, pages {{ parseInt(userInfo.paperPages) - extraPagesCount + 1 }}-{{ userInfo.paperPages }}</template><template v-else-if="userInfo.paperType === 'poster'">, pages {{ parseInt(userInfo.paperPages) - extraPagesCount + 1 }}-{{ userInfo.paperPages }}</template>):</span>
           <strong>${{ extraPageFee }} USD</strong>
         </div>
         <div class="summary-row total-row">
@@ -202,19 +202,35 @@ export default {
     },
     // 计算超页费用
     extraPageFee() {
-      if (!this.userInfo.paperPages) return 0;
+      if (!this.userInfo.paperPages || !this.userInfo.paperType || this.userInfo.paperType === 'none') return 0;
       const pages = parseInt(this.userInfo.paperPages);
-      if (pages > 8) {
-        // 第9-10页每页收费$80
-        return (pages - 8) * 80;
+      const paperType = this.userInfo.paperType;
+      
+      if (paperType === 'research') {
+        // Research paper: 8页内不计费，第9-10页每页收费$80
+        if (pages > 8) {
+          return (pages - 8) * 80;
+        }
+      } else if (paperType === 'poster') {
+        // Poster: 2页内不计费，第3页及以上每页收费$80
+        if (pages > 2) {
+          return (pages - 2) * 80;
+        }
       }
       return 0;
     },
     // 超页页数（用于人民币计算）
     extraPagesCount() {
-      if (!this.userInfo.paperPages) return 0;
+      if (!this.userInfo.paperPages || !this.userInfo.paperType || this.userInfo.paperType === 'none') return 0;
       const pages = parseInt(this.userInfo.paperPages);
-      return pages > 8 ? (pages - 8) : 0;
+      const paperType = this.userInfo.paperType;
+      
+      if (paperType === 'research') {
+        return pages > 8 ? (pages - 8) : 0;
+      } else if (paperType === 'poster') {
+        return pages > 2 ? (pages - 2) : 0;
+      }
+      return 0;
     },
     // 计算总价格
     totalAmount() {
