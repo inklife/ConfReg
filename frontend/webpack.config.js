@@ -1,12 +1,18 @@
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var path = require('path');
 
-module.exports = {
-    mode: 'development',
-    entry: ['core-js/stable', './src/index.js'],
-    output: {
-        publicPath: '/'
-    },
+module.exports = (env, argv) => {
+    const isProduction = argv.mode === 'production';
+    
+    return {
+        mode: argv.mode || 'development',
+        entry: ['core-js/stable', './src/index.js'],
+        output: {
+            publicPath: '/',
+            // 生产环境使用 contenthash，开发环境不使用
+            filename: isProduction ? '[name].[contenthash:8].js' : '[name].js',
+            chunkFilename: isProduction ? '[name].[contenthash:8].js' : '[name].js'
+        },
     resolve: {
         extensions: ['.js', '.vue'],
         alias: {
@@ -37,7 +43,10 @@ module.exports = {
                     limit: 10000,
                     fallback: 'file-loader',
                     esModule: false, // 禁用ES模块
-
+                    // 生产环境使用 hash，开发环境使用原文件名
+                    name: isProduction 
+                      ? '[name].[hash:8].[ext]' 
+                      : '[name].[ext]'
                   }
                 }]
               }           
@@ -90,4 +99,5 @@ module.exports = {
             // 移除 apiUrl 配置，直接在请求中写完整路径
         })
     }
-}
+    };
+};

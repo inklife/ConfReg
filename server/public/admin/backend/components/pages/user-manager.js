@@ -884,8 +884,46 @@ class UserManager extends BaseComponent {
 
     connectedCallback() {
         super.connectedCallback();
+        
+        // 绑定页面显示事件处理器
+        this.handlePageShow = this.handlePageShow.bind(this);
+        window.addEventListener('pageshow', this.handlePageShow);
+        
         this.loadUsers();
         console.log('UserManager component connected');
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        
+        // 中止任何正在进行的请求
+        if (this.loadUsersAbortController) {
+            this.loadUsersAbortController.abort();
+            this.loadUsersAbortController = null;
+        }
+        
+        // 清理事件监听器
+        if (this.handlePageShow) {
+            window.removeEventListener('pageshow', this.handlePageShow);
+        }
+        
+        // 清理任何未完成的加载状态
+        this.hideLoading();
+        console.log('UserManager component disconnected');
+    }
+
+    /**
+     * 处理页面显示事件（包括浏览器返回）
+     */
+    handlePageShow(event) {
+        // event.persisted 为 true 表示页面是从 BFCache 恢复的
+        if (event.persisted) {
+            console.log('Page restored from BFCache, ensuring loading state is cleared');
+            // 确保清除加载状态
+            this.hideLoading();
+            // 重新加载数据以确保数据是最新的
+            this.loadUsers();
+        }
     }
 
     /**
@@ -904,9 +942,13 @@ class UserManager extends BaseComponent {
      */
     hideLoading() {
         this.isLoading = false;
-        const loadingOverlay = this.shadowRoot.getElementById('loading-overlay');
-        if (loadingOverlay) {
-            loadingOverlay.style.display = 'none';
+        try {
+            const loadingOverlay = this.shadowRoot?.getElementById('loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error hiding loading overlay:', error);
         }
     }
 
@@ -923,8 +965,16 @@ class UserManager extends BaseComponent {
      * 加载用户列表
      */
     async loadUsers() {
+        // 如果有正在进行的请求，先中止它
+        if (this.loadUsersAbortController) {
+            this.loadUsersAbortController.abort();
+        }
+        
         try {
             this.showLoading();
+            
+            // 创建新的 AbortController
+            this.loadUsersAbortController = new AbortController();
 
             const params = new URLSearchParams({
                 page: this.currentPage.toString(),
@@ -939,7 +989,9 @@ class UserManager extends BaseComponent {
                 params.set('search', this.searchTerm);
             }
 
-            const response = await this.request(`/admin/users?${params}`);
+            const response = await this.request(`/admin/users?${params}`, {
+                signal: this.loadUsersAbortController.signal
+            });
             
             if (response.success) {
                 this.users = response.data || [];
@@ -951,10 +1003,16 @@ class UserManager extends BaseComponent {
                 this.showError('加载用户列表失败');
             }
         } catch (error) {
+            // 忽略中止错误
+            if (error.name === 'AbortError') {
+                console.log('Load users request was aborted');
+                return;
+            }
             console.error('Load users error:', error);
             this.showError('加载用户列表失败');
         } finally {
             this.hideLoading();
+            this.loadUsersAbortController = null;
         }
     }
 
