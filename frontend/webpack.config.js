@@ -57,7 +57,7 @@ module.exports = (env, argv) => {
             template: './src/index.html',
             inject: 'body',
             publicPath: '/'
-        }),
+        })
     ],
     devServer: {
         host: '127.0.0.1', // 绑定到所有网络接口，允许 localhost 和 127.0.0.1 访问

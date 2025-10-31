@@ -5,6 +5,9 @@ import VeeValidate from 'vee-validate';
 // 引入全局样式
 import './assets/styles/global.css';
 
+// 动态导入 Bootstrap JS（这样 webpack 会处理 hash）
+import('./assets/js/bootstrap.bundle.min.js');
+
 // import { testLogin } from './_services/user.service'
 
 // testLogin()
