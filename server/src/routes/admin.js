@@ -40,16 +40,17 @@ const upload = multer({
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/x-sqlite3',
-      'application/octet-stream'
+      'application/octet-stream',
+      'application/json'
     ];
     
-    const allowedExtensions = ['.txt', '.csv', '.xlsx', '.xls', '.sqlite', '.sqlite3', '.db'];
+    const allowedExtensions = ['.txt', '.csv', '.xlsx', '.xls', '.sqlite', '.sqlite3', '.db', '.json'];
     const fileExtension = path.extname(file.originalname).toLowerCase();
     
     if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
       cb(null, true);
     } else {
-      cb(new Error('不支持的文件类型。仅支持 .txt, .csv, .xlsx, .xls, .sqlite, .sqlite3, .db 文件。'));
+      cb(new Error('不支持的文件类型。仅支持 .txt, .csv, .xlsx, .xls, .sqlite, .sqlite3, .db, .json 文件。'));
     }
   }
 });
@@ -1850,26 +1851,88 @@ router.post('/import/database', requireAdmin, upload.single('file'), async (req,
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: '请选择要导入的数据库文件'
+        message: '请选择要导入的数据库或配置文件'
       });
     }
 
     const uploadedFilePath = req.file.path;
     const fileExtension = path.extname(req.file.originalname).toLowerCase();
+    const fileType = req.body.fileType; // 'database' 或 'config'
     
     // 检查文件类型
-    if (!['.sqlite', '.sqlite3', '.db'].includes(fileExtension)) {
+    if (!['.sqlite', '.sqlite3', '.db', '.json'].includes(fileExtension)) {
       fs.unlinkSync(uploadedFilePath);
       return res.status(400).json({
         success: false,
-        message: '不支持的文件类型。请上传 .sqlite、.sqlite3 或 .db 文件'
+        message: '不支持的文件类型。请上传 .sqlite、.sqlite3、.db 或 .json 文件'
       });
     }
 
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+
+    // 处理 JSON 配置文件
+    if (fileExtension === '.json' || fileType === 'config') {
+      try {
+        // 读取并验证 JSON 文件
+        const jsonContent = fs.readFileSync(uploadedFilePath, 'utf8');
+        const jsonData = JSON.parse(jsonContent);
+
+        // 验证 JSON 格式
+        if (!jsonData || typeof jsonData !== 'object') {
+          fs.unlinkSync(uploadedFilePath);
+          return res.status(400).json({
+            success: false,
+            message: 'JSON 文件格式无效，必须是有效的 JSON 对象'
+          });
+        }
+
+        // config.json 的路径
+        const configPath = path.join(__dirname, '../../database/config.json');
+        const backupDir = path.join(path.dirname(configPath), 'backups');
+        const backupFileName = `config_before_import_${timestamp}.json`;
+        const backupPath = path.join(backupDir, backupFileName);
+
+        // 确保备份目录存在
+        if (!fs.existsSync(backupDir)) {
+          fs.mkdirSync(backupDir, { recursive: true });
+        }
+
+        // 备份当前配置文件
+        if (fs.existsSync(configPath)) {
+          fs.copyFileSync(configPath, backupPath);
+          console.log(`当前配置文件已备份到: ${backupPath}`);
+        }
+
+        // 覆盖配置文件（格式化输出）
+        fs.writeFileSync(configPath, JSON.stringify(jsonData, null, 2), 'utf8');
+        console.log('配置文件已覆盖');
+
+        // 清理临时文件
+        fs.unlinkSync(uploadedFilePath);
+
+        return res.json({
+          success: true,
+          message: '配置文件导入成功！',
+          data: {
+            backupFile: backupFileName,
+            backupPath: backupPath,
+            type: 'config'
+          }
+        });
+
+      } catch (jsonError) {
+        fs.unlinkSync(uploadedFilePath);
+        return res.status(400).json({
+          success: false,
+          message: `JSON 文件处理失败: ${jsonError.message}`
+        });
+      }
+    }
+
+    // 处理数据库文件
     const { dbPath } = require('../config/database');
     
     // 1. 备份当前数据库
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const backupDir = path.join(path.dirname(dbPath), 'backups');
     const backupFileName = `icpads2025_before_import_${timestamp}.sqlite`;
     const backupPath = path.join(backupDir, backupFileName);
@@ -1897,7 +1960,8 @@ router.post('/import/database', requireAdmin, upload.single('file'), async (req,
       message: '数据库导入成功！请重新登录系统。',
       data: {
         backupFile: backupFileName,
-        backupPath: backupPath
+        backupPath: backupPath,
+        type: 'database'
       }
     });
 
@@ -1907,10 +1971,10 @@ router.post('/import/database', requireAdmin, upload.single('file'), async (req,
       fs.unlinkSync(req.file.path);
     }
     
-    console.error('Import database error:', error);
+    console.error('Import file error:', error);
     res.status(500).json({
       success: false,
-      message: `数据库导入失败: ${error.message}`
+      message: `导入失败: ${error.message}`
     });
   }
 });

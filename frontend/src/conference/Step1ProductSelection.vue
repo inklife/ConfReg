@@ -22,7 +22,7 @@
         <!-- Early Bird Price Notice -->
         <div class="early-bird-notice" @click="showPriceComparison">
           <i class="el-icon-warning-outline"></i>
-          <span>Current prices are <strong>Early Bird</strong> rates. Register now to save! <span class="click-hint">(Click for details)</span></span>
+          <span>Click to view Early Bird policy and check if you qualify for Early Bird rates</span>
         </div>
 
         <!-- Full Registration Section -->
@@ -146,7 +146,7 @@
       custom-class="price-comparison-dialog"
       center
     >
-      <div class="price-table-container">
+      <div class="price-table-container" v-if="serverConfig">
         <table class="price-comparison-table">
           <thead>
             <tr>
@@ -159,80 +159,45 @@
           </thead>
           <tbody>
             <!-- Full Registration -->
-            <tr>
-              <td rowspan="2" class="category-cell">Full Registration</td>
-              <td>IEEE Member</td>
-              <td class="price-cell highlight">$700 (RMB 5000)</td>
-              <td class="price-cell">$850 (RMB 6100)</td>
-              <td rowspan="2" class="benefits-cell">
+            <tr v-for="(item, index) in serverConfig.registrationFees.fullRegistration" :key="'full-' + index">
+              <td v-if="index === 0" :rowspan="serverConfig.registrationFees.fullRegistration.length" class="category-cell">Full Registration</td>
+              <td>{{ item.code }}</td>
+              <td class="price-cell highlight">${{ item.earlyBird.usd }} (RMB {{ item.earlyBird.rmb }})</td>
+              <td class="price-cell">${{ item.lateRegistration.usd }} (RMB {{ item.lateRegistration.rmb }})</td>
+              <td v-if="index === 0" :rowspan="serverConfig.registrationFees.fullRegistration.length" class="benefits-cell">
                 <ul>
-                  <li>Presentation and Publication of one paper</li>
-                  <li>Access to all conference sessions</li>
-                  <li>A copy of the proceedings</li>
-                  <li>Program brochure and conference goodies (e.g., bags/paper/pens)</li>
-                  <li>Lunch, coffee breaks, banquet and reception</li>
+                  <li v-for="(benefit, bIndex) in item.benefits" :key="bIndex">{{ benefit }}</li>
                 </ul>
               </td>
-            </tr>
-            <tr>
-              <td>Non-IEEE Member</td>
-              <td class="price-cell highlight">$840 (RMB 6000)</td>
-              <td class="price-cell">$990 (RMB 7100)</td>
             </tr>
             
             <!-- Attendee Registration -->
-            <tr>
-              <td rowspan="4" class="category-cell">Attendee Registration</td>
-              <td>IEEE Student Member/Life Member</td>
-              <td class="price-cell highlight">$500 (RMB 3600)</td>
-              <td class="price-cell">$650 (RMB 4700)</td>
-              <td rowspan="4" class="benefits-cell">
+            <tr v-for="(item, index) in serverConfig.registrationFees.attendeeRegistration" :key="'attendee-' + index">
+              <td v-if="index === 0" :rowspan="serverConfig.registrationFees.attendeeRegistration.length" class="category-cell">Attendee Registration</td>
+              <td>{{ item.code }}</td>
+              <td class="price-cell highlight">${{ item.earlyBird.usd }} (RMB {{ item.earlyBird.rmb }})</td>
+              <td class="price-cell">${{ item.lateRegistration.usd }} (RMB {{ item.lateRegistration.rmb }})</td>
+              <td v-if="index === 0" :rowspan="serverConfig.registrationFees.attendeeRegistration.length" class="benefits-cell">
                 <ul>
-                  <li>Access to all conference sessions</li>
-                  <li>A copy of the proceedings</li>
-                  <li>Program brochure and conference goodies (e.g., bags/paper/pens)</li>
-                  <li>Lunch, coffee breaks, banquet and reception</li>
+                  <li v-for="(benefit, bIndex) in item.benefits" :key="bIndex">{{ benefit }}</li>
                 </ul>
               </td>
             </tr>
-            <tr>
-              <td>Student-Non-IEEE Member</td>
-              <td class="price-cell highlight">$610 (RMB 4400)</td>
-              <td class="price-cell">$760 (RMB 5500)</td>
-            </tr>
-            <tr>
-              <td>IEEE-Member</td>
-              <td class="price-cell highlight">$610 (RMB 4400)</td>
-              <td class="price-cell">$760 (RMB 5500)</td>
-            </tr>
-            <tr>
-              <td>Non-IEEE Member</td>
-              <td class="price-cell highlight">$700 (RMB 5000)</td>
-              <td class="price-cell">$850 (RMB 6100)</td>
-            </tr>
 
             <!-- Additional Fee -->
-            <tr>
-              <td rowspan="2" class="category-cell">Additional Fee</td>
-              <td>Extra page fee (per page)</td>
-              <td class="price-cell">$80 (RMB 600)</td>
-              <td class="price-cell">$80 (RMB 600)</td>
-              <td>One additional page (no more than 10 pages in total)</td>
-            </tr>
-            <tr>
-              <td>Extra banquet tickets (per ticket)</td>
-              <td class="price-cell">$150 (RMB 1100)</td>
-              <td class="price-cell">$150 (RMB 1100)</td>
-              <td>One additional banquet ticket</td>
+            <tr v-for="(item, index) in serverConfig.registrationFees.additionalFees" :key="'additional-' + index">
+              <td v-if="index === 0" :rowspan="serverConfig.registrationFees.additionalFees.length" class="category-cell">Additional Fee</td>
+              <td>{{ item.code }}</td>
+              <td class="price-cell">${{ item.earlyBird.usd }} (RMB {{ item.earlyBird.rmb }})</td>
+              <td class="price-cell">${{ item.lateRegistration.usd }} (RMB {{ item.lateRegistration.rmb }})</td>
+              <td>{{ item.description }}</td>
             </tr>
           </tbody>
         </table>
         
-        <div class="price-note">
-          <strong>Note:</strong> Early Bird Registration deadline is October 31, 2025.<br>
-          The Early Bird rate eligibility is determined by the <strong>actual payment arrival date</strong>, not the registration submission date. 
-          You may complete the payment first and fill in the registration information later. 
-          As long as the payment arrives before October 31, 2025 (Beijing Time), the Early Bird rate will apply.
+        <div class="price-note" v-if="serverConfig.deadlines">
+          <strong>Note:</strong> Early Bird Registration deadline is {{ formatDeadline(serverConfig.deadlines.earlyBirdDeadline) }}.<br>
+          <span v-html="serverConfig.deadlines.earlyBirdNote"></span>
         </div>
       </div>
     </el-dialog>
@@ -260,46 +225,10 @@ export default {
       currentUserId: null, // 添加当前用户ID跟踪
       editMode: false,
       priceDialogVisible: false, // 价格对比弹窗显示状态
-      products: [
-        // Full Registration (2 types)
-        { 
-          code: 'IEEE Member', 
-          price: 700,
-          priceRMB: 5000,
-          description: 'For IEEE members'
-        },
-        { 
-          code: 'Non-IEEE Member', 
-          price: 840,
-          priceRMB: 6000,
-          description: 'For non-IEEE members'
-        },
-        // Attendee Registration (4 types)
-        { 
-          code: 'Attendee - IEEE Member', 
-          price: 610,
-          priceRMB: 4400,
-          description: 'For attendees with IEEE membership'
-        },
-        { 
-          code: 'Attendee - Non-IEEE Member', 
-          price: 700,
-          priceRMB: 5000,
-          description: 'For attendees without IEEE membership'
-        },
-        { 
-          code: 'IEEE Student Member/Life Member', 
-          price: 500,
-          priceRMB: 3600,
-          description: 'For IEEE student members or life members'
-        },
-        { 
-          code: 'Student - Non-IEEE Member', 
-          price: 610,
-          priceRMB: 4400,
-          description: 'For students without IEEE membership'
-        }
-      ],
+      products: [], // 从服务器加载
+      configLoaded: false, // 配置加载状态
+      serverConfig: null, // 服务器配置
+      isEarlyBird: true, // 是否为早鸟价
       proofTypes: {
         'IEEE Member': 'IEEE membership verification',
         'Attendee - IEEE Member': 'IEEE membership verification',
@@ -325,7 +254,10 @@ export default {
       return true;
     }
   },
-  mounted() {
+  async mounted() {
+    // 首先加载配置
+    await this.loadConfig();
+    
     // 检测编辑模式
     if (this.id && this.id !== 'new') {
       this.editMode = true;
@@ -335,6 +267,82 @@ export default {
     this.initializeUserData();
   },
   methods: {
+    async loadConfig() {
+      try {
+        const axios = (await import('axios')).default;
+        const response = await axios.get('/api/config');
+        
+        if (response.data.success) {
+          this.serverConfig = response.data.data;
+          this.isEarlyBird = response.data.data.serverTime.isEarlyBird;
+          
+          // 组装产品列表
+          const fullReg = this.serverConfig.registrationFees.fullRegistration;
+          const attendeeReg = this.serverConfig.registrationFees.attendeeRegistration;
+          
+          // 根据是否为早鸟价选择价格
+          const priceType = this.isEarlyBird ? 'earlyBird' : 'lateRegistration';
+          
+          this.products = [
+            // Full Registration
+            ...fullReg.map(item => ({
+              code: item.code,
+              price: item[priceType].usd,
+              priceRMB: item[priceType].rmb,
+              description: item.description
+            })),
+            // Attendee Registration
+            ...attendeeReg.map(item => ({
+              code: item.code,
+              price: item[priceType].usd,
+              priceRMB: item[priceType].rmb,
+              description: item.description
+            }))
+          ];
+          
+          // 保存超页费配置到 localStorage，供其他步骤使用
+          const extraPageFeeConfig = this.serverConfig.registrationFees.additionalFees.find(
+            item => item.code === 'Extra page fee (per page)'
+          );
+          if (extraPageFeeConfig) {
+            const extraPageFee = {
+              usd: extraPageFeeConfig[priceType].usd,
+              rmb: extraPageFeeConfig[priceType].rmb
+            };
+            localStorage.setItem('conferenceExtraPageFee', JSON.stringify(extraPageFee));
+          }
+          
+          this.configLoaded = true;
+          console.log('Configuration loaded successfully:', {
+            isEarlyBird: this.isEarlyBird,
+            productsCount: this.products.length
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load configuration:', error);
+        this.$message.error('Failed to load registration prices. Please refresh the page.');
+        
+        // 设置默认配置以防加载失败
+        this.setDefaultConfig();
+      }
+    },
+    
+    setDefaultConfig() {
+      // 如果配置加载失败，使用默认配置
+      this.isEarlyBird = true;
+      this.products = [
+        { code: 'IEEE Member', price: 700, priceRMB: 5000, description: 'For IEEE members' },
+        { code: 'Non-IEEE Member', price: 840, priceRMB: 6000, description: 'For non-IEEE members' },
+        { code: 'Attendee - IEEE Member', price: 610, priceRMB: 4400, description: 'For attendees with IEEE membership' },
+        { code: 'Attendee - Non-IEEE Member', price: 700, priceRMB: 5000, description: 'For attendees without IEEE membership' },
+        { code: 'IEEE Student Member/Life Member', price: 500, priceRMB: 3600, description: 'For IEEE student members or life members' },
+        { code: 'Student - Non-IEEE Member', price: 610, priceRMB: 4400, description: 'For students without IEEE membership' }
+      ];
+      // 设置默认超页费
+      localStorage.setItem('conferenceExtraPageFee', JSON.stringify({ usd: 80, rmb: 600 }));
+      this.configLoaded = true;
+    },
+    
     async initializeUserData() {
       // 获取当前登录用户信息
       const currentUser = this.$store.state.account.user;
@@ -777,6 +785,16 @@ export default {
       const sizes = ['Bytes', 'KB', 'MB', 'GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    },
+    
+    formatDeadline(isoString) {
+      try {
+        const date = new Date(isoString);
+        const options = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Shanghai' };
+        return date.toLocaleDateString('en-US', options);
+      } catch (error) {
+        return isoString;
+      }
     }
   }
 }
@@ -1249,6 +1267,30 @@ export default {
   color: #d48806;
 }
 
+.price-disclaimer {
+  background: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 12px;
+  color: #003a8c;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.price-disclaimer i {
+  color: #1890ff;
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.price-disclaimer strong {
+  color: #096dd9;
+}
+
 /* 平板端优化 */
 @media (max-width: 1024px) and (min-width: 769px) {
   .full-registration-grid {
@@ -1568,6 +1610,16 @@ export default {
   .price-note {
     font-size: 11px;
     padding: 8px;
+  }
+
+  .price-disclaimer {
+    font-size: 11px;
+    padding: 8px;
+    margin-top: 8px;
+  }
+
+  .price-disclaimer i {
+    font-size: 14px;
   }
 
   .product-group {

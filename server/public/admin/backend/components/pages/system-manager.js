@@ -666,9 +666,9 @@ class SystemManager extends BaseComponent {
                         </div>
                         <div class="feature-body">
                             <div class="feature-content">
-                                <p>支持SQLite数据库文件，自动备份当前数据库，完全覆盖现有数据</p>
+                                <p>支持SQLite数据库文件或JSON配置文件。数据库文件会自动备份并完全覆盖现有数据，JSON文件会覆盖config.json配置</p>
                                 <div class="warning-box">
-                                    ⚠️ 此操作将完全覆盖当前数据，请谨慎操作！
+                                    ⚠️ 此操作将完全覆盖当前数据或配置，请谨慎操作！
                                 </div>
                                 <div class="form-group">
                                     <div class="file-upload-area" id="db-upload-area">
@@ -677,7 +677,7 @@ class SystemManager extends BaseComponent {
                                             <path d="M6 14.5c0-1.104.896-2 2-2h8c1.104 0 2 .896 2 2v4c0 1.104-.896 2-2 2H8c-1.104 0-2-.896-2-2v-4z"/>
                                         </svg>
                                         <div class="upload-text">点击选择文件或拖拽文件到此处</div>
-                                        <div class="upload-hint">支持 SQLite、DB 格式，最大 100MB</div>
+                                        <div class="upload-hint">支持 SQLite、DB、JSON 格式，最大 100MB</div>
                                         <div class="selected-file-info" id="db-file-info">
                                             <div class="selected-file-name" id="db-file-name"></div>
                                             <div class="selected-file-size" id="db-file-size"></div>
@@ -692,7 +692,7 @@ class SystemManager extends BaseComponent {
                                             type="file" 
                                             id="db-file" 
                                             class="file-input" 
-                                            accept=".sqlite,.sqlite3,.db"
+                                            accept=".sqlite,.sqlite3,.db,.json"
                                         >
                                     </div>
                                     <div class="form-error" id="db-file-error"></div>
@@ -705,6 +705,29 @@ class SystemManager extends BaseComponent {
                                         <polyline points="14,2 14,8 20,8"></polyline>
                                         <line x1="12" y1="18" x2="12" y2="12"></line>
                                         <polyline points="9,15 12,12 15,15"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 配置管理 -->
+                <div class="grid-item">
+                    <div class="feature-card">
+                        <div class="feature-header">
+                            <h3 class="feature-title">配置管理</h3>
+                            <p class="feature-description">系统配置与公告管理</p>
+                        </div>
+                        <div class="feature-body">
+                            <div class="feature-content">
+                                <p>在线编辑系统配置信息，包括注册价格、Early Bird截止日期、公告内容等</p>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-icon" id="config-edit-btn" title="编辑配置" style="background: #f59e0b;">
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                     </svg>
                                 </button>
                             </div>
@@ -823,6 +846,12 @@ class SystemManager extends BaseComponent {
             input.addEventListener('blur', () => {
                 this.validateField(input.id);
             });
+        });
+
+        // 价格配置管理
+        const configEditBtn = this.shadowRoot.getElementById('config-edit-btn');
+        configEditBtn.addEventListener('click', () => {
+            this.handleConfigEdit();
         });
 
         // 导入导出功能
@@ -1086,6 +1115,168 @@ class SystemManager extends BaseComponent {
         }
     }
 
+    // ==================== 价格配置管理方法 ====================
+
+    async handleConfigEdit() {
+        try {
+            // 获取当前配置
+            const response = await this.request('/admin/config/admin', {
+                method: 'GET'
+            });
+
+            if (!response || !response.success) {
+                alert('Failed to load configuration');
+                return;
+            }
+
+            const config = response.data;
+            
+            // 创建编辑对话框
+            this.showConfigEditor(config);
+        } catch (error) {
+            console.error('Error loading config:', error);
+            alert('Failed to load configuration: ' + error.message);
+        }
+    }
+
+    showConfigEditor(config) {
+        // 创建模态对话框
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+
+        const editor = document.createElement('div');
+        editor.style.cssText = `
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        `;
+
+        editor.innerHTML = `
+            <div style="padding: 24px; border-bottom: 1px solid #e2e8f0;">
+                <h2 style="margin: 0; font-size: 24px; color: #1a202c;">价格配置编辑</h2>
+                <p style="margin: 8px 0 0 0; color: #718096; font-size: 14px;">修改注册价格和截止日期</p>
+            </div>
+            <div style="padding: 24px;">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">JSON 配置</label>
+                    <textarea 
+                        id="config-json-editor" 
+                        style="
+                            width: 100%;
+                            height: 400px;
+                            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                            font-size: 13px;
+                            padding: 12px;
+                            border: 1px solid #d1d5db;
+                            border-radius: 6px;
+                            resize: vertical;
+                            box-sizing: border-box;
+                        "
+                    >${JSON.stringify(config, null, 2)}</textarea>
+                    <p style="margin: 8px 0 0 0; color: #718096; font-size: 13px;">
+                        ⚠️ 请确保 JSON 格式正确，否则可能导致系统错误
+                    </p>
+                </div>
+            </div>
+            <div style="padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                <button 
+                    id="config-cancel-btn" 
+                    style="
+                        padding: 10px 20px;
+                        border: 1px solid #d1d5db;
+                        background: white;
+                        color: #374151;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        font-weight: 500;
+                        cursor: pointer;
+                    "
+                >取消</button>
+                <button 
+                    id="config-save-btn" 
+                    style="
+                        padding: 10px 20px;
+                        border: none;
+                        background: #3b82f6;
+                        color: white;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        font-weight: 500;
+                        cursor: pointer;
+                    "
+                >保存配置</button>
+            </div>
+        `;
+
+        modal.appendChild(editor);
+        document.body.appendChild(modal);
+
+        // 事件监听
+        const cancelBtn = editor.querySelector('#config-cancel-btn');
+        const saveBtn = editor.querySelector('#config-save-btn');
+        const textarea = editor.querySelector('#config-json-editor');
+
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+
+        saveBtn.addEventListener('click', async () => {
+            try {
+                // 验证 JSON
+                const newConfig = JSON.parse(textarea.value);
+                
+                // 保存配置
+                saveBtn.disabled = true;
+                saveBtn.textContent = '保存中...';
+                
+                const response = await this.request('/admin/config/admin', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newConfig)
+                });
+
+                if (response && response.success) {
+                    alert('配置保存成功！');
+                    document.body.removeChild(modal);
+                } else {
+                    throw new Error(response?.message || 'Failed to save configuration');
+                }
+            } catch (error) {
+                if (error instanceof SyntaxError) {
+                    alert('JSON 格式错误，请检查配置格式！\n\n' + error.message);
+                } else {
+                    alert('保存配置失败：' + error.message);
+                }
+                saveBtn.disabled = false;
+                saveBtn.textContent = '保存配置';
+            }
+        });
+
+        // 点击背景关闭
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+
     // ==================== 导入导出功能方法 ====================
 
     async handleExportDatabase() {
@@ -1188,23 +1379,47 @@ class SystemManager extends BaseComponent {
         const file = fileInput.files[0];
 
         if (!file) {
-            this.showError('db-file', '请选择要导入的数据库文件');
+            this.showError('db-file', '请选择要导入的数据库或配置文件');
             return;
         }
 
         // 验证文件类型
-        const allowedTypes = ['.sqlite', '.sqlite3', '.db'];
+        const allowedTypes = ['.sqlite', '.sqlite3', '.db', '.json'];
         const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
         
         if (!allowedTypes.includes(fileExtension)) {
-            this.showError('db-file', '不支持的文件类型，请选择 .sqlite、.sqlite3 或 .db 文件');
+            this.showError('db-file', '不支持的文件类型，请选择 .sqlite、.sqlite3、.db 或 .json 文件');
             return;
         }
 
+        // 如果是 JSON 文件，需要验证格式
+        if (fileExtension === '.json') {
+            try {
+                const fileContent = await file.text();
+                const jsonData = JSON.parse(fileContent);
+                
+                // 验证 JSON 格式是否有效
+                if (!jsonData || typeof jsonData !== 'object') {
+                    this.showError('db-file', 'JSON 文件格式无效，必须是有效的 JSON 对象');
+                    return;
+                }
+            } catch (error) {
+                this.showError('db-file', 'JSON 文件格式错误：' + error.message);
+                return;
+            }
+        }
+
+        // 根据文件类型确定确认对话框内容
+        const isJson = fileExtension === '.json';
+        const dialogTitle = isJson ? '确认覆盖配置文件' : '确认导入数据库';
+        const dialogMessage = isJson 
+            ? '此操作将完全覆盖当前的 config.json 配置文件。当前配置会自动备份。\n\n您确定要继续吗？'
+            : '此操作将完全覆盖当前数据库，所有现有数据将被替换。当前数据会自动备份。\n\n您确定要继续吗？';
+
         // 二次确认
         const confirmed = await this.showConfirmDialog(
-            '确认导入数据库',
-            '此操作将完全覆盖当前数据库，所有现有数据将被替换。当前数据会自动备份。\n\n您确定要继续吗？',
+            dialogTitle,
+            dialogMessage,
             '确认导入',
             '取消'
         );
@@ -1219,6 +1434,7 @@ class SystemManager extends BaseComponent {
 
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('fileType', isJson ? 'config' : 'database');
 
             const response = await fetch('/admin/import/database', {
                 method: 'POST',
@@ -1229,27 +1445,37 @@ class SystemManager extends BaseComponent {
             const result = await response.json();
 
             if (result.success) {
-                this.showImportResults('success', '数据库导入成功', [
-                    '原数据库已自动备份',
-                    '新数据库已导入成功',
-                    '即将清除会话并跳转到首页'
-                ]);
+                if (isJson) {
+                    this.showImportResults('success', '配置文件导入成功', [
+                        '原配置文件已自动备份',
+                        '新配置文件已导入成功',
+                        '配置已更新生效'
+                    ]);
+                } else {
+                    this.showImportResults('success', '数据库导入成功', [
+                        '原数据库已自动备份',
+                        '新数据库已导入成功',
+                        '即将清除会话并跳转到首页'
+                    ]);
+
+                    // 3秒后清除session和cookie，跳转到首页
+                    setTimeout(() => {
+                        this.clearSessionAndRedirect();
+                    }, 3000);
+                }
 
                 // 清空文件输入和显示
                 fileInput.value = '';
                 this.hideFileInfo('db');
 
-                // 3秒后清除session和cookie，跳转到首页
-                setTimeout(() => {
-                    this.clearSessionAndRedirect();
-                }, 3000);
             } else {
-                throw new Error(result.message || '数据库导入失败');
+                throw new Error(result.message || (isJson ? '配置文件导入失败' : '数据库导入失败'));
             }
 
         } catch (error) {
-            console.error('Import database error:', error);
-            this.showImportResults('error', '数据库导入失败', [error.message]);
+            console.error('Import file error:', error);
+            const errorTitle = fileExtension === '.json' ? '配置文件导入失败' : '数据库导入失败';
+            this.showImportResults('error', errorTitle, [error.message]);
         } finally {
             this.updateImportDbButton(false);
         }

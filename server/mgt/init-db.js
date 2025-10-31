@@ -20,9 +20,217 @@ const tmpDir = path.join(__dirname, '../tmp');
 const sqliteCheckFile = path.join(tmpDir, 'sqlite-check.js');
 const dbInitFile = path.join(tmpDir, 'db-init.js');
 
+// 配置文件路径
+const configJsonPath = path.join(__dirname, '../database/config.json');
+
 // 确保临时目录存在
 if (!fs.existsSync(tmpDir)) {
   fs.mkdirSync(tmpDir, { recursive: true });
+}
+
+/**
+ * 初始化配置文件 config.json
+ */
+function initializeConfigJson() {
+  try {
+    // 检查配置文件是否存在
+    if (fs.existsSync(configJsonPath)) {
+      console.log('✅ 配置文件已存在: database/config.json');
+      return;
+    }
+
+    console.log('📄 配置文件不存在，正在创建默认配置...');
+
+    // 默认配置模板
+    const defaultConfig = {
+      "registrationFees": {
+        "fullRegistration": [
+          {
+            "code": "IEEE Member",
+            "description": "For IEEE members",
+            "earlyBird": {
+              "usd": 700,
+              "rmb": 5000
+            },
+            "lateRegistration": {
+              "usd": 850,
+              "rmb": 6100
+            },
+            "benefits": [
+              "Presentation and Publication of one paper",
+              "Access to all conference sessions",
+              "A copy of the proceedings",
+              "Program brochure and conference goodies (e.g., bags/paper/pens)",
+              "Lunch, coffee breaks, banquet and reception"
+            ]
+          },
+          {
+            "code": "Non-IEEE Member",
+            "description": "For non-IEEE members",
+            "earlyBird": {
+              "usd": 840,
+              "rmb": 6000
+            },
+            "lateRegistration": {
+              "usd": 990,
+              "rmb": 7100
+            },
+            "benefits": [
+              "Presentation and Publication of one paper",
+              "Access to all conference sessions",
+              "A copy of the proceedings",
+              "Program brochure and conference goodies (e.g., bags/paper/pens)",
+              "Lunch, coffee breaks, banquet and reception"
+            ]
+          }
+        ],
+        "attendeeRegistration": [
+          {
+            "code": "IEEE Student Member/Life Member",
+            "description": "For IEEE student members or life members",
+            "earlyBird": {
+              "usd": 500,
+              "rmb": 3600
+            },
+            "lateRegistration": {
+              "usd": 650,
+              "rmb": 4700
+            },
+            "benefits": [
+              "Access to all conference sessions",
+              "A copy of the proceedings",
+              "Program brochure and conference goodies (e.g., bags/paper/pens)",
+              "Lunch, coffee breaks, banquet and reception"
+            ]
+          },
+          {
+            "code": "Student - Non-IEEE Member",
+            "description": "For students without IEEE membership",
+            "earlyBird": {
+              "usd": 610,
+              "rmb": 4400
+            },
+            "lateRegistration": {
+              "usd": 760,
+              "rmb": 5500
+            },
+            "benefits": [
+              "Access to all conference sessions",
+              "A copy of the proceedings",
+              "Program brochure and conference goodies (e.g., bags/paper/pens)",
+              "Lunch, coffee breaks, banquet and reception"
+            ]
+          },
+          {
+            "code": "Attendee - IEEE Member",
+            "description": "For attendees with IEEE membership",
+            "earlyBird": {
+              "usd": 610,
+              "rmb": 4400
+            },
+            "lateRegistration": {
+              "usd": 760,
+              "rmb": 5500
+            },
+            "benefits": [
+              "Access to all conference sessions",
+              "A copy of the proceedings",
+              "Program brochure and conference goodies (e.g., bags/paper/pens)",
+              "Lunch, coffee breaks, banquet and reception"
+            ]
+          },
+          {
+            "code": "Attendee - Non-IEEE Member",
+            "description": "For attendees without IEEE membership",
+            "earlyBird": {
+              "usd": 700,
+              "rmb": 5000
+            },
+            "lateRegistration": {
+              "usd": 850,
+              "rmb": 6100
+            },
+            "benefits": [
+              "Access to all conference sessions",
+              "A copy of the proceedings",
+              "Program brochure and conference goodies (e.g., bags/paper/pens)",
+              "Lunch, coffee breaks, banquet and reception"
+            ]
+          }
+        ],
+        "additionalFees": [
+          {
+            "code": "Extra page fee (per page)",
+            "description": "One additional page (no more than 10 pages in total)",
+            "earlyBird": {
+              "usd": 80,
+              "rmb": 600
+            },
+            "lateRegistration": {
+              "usd": 80,
+              "rmb": 600
+            }
+          },
+          {
+            "code": "Extra banquet tickets (per ticket)",
+            "description": "One additional banquet ticket",
+            "earlyBird": {
+              "usd": 150,
+              "rmb": 1100
+            },
+            "lateRegistration": {
+              "usd": 150,
+              "rmb": 1100
+            }
+          }
+        ]
+      },
+      "deadlines": {
+        "earlyBirdDeadline": "2025-10-31T23:59:59+08:00",
+        "earlyBirdNote": "The Early Bird rate eligibility is determined by the <strong style='color: red;'>actual payment arrival date</strong>, not the registration submission date. You may complete the payment first and fill in the registration information later. As long as the payment arrives before October 31, 2025 (Beijing Time), the Early Bird rate will apply.",
+        "priceDisclaimer": "The prices displayed on this page are calculated based on the assumption that you have not made an advance payment and are for reference only. If you have already made an advance payment, please refer to the registration fee policy on the official conference website for the actual applicable rates."
+      },
+      "processingFees": {
+        "transferFee": {
+          "usd": 150,
+          "rmb": 1100
+        },
+        "refundFee": {
+          "usd": 150,
+          "rmb": 1100
+        }
+      },
+      "announcement": {
+        "enabled": true,
+        "message": "Thanks for your registration. If your status shows as \"pending,\" this is a normal occurrence. Starting from October 31st, we are reviewing all registrations one by one."
+      }
+    };
+
+    // 确保 database 目录存在
+    const databaseDir = path.dirname(configJsonPath);
+    if (!fs.existsSync(databaseDir)) {
+      fs.mkdirSync(databaseDir, { recursive: true });
+      console.log('📁 已创建目录: database/');
+    }
+
+    // 写入配置文件
+    fs.writeFileSync(configJsonPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
+    console.log('✅ 已创建默认配置文件: database/config.json');
+    console.log('');
+    console.log('⚠️  重要提示：');
+    console.log('   📝 请检查并修改以下配置内容：');
+    console.log('   1. 会议注册价格（USD/RMB）');
+    console.log('   2. 早鸟价截止时间（当前设置：2025-10-31T23:59:59+08:00）');
+    console.log('');
+    console.log('   编辑方式：');
+    console.log('   • 手动编辑文件: server/database/config.json');
+    console.log('   • 或在管理员后台系统设置中编辑');
+    console.log('');
+
+  } catch (error) {
+    console.error('❌ 初始化配置文件失败:', error.message);
+    throw error;
+  }
 }
 
 /**
@@ -287,6 +495,10 @@ async function main() {
     console.log(`📁 工作目录: ${process.cwd()}`);
     console.log(`🔧 参数: ${process.argv.slice(2).join(' ') || '(无)'}`);
     
+    // 第零步: 初始化配置文件
+    console.log('📋 第零阶段: 配置文件检查与初始化');
+    initializeConfigJson();
+    
     // 第一步: 创建并运行 SQLite3 检测脚本
     console.log('📋 第一阶段: SQLite3 驱动检测');
     createSQLiteCheckScript();
@@ -298,6 +510,25 @@ async function main() {
     await runChildProcess(dbInitFile, '数据库初始化');
 
     console.log('🎉 所有任务已完成！数据库初始化成功');
+    console.log('');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📌 重要配置检查清单：');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('');
+    console.log('1. 💰 会议价格配置');
+    console.log('   文件位置: server/database/config.json');
+    console.log('   需要检查: 各类参会者的价格（USD/RMB）是否正确');
+    console.log('');
+    console.log('2. ⏰ 早鸟价截止时间');
+    console.log('   当前设置: 2025-10-31T23:59:59+08:00');
+    console.log('   需要确认: 是否需要调整早鸟价截止日期');
+    console.log('');
+    console.log('3. 🔧 配置修改方式：');
+    console.log('   选项 A: 手动编辑 server/database/config.json');
+    console.log('   选项 B: 启动服务后在管理员后台系统设置中编辑');
+    console.log('');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('');
 
   } catch (error) {
     console.error('❌ 主进程执行失败:', error.message);

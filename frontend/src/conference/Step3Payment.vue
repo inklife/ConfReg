@@ -49,6 +49,19 @@
         </div>
       </div>
 
+      <!-- 价格免责声明 -->
+      <div class="price-disclaimer-wrapper" v-if="serverConfig && serverConfig.deadlines && serverConfig.deadlines.priceDisclaimer">
+        <el-collapse v-model="priceDisclaimerActive">
+          <el-collapse-item name="1">
+            <template slot="title">
+              <i class="el-icon-info"></i>
+              <span class="collapse-title">Important: Price Information Notice</span>
+            </template>
+            <div class="disclaimer-content" v-html="serverConfig.deadlines.priceDisclaimer"></div>
+          </el-collapse-item>
+        </el-collapse>
+      </div>
+
       <!-- 支付方式选择 -->
       <div class="payment-methods">
         <h3>Select Payment Method</h3>
@@ -173,6 +186,8 @@ export default {
       initialScrollTop: 0,
       hasScrolled: false,
       editMode: false,
+      serverConfig: null, // 服务器配置
+      priceDisclaimerActive: [], // 价格免责声明折叠面板状态（空数组表示折叠）
       paymentMethods: [
         {
           id: 'international',
@@ -200,21 +215,32 @@ export default {
       const saved = localStorage.getItem(this.getStorageKey('conferenceUserInfo'));
       return saved ? JSON.parse(saved) : {};
     },
+    // 获取超页费单价
+    extraPageFeePerPage() {
+      try {
+        const config = localStorage.getItem('conferenceExtraPageFee');
+        const feeConfig = config ? JSON.parse(config) : { usd: 80, rmb: 600 };
+        return feeConfig.usd;
+      } catch (error) {
+        return 80;
+      }
+    },
     // 计算超页费用
     extraPageFee() {
       if (!this.userInfo.paperPages || !this.userInfo.paperType || this.userInfo.paperType === 'none') return 0;
       const pages = parseInt(this.userInfo.paperPages);
       const paperType = this.userInfo.paperType;
+      const feePerPage = this.extraPageFeePerPage;
       
       if (paperType === 'research') {
-        // Research paper: 8页内不计费，第9-10页每页收费$80
+        // Research paper: 8页内不计费，第9-10页每页收费
         if (pages > 8) {
-          return (pages - 8) * 80;
+          return (pages - 8) * feePerPage;
         }
       } else if (paperType === 'poster') {
-        // Poster: 2页内不计费，第3页及以上每页收费$80
+        // Poster: 2页内不计费，第3页及以上每页收费
         if (pages > 2) {
-          return (pages - 2) * 80;
+          return (pages - 2) * feePerPage;
         }
       }
       return 0;
@@ -237,6 +263,16 @@ export default {
       const basePrice = this.selectedProduct ? this.selectedProduct.price : 0;
       return basePrice + this.extraPageFee;
     },
+    // 获取超页费人民币单价
+    extraPageFeePerPageRMB() {
+      try {
+        const config = localStorage.getItem('conferenceExtraPageFee');
+        const feeConfig = config ? JSON.parse(config) : { usd: 80, rmb: 600 };
+        return feeConfig.rmb;
+      } catch (error) {
+        return 600;
+      }
+    },
     // 计算人民币金额（不按汇率，使用固定价格）
     totalAmountDomesticRMB() {
       if (!this.selectedProduct) return 0;
@@ -257,7 +293,7 @@ export default {
         baseRMB = priceMapRMB[code] || 0;
       }
       
-      const extraRMB = this.extraPagesCount * 600; // 超页每页600元
+      const extraRMB = this.extraPagesCount * this.extraPageFeePerPageRMB; // 超页费用
       return baseRMB + extraRMB;
     },
     canProceed() {
@@ -270,7 +306,8 @@ export default {
       return `${name}+ICPADS 2025+${pid}`;
     }
   },
-  mounted() {
+  async mounted() {
+    await this.loadConfig();
     this.initializeUserData();
     
     // 检测编辑模式
@@ -284,6 +321,19 @@ export default {
     window.addEventListener('resize', this.checkScrollHint);
   },
   methods: {
+    async loadConfig() {
+      try {
+        const axios = (await import('axios')).default;
+        const response = await axios.get('/api/config');
+        
+        if (response.data.success) {
+          this.serverConfig = response.data.data;
+          console.log('Step3 - Configuration loaded successfully');
+        }
+      } catch (error) {
+        console.error('Step3 - Failed to load configuration:', error);
+      }
+    },
     async copyReference(text) {
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -592,6 +642,71 @@ export default {
   margin-top: 4px;
 }
 
+.price-disclaimer-wrapper {
+  margin-bottom: 20px;
+  max-width: 650px;
+}
+
+.price-disclaimer-wrapper >>> .el-collapse {
+  border: 1px solid #91d5ff;
+  border-radius: 6px;
+  background: #e6f7ff;
+}
+
+.price-disclaimer-wrapper >>> .el-collapse-item {
+  border-radius: 6px;
+}
+
+.price-disclaimer-wrapper >>> .el-collapse-item__header {
+  background: #e6f7ff;
+  color: #096dd9;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: none;
+  border-radius: 6px;
+  line-height: 20px;
+  height: auto;
+}
+
+.price-disclaimer-wrapper >>> .el-collapse-item__header.is-active {
+  border-bottom: 1px solid #91d5ff;
+  border-radius: 6px 6px 0 0;
+}
+
+.price-disclaimer-wrapper >>> .el-collapse-item__wrap {
+  background: #f0f9ff;
+  border-bottom: none;
+  border-radius: 0 0 6px 6px;
+}
+
+.price-disclaimer-wrapper >>> .el-collapse-item__content {
+  padding: 14px 16px;
+  color: #003a8c;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.price-disclaimer-wrapper >>> .el-collapse-item__arrow {
+  color: #1890ff;
+}
+
+.price-disclaimer-wrapper .el-icon-info {
+  color: #1890ff;
+  font-size: 16px;
+  margin-right: 8px;
+}
+
+.price-disclaimer-wrapper .collapse-title {
+  color: #096dd9;
+  font-weight: 500;
+}
+
+.price-disclaimer-wrapper >>> .disclaimer-content strong {
+  color: #096dd9;
+  font-weight: 600;
+}
+
 .amount-display {
   background: #f0f7ff;
   padding: 16px;
@@ -892,6 +1007,27 @@ export default {
     font-size: 12px;
   }
 
+  .price-disclaimer-wrapper {
+    margin-bottom: 16px;
+    max-width: 100%;
+  }
+
+  .price-disclaimer-wrapper >>> .el-collapse-item__header {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .price-disclaimer-wrapper >>> .el-collapse-item__content {
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .price-disclaimer-wrapper .el-icon-info {
+    font-size: 14px;
+    margin-right: 6px;
+  }
+
   .amount-display {
     padding: 12px;
   }
@@ -1006,7 +1142,25 @@ export default {
     font-size: 14px;
   }
 
+  .price-disclaimer-wrapper {
+    margin-bottom: 12px;
+  }
 
+  .price-disclaimer-wrapper >>> .el-collapse-item__header {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .price-disclaimer-wrapper >>> .el-collapse-item__content {
+    padding: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .price-disclaimer-wrapper .el-icon-info {
+    font-size: 13px;
+    margin-right: 4px;
+  }
 
   .payment-details {
     min-height: 200px;

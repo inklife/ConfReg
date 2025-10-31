@@ -524,8 +524,14 @@ export default {
           return parseFloat(extraFee);
         }
       }
-      // 兜底：计算
-      return this.extraPagesCount * 80; // 每超1页 $80
+      // 兜底：从配置读取并计算
+      try {
+        const config = localStorage.getItem('conferenceExtraPageFee');
+        const feeConfig = config ? JSON.parse(config) : { usd: 80, rmb: 600 };
+        return this.extraPagesCount * feeConfig.usd;
+      } catch (error) {
+        return this.extraPagesCount * 80;
+      }
     },
     // 总价格
     totalUSD() {

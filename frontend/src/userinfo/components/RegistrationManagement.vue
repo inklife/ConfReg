@@ -13,9 +13,9 @@
     <!-- Registration list -->
     <div v-else class="registration-content">
       <!-- Notice Banner -->
-      <div class="notice-banner">
+      <div v-if="announcement.enabled && announcement.message" class="notice-banner">
         <i class="el-icon-info"></i>
-        <p>Thanks for your registration. If your status shows as "pending," this is a normal occurrence. We will review all registration information after the camera-ready deadline (October 31st).</p>
+        <p>{{ announcement.message }}</p>
       </div>
 
       <!-- No registrations state -->
@@ -241,10 +241,15 @@ export default {
       selectedRegistration: null,
       detailDialogVisible: false,
       pendingDownloadTasks: {}, // 存储待处理的下载任务
-      currentUserId: null
+      currentUserId: null,
+      announcement: {
+        enabled: false,
+        message: ''
+      }
     };
   },
   async mounted() {
+    await this.loadAnnouncement();
     await this.loadRegistrations();
     this.initializeSSE();
   },
@@ -347,6 +352,35 @@ export default {
       
       // 清理任务
       delete this.pendingDownloadTasks[taskId];
+    },
+    
+    async loadAnnouncement() {
+      try {
+        // 获取公告信息
+        const response = await fetch('/api/config/announcement', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            this.announcement = {
+              enabled: result.data.enabled || false,
+              message: result.data.message || ''
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load announcement:', error);
+        // 静默失败，不显示错误消息
+        this.announcement = {
+          enabled: false,
+          message: ''
+        };
+      }
     },
     
     async loadRegistrations() {

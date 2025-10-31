@@ -70,7 +70,7 @@
             <span>Paper Pages:</span>
             <strong>{{ userInfo.paperPages }}</strong>
             <span v-if="needsExtraPageFee" class="extra-fee-note">
-              (Extra page fee applies: $80 / RMB 600 per page)
+              (Extra page fee applies: ${{ extraPageFeeConfig.usd }} / RMB {{ extraPageFeeConfig.rmb }} per page)
             </span>
           </div>
           <div class="info-row">
@@ -324,16 +324,36 @@ export default {
       return priceMapRMB[code] || 0;
     },
     extraPageFeeUSD() {
-      return this.extraPagesCount * 80; // 每超1页 $80
+      try {
+        const config = localStorage.getItem('conferenceExtraPageFee');
+        const feeConfig = config ? JSON.parse(config) : { usd: 80, rmb: 600 };
+        return this.extraPagesCount * feeConfig.usd;
+      } catch (error) {
+        return this.extraPagesCount * 80;
+      }
     },
     extraPageFeeRMB() {
-      return this.extraPagesCount * 600; // 每超1页 ¥600
+      try {
+        const config = localStorage.getItem('conferenceExtraPageFee');
+        const feeConfig = config ? JSON.parse(config) : { usd: 80, rmb: 600 };
+        return this.extraPagesCount * feeConfig.rmb;
+      } catch (error) {
+        return this.extraPagesCount * 600;
+      }
     },
     totalUSD() {
       return this.basePriceUSD + this.extraPageFeeUSD;
     },
     totalRMB() {
       return this.basePriceRMB + this.extraPageFeeRMB;
+    },
+    extraPageFeeConfig() {
+      try {
+        const config = localStorage.getItem('conferenceExtraPageFee');
+        return config ? JSON.parse(config) : { usd: 80, rmb: 600 };
+      } catch (error) {
+        return { usd: 80, rmb: 600 };
+      }
     },
     canSubmit() {
       // Email不再需要检查，因为它会自动从用户账户中获取
@@ -1208,6 +1228,31 @@ export default {
   margin-bottom: 0;
 }
 
+.price-disclaimer {
+  background: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 16px 0;
+  color: #003a8c;
+  font-size: 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.6;
+}
+
+.price-disclaimer i {
+  color: #1890ff;
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.price-disclaimer strong {
+  color: #096dd9;
+}
+
 .info-section h4 {
   color: #333;
   margin-bottom: 10px;
@@ -1680,6 +1725,16 @@ export default {
     padding: 12px 16px;
     font-size: 13px;
     min-height: 44px;
+  }
+
+  .price-disclaimer {
+    font-size: 11px;
+    padding: 10px;
+    margin: 12px 0;
+  }
+
+  .price-disclaimer i {
+    font-size: 14px;
   }
 }
 

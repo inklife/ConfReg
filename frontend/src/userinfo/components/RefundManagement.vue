@@ -17,7 +17,7 @@
           <p><strong>Important Notes:</strong></p>
           <ul>
             <li>If this registration is the <strong>only full registration</strong> (not student registration) for a paper ID, refund is <strong>NOT allowed</strong>.</li>
-            <li>All refunds are subject to a processing fee of <strong>$150 USD</strong> or <strong>¥1100 RMB</strong> (automatically deducted from the refund amount).</li>
+            <li>All refunds are subject to a processing fee of <strong>${{ refundFees.usd }} USD</strong> or <strong>¥{{ refundFees.rmb }} RMB</strong> (automatically deducted from the refund amount).</li>
           </ul>
         </div>
       </el-alert>
@@ -198,7 +198,7 @@
         show-icon>
         <div>
           <p>Refund requests must be submitted at least 30 days before the conference begins. Processing time is 5-10 business days.</p>
-          <p><strong>Refund Fee:</strong> A processing fee of $150 USD or ¥1100 RMB will be deducted from your refund amount.</p>
+          <p><strong>Refund Fee:</strong> A processing fee of ${{ refundFees.usd }} USD or ¥{{ refundFees.rmb }} RMB will be deducted from your refund amount.</p>
         </div>
       </el-alert>
       
@@ -483,6 +483,11 @@ export default {
       dialogVisible: false,
       historyDialogVisible: false,
       loading: false,
+      config: null, // 存储配置信息
+      refundFees: {
+        usd: 150,
+        rmb: 1100
+      }, // 默认手续费
       bankInfoCollapse: [], // 控制银行信息折叠面板（默认关闭）
       refundForm: {
         registrationId: '',
@@ -570,10 +575,27 @@ export default {
     }
   },
   async mounted() {
+    await this.loadConfig();
     await this.loadApprovedRegistrations();
     await this.checkRefundStatus();
   },
   methods: {
+    async loadConfig() {
+      try {
+        const response = await fetch('/api/config');
+        const result = await response.json();
+        if (result.success) {
+          this.config = result.data;
+          // 从配置中获取手续费
+          if (this.config.processingFees && this.config.processingFees.refundFee) {
+            this.refundFees = this.config.processingFees.refundFee;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load config:', error);
+        // 使用默认手续费
+      }
+    },
     // 跳转到注册页面
     goToRegistrations() {
       // 发送事件给父组件，让父组件处理菜单切换
@@ -960,17 +982,14 @@ export default {
       if (!registration) return 'N/A';
       // 根据支付方式确定手续费
       if (registration.paymentMethod === 'domestic') {
-        return '¥1100 RMB';
+        return `¥${this.refundFees.rmb} RMB`;
       }
-      return '$150 USD';
+      return `$${this.refundFees.usd} USD`;
     },
     
     // 获取实际退款金额文本
     getActualRefundText(registration) {
       if (!registration) return 'N/A';
-      
-      const REFUND_FEE_USD = 150;
-      const REFUND_FEE_RMB = 1100;
       
       let actualAmount;
       let currency;
@@ -978,13 +997,13 @@ export default {
       if (registration.paymentMethod === 'domestic') {
         // 使用人民币
         const totalAmount = registration.totalAmountRMB || registration.productPriceRMB || 0;
-        actualAmount = Math.max(0, totalAmount - REFUND_FEE_RMB);
+        actualAmount = Math.max(0, totalAmount - this.refundFees.rmb);
         currency = 'RMB';
         return `¥${actualAmount.toFixed(2)} ${currency}`;
       } else {
         // 使用美元
         const totalAmount = registration.totalAmountUSD || registration.productPrice || 0;
-        actualAmount = Math.max(0, totalAmount - REFUND_FEE_USD);
+        actualAmount = Math.max(0, totalAmount - this.refundFees.usd);
         currency = 'USD';
         return `$${actualAmount.toFixed(2)} ${currency}`;
       }

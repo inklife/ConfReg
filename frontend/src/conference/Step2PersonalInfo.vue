@@ -110,10 +110,10 @@
             <div class="field-hint">
               <i class="el-icon-info"></i>
               <template v-if="userInfo.paperType === 'research'">
-                Papers are limited to 8 pages, including figures and references. Authors may include additional pages subject to an overlength page charge. <strong style="color: #f56c6c;">Extra page fee: $80 (RMB 600) per page beyond 8 pages</strong>
+                Papers are limited to 8 pages, including figures and references. Authors may include additional pages subject to an overlength page charge. <strong style="color: #f56c6c;">Extra page fee: ${{ extraPageFeeConfig.usd }} (RMB {{ extraPageFeeConfig.rmb }}) per page beyond 8 pages</strong>
               </template>
               <template v-else-if="userInfo.paperType === 'poster'">
-                Posters are limited to 2 pages. Authors may include additional pages subject to an overlength page charge. <strong style="color: #f56c6c;">Extra page fee: $80 (RMB 600) per page beyond 2 pages</strong>
+                Posters are limited to 2 pages. Authors may include additional pages subject to an overlength page charge. <strong style="color: #f56c6c;">Extra page fee: ${{ extraPageFeeConfig.usd }} (RMB {{ extraPageFeeConfig.rmb }}) per page beyond 2 pages</strong>
               </template>
             </div>
           </el-form-item>
@@ -211,6 +211,15 @@ export default {
     // 判断是否为 Full Registration
     isFullRegistration() {
       return this.registrationCategory === 'full';
+    },
+    // 获取超页费配置
+    extraPageFeeConfig() {
+      try {
+        const config = localStorage.getItem('conferenceExtraPageFee');
+        return config ? JSON.parse(config) : { usd: 80, rmb: 600 };
+      } catch (error) {
+        return { usd: 80, rmb: 600 };
+      }
     }
   },
   mounted() {

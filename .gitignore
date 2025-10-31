@@ -104,5 +104,6 @@ Thumbs.db
 
 prebuilt/
 dist/
+server/database/*
 
 note

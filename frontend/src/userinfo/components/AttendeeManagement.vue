@@ -195,7 +195,7 @@
             </div>
             <el-collapse-transition>
               <div v-show="showNotice" class="notice-content">
-                <p>• <strong>Transfer Processing Fee:</strong> A fee of <strong>$150 USD</strong> or <strong>¥1100 RMB</strong> is required for each attendee transfer request</p>
+                <p>• <strong>Transfer Processing Fee:</strong> A fee of <strong>${{ transferFees.usd }} USD</strong> or <strong>¥{{ transferFees.rmb }} RMB</strong> is required for each attendee transfer request</p>
                 <p>• Each registration can be transferred independently</p>
                 <p>• <strong>Each registration can only be transferred once</strong></p>
                 <p>• Only one pending transfer request per registration at a time</p>
@@ -268,13 +268,13 @@
         
         <el-alert type="info" :closable="false" show-icon style="margin-bottom: 20px;">
           <div slot="title">Processing Fee Required</div>
-          <p>A processing fee of <strong>$150 USD</strong> or <strong>¥1100 RMB</strong> is required for attendee transfer.</p>
+          <p>A processing fee of <strong>${{ transferFees.usd }} USD</strong> or <strong>¥{{ transferFees.rmb }} RMB</strong> is required for attendee transfer.</p>
         </el-alert>
 
         <el-form-item label="Payment Method" prop="feePaymentMethod">
           <el-radio-group v-model="transferForm.feePaymentMethod" size="medium">
-            <el-radio label="international">International Bank Transfer ($150 USD)</el-radio>
-            <el-radio label="domestic">China Mainland Payment (¥1100 RMB)</el-radio>
+            <el-radio label="international">International Bank Transfer (${{ transferFees.usd }} USD)</el-radio>
+            <el-radio label="domestic">China Mainland Payment (¥{{ transferFees.rmb }} RMB)</el-radio>
           </el-radio-group>
         </el-form-item>
 
@@ -490,6 +490,11 @@ export default {
       dialogVisible: false,
       historyDialogVisible: false,
       loading: false,
+      config: null, // 存储配置信息
+      transferFees: {
+        usd: 150,
+        rmb: 1100
+      }, // 默认手续费
       transferForm: {
         registrationId: '',
         newAttendee: {
@@ -540,9 +545,26 @@ export default {
     }
   },
   async mounted() {
+    await this.loadConfig();
     await this.checkTransferStatus();
   },
   methods: {
+    async loadConfig() {
+      try {
+        const response = await fetch('/api/config');
+        const result = await response.json();
+        if (result.success) {
+          this.config = result.data;
+          // 从配置中获取手续费
+          if (this.config.processingFees && this.config.processingFees.transferFee) {
+            this.transferFees = this.config.processingFees.transferFee;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load config:', error);
+        // 使用默认手续费
+      }
+    },
     async checkTransferStatus() {
       try {
         const response = await userService.checkTransferStatus();
