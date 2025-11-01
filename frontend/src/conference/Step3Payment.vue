@@ -89,6 +89,7 @@
               <h4>Beneficiary's Details</h4>
               <p><strong>Account Number:</strong> 01266320164304</p>
               <p><strong>Name:</strong> YUAN LONGZHI</p>
+              <p><strong>Phone:</strong> +852 97562070</p>
               <p><strong>Address:</strong></p>
               <p class="address-line">ROOM G7751, YEUNGKIN MAN BUILD.</p>
               <p class="address-line">CITY UNIVERSITY OF HONG KONG</p>
