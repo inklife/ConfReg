@@ -35,90 +35,91 @@
       </div>
 
       <!-- Registration list -->
-      <div v-else class="registration-list">
-        <!-- Table Header -->
-        <div class="registration-header">
-          <div class="status-column">Status</div>
-          <div class="paper-id-column">Paper ID</div>
-          <div class="name-column">Attendee Name</div>
-          <div class="type-column">Type</div>
-          <div class="date-column">Submitted</div>
-          <div class="amount-column">Amount</div>
-          <div class="actions-column"></div>
-        </div>
-        
-        <!-- Table Body -->
-        <div 
-          v-for="registration in registrations" 
-          :key="registration.id"
-          class="registration-item">
-          <div class="registration-row" @click="viewRegistration(registration)">
-            <!-- Status Badge -->
-            <div class="status-column">
-              <div class="status-badge" :class="getStatusClass(registration)">
-                <i :class="getStatusIcon(registration)"></i>
-                {{ getStatusText(registration) }}
+      <div v-else class="registration-list-container">
+        <div class="registration-list">
+          <!-- Table Header -->
+          <div class="registration-header">
+            <div class="status-column">Status</div>
+            <div class="paper-id-column">Paper ID</div>
+            <div class="name-column">Name</div>
+            <div class="type-column">Type</div>
+            <div class="date-column">Date</div>
+            <div class="amount-column">Amount</div>
+            <div class="actions-column">Actions</div>
+          </div>
+          
+          <!-- Table Body -->
+          <div 
+            v-for="registration in registrations" 
+            :key="registration.id"
+            class="registration-item">
+            <div class="registration-row">
+              <!-- Status Badge -->
+              <div class="status-column">
+                <div class="status-badge" :class="getStatusClass(registration)">
+                  <i :class="getStatusIcon(registration)"></i>
+                  {{ getStatusText(registration) }}
+                </div>
+              </div>
+              
+              <!-- Paper ID -->
+              <div class="paper-id-column">
+                <span class="cell-content">{{ (registration.registration_data && registration.registration_data.paper_id) || registration.paper_id || 'N/A' }}</span>
+              </div>
+              
+              <!-- Attendee Name -->
+              <div class="name-column">
+                <span class="cell-content">{{ registration.attendee_name || 'Registration' }}</span>
+              </div>
+              
+              <!-- Registration Type -->
+              <div class="type-column">
+                <span class="cell-content">{{ getRegistrationCategoryText(registration) }}</span>
+              </div>
+              
+              <!-- Submitted Date -->
+              <div class="date-column">
+                <span class="cell-content">{{ formatDate(registration.created_at) }}</span>
+              </div>
+              
+              <!-- Payment Amount -->
+              <div class="amount-column">
+                <span class="cell-content amount-text">{{ formatAmount(registration) }}</span>
+              </div>
+              
+              <!-- Actions -->
+              <div class="actions-column">
+                <div class="action-buttons" @click.stop>
+                  <el-button 
+                    class="action-btn-view"
+                    type="primary" 
+                    size="small" 
+                    icon="el-icon-view"
+                    @click="viewRegistration(registration)">
+                    View
+                  </el-button>
+                  <el-button 
+                    v-if="canEdit(registration)"
+                    class="action-btn-edit"
+                    type="success" 
+                    size="small" 
+                    icon="el-icon-edit"
+                    @click="editRegistration(registration)">
+                    Edit
+                  </el-button>
+                </div>
               </div>
             </div>
             
-            <!-- Paper ID -->
-            <div class="paper-id-column">
-              <span class="cell-content">{{ (registration.registration_data && registration.registration_data.paper_id) || registration.paper_id || 'N/A' }}</span>
-            </div>
-            
-            <!-- Attendee Name -->
-            <div class="name-column">
-              <span class="cell-content">{{ registration.attendee_name || 'Registration' }}</span>
-            </div>
-            
-            <!-- Registration Type -->
-            <div class="type-column">
-              <span class="cell-content">{{ getRegistrationCategoryText(registration) }}</span>
-            </div>
-            
-            <!-- Submitted Date -->
-            <div class="date-column">
-              <span class="cell-content">{{ formatDate(registration.created_at) }}</span>
-            </div>
-            
-            <!-- Payment Amount -->
-            <div class="amount-column">
-              <span class="cell-content amount-text">{{ formatAmount(registration) }}</span>
-            </div>
-            
-            <!-- Actions -->
-            <div class="actions-column">
-              <el-dropdown @command="handleAction" trigger="click" @click.native.stop>
-                <span class="el-dropdown-link">
-                  <i class="el-icon-more"></i>
-                </span>
-                <el-dropdown-menu slot="dropdown">
-                  <el-dropdown-item :command="{action: 'view', registration}">
-                    <i class="el-icon-view"></i> View Details
-                  </el-dropdown-item>
-                  <el-dropdown-item 
-                    v-if="registration.status === 'approved'"
-                    :command="{action: 'download', registration}">
-                    <i class="el-icon-download"></i> Download Receipt
-                  </el-dropdown-item>
-                  <el-dropdown-item 
-                    v-if="canEdit(registration)"
-                    :command="{action: 'edit', registration}">
-                    <i class="el-icon-edit"></i> Edit Registration
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </el-dropdown>
-            </div>
-          </div>
-          
-          <!-- Rejection Reason Row (显示在被拒绝的项目下方) -->
-          <div 
-            v-if="registration.status === 'rejected' && registration.review_notes" 
-            class="rejection-reason-row">
-            <div class="rejection-reason-content">
-              <i class="el-icon-warning"></i>
-              <span class="rejection-label">Rejection Reason:</span>
-              <span class="rejection-text">{{ truncateText(registration.review_notes, 100) }}</span>
+            <!-- Rejection Reason Row (显示在被拒绝的项目下方) -->
+            <div 
+              v-if="registration.status === 'rejected' && registration.review_notes" 
+              class="rejection-reason-row">
+              <div class="rejection-reason-content">
+                <i class="el-icon-warning"></i>
+                <span class="rejection-label">Rejection Reason:</span>
+                <span class="rejection-text">{{ truncateText(registration.review_notes, 100) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -838,12 +839,36 @@ export default {
   margin-right: auto;
 }
 
-/* Registration list */
-.registration-list {
+/* Registration list container */
+.registration-list-container {
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+}
+
+/* Registration list with scroll */
+.registration-list {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* 自定义滚动条样式 - 只在需要时显示 */
+.registration-list::-webkit-scrollbar {
+  height: 8px;
+}
+
+.registration-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.registration-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.registration-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 /* Table Header */
@@ -853,12 +878,20 @@ export default {
   padding: 14px 20px;
   background: #f5f7fa;
   border-bottom: 2px solid #E4E7ED;
-  gap: 16px;
+  gap: 12px;
   font-weight: 600;
   font-size: 12px;
   color: #606266;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  min-width: 980px;
+  width: 100%;
+}
+
+.registration-header i {
+  color: #909399;
+  margin-right: 4px;
+  font-size: 13px;
 }
 
 .registration-item {
@@ -873,53 +906,54 @@ export default {
   display: flex;
   align-items: center;
   padding: 18px 20px;
-  cursor: pointer;
   transition: all 0.3s ease;
-  gap: 16px;
+  gap: 12px;
+  min-width: 980px;
+  width: 100%;
 }
 
-.registration-row:hover {
-  background: #f5f7fa;
-}
-
-/* Columns - 表头和行使用相同的宽度确保对齐 */
+/* Columns - 固定宽度布局 */
 .status-column {
-  flex: 0 0 150px;
+  width: 130px;
+  flex-shrink: 0;
 }
 
 .paper-id-column {
-  flex: 0 0 90px;
+  width: 70px;
+  flex-shrink: 0;
 }
 
 .name-column {
-  flex: 1 1 180px;
-  min-width: 150px;
+  width: 160px;
+  flex-shrink: 0;
 }
 
 .type-column {
-  flex: 1 1 200px;
-  min-width: 160px;
+  width: 140px;
+  flex-shrink: 0;
 }
 
 .date-column {
-  flex: 0 0 120px;
+  width: 110px;
+  flex-shrink: 0;
 }
 
 .amount-column {
-  flex: 0 0 100px;
-  text-align: right;
-  padding-right: 8px;
+  width: 90px;
+  flex-shrink: 0;
+  text-align: center;
 }
 
 .actions-column {
-  flex: 0 0 60px;
-  text-align: center;
+  width: 180px;
+  flex-shrink: 0;
+  padding: 0 10px;
 }
 
 /* 表头特定样式 */
 .registration-header .amount-column {
   text-align: right;
-  padding-right: 8px;
+  /* padding-right: 8px; */
 }
 
 .registration-header .actions-column {
@@ -929,7 +963,7 @@ export default {
 /* Cell content */
 .cell-content {
   color: #303133;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
@@ -937,9 +971,21 @@ export default {
   display: block;
 }
 
+.paper-id-column .cell-content {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  font-size: 15px;
+  color: #409EFF;
+}
+
+.date-column .cell-content {
+  font-size: 13px;
+}
+
 .amount-text {
   font-weight: 500;
   color: #409EFF;
+  font-size: 14px;
 }
 
 .status-badge {
@@ -977,26 +1023,47 @@ export default {
   border: 1px solid #d3d4d6;
 }
 
-.el-dropdown-link {
-  color: #C0C4CC;
-  font-size: 18px;
-  cursor: pointer;
-  transition: color 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
+.action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  width: 100%;
 }
 
-.el-dropdown-link:hover {
-  color: #409EFF;
+.action-buttons .el-button {
+  padding: 6px 12px;
+  font-size: 12px;
+  margin: 0;
+}
+
+.action-buttons .el-button--small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.action-btn-view {
+  grid-column: 1 / 2;
+}
+
+.action-btn-edit {
+  grid-column: 2 / 3;
+}
+
+/* 当只有一个按钮时，让 View 按钮占据两列 */
+.action-buttons .action-btn-view:last-child {
+  grid-column: 1 / 3;
+}
+
+.action-buttons .el-button [class*="el-icon-"] {
+  font-size: 13px;
 }
 
 .add-registration {
   text-align: center;
-  padding-top: 24px;
-  padding-bottom: 32px;
+  padding: 24px 20px 32px;
   border-top: 1px solid #E4E7ED;
+  background: white;
+  border-radius: 0 0 8px 8px;
 }
 
 /* Detail dialog */
@@ -1107,18 +1174,9 @@ export default {
 }
 
 /* Responsive design */
+/* 大屏保持固定宽度布局，触发滚动条 */
 @media (max-width: 1200px) {
-  .registration-row {
-    gap: 12px;
-  }
-  
-  .status-column {
-    flex: 0 0 120px;
-  }
-  
-  .type-column {
-    flex: 0 0 120px;
-  }
+  /* 表格宽度保持固定，让容器滚动 */
 }
 
 @media (max-width: 768px) {
@@ -1195,8 +1253,22 @@ export default {
   
   .actions-column {
     flex: 0 0 100%;
-    text-align: center;
     margin-top: 8px;
+    padding: 0;
+  }
+  
+  .action-buttons {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .action-btn-view,
+  .action-btn-edit {
+    grid-column: 1 / 2;
+  }
+  
+  .action-buttons .action-btn-view:last-child {
+    grid-column: 1 / 2;
   }
   
   .cell-content {

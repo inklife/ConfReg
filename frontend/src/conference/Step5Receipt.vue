@@ -1323,6 +1323,14 @@ export default {
     },
 
     goToPreviousStep() {
+      // Show edit mode warning
+      this.$message({
+        message: 'You are entering edit mode. Any modifications will overwrite your current registration record. If you do not need to make changes, please do not submit and return via the user icon in the top right corner to access the dashboard.',
+        type: 'warning',
+        duration: 11000,
+        showClose: true
+      });
+      
       // 返回上一步（Step4会处理已批准注册的警告）
       if (this.editMode && this.id) {
         this.$router.push(`/conference/${this.id}/step4`);

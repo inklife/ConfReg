@@ -216,6 +216,76 @@
         </div>
       </div>
     </div>
+
+    <!-- 证明文件警告对话框 -->
+    <div v-if="showProofWarningDialog" class="custom-dialog-overlay" @click="cancelProofWarning">
+      <div class="custom-dialog" @click.stop>
+        <div class="dialog-header dialog-header-info">
+          <h3><i class="el-icon-info"></i> Notice: IEEE Membership Verification Uploaded</h3>
+        </div>
+        <div class="dialog-content">
+          <div class="dialog-icon dialog-icon-info">
+            <i class="el-icon-question"></i>
+          </div>
+          <div class="dialog-message">
+            <p class="warning-title">You have uploaded an IEEE membership verification document.</p>
+            <p class="warning-details">However, your selected registration type is:</p>
+            <div class="product-highlight">
+              <strong>{{ selectedProduct ? selectedProduct.code : '' }}</strong>
+            </div>
+            <p class="warning-details">This registration type does <strong>not require</strong> IEEE membership verification.</p>
+            <p class="warning-question">Do you want to continue with this submission?</p>
+            <p class="warning-hint">
+              <i class="el-icon-lightbulb"></i> 
+              If you intended to register as an IEEE Member, please go back to Step 1 and select the appropriate IEEE Member registration type.
+            </p>
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button class="dialog-btn cancel-btn" @click="cancelProofWarning">
+            <i class="el-icon-back"></i> Go Back to Review
+          </button>
+          <button class="dialog-btn confirm-btn confirm-btn-secondary" @click="confirmProofWarning">
+            <i class="el-icon-check"></i> Continue Anyway
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 论文类型警告对话框 -->
+    <div v-if="showPaperWarningDialog" class="custom-dialog-overlay" @click="cancelPaperWarning">
+      <div class="custom-dialog" @click.stop>
+        <div class="dialog-header dialog-header-warning">
+          <h3><i class="el-icon-warning"></i> Warning: Possible Registration Type Mismatch</h3>
+        </div>
+        <div class="dialog-content">
+          <div class="dialog-icon dialog-icon-warning">
+            <i class="el-icon-warning-outline"></i>
+          </div>
+          <div class="dialog-message">
+            <p class="warning-title">Your registration type includes paper publication, but you have not entered a Paper ID.</p>
+            <p class="warning-details">Your selected registration type is:</p>
+            <div class="product-highlight">
+              <strong>{{ selectedProduct ? selectedProduct.code : '' }}</strong>
+            </div>
+            <p class="warning-details">This registration type typically includes paper publication, but you have not provided paper information.</p>
+            <p class="warning-question">Do you want to continue with this submission?</p>
+            <p class="warning-hint">
+              <i class="el-icon-lightbulb"></i> 
+              If you intend to publish a paper, please go back to Step 1 and select a different registration type, or ensure you have entered your Paper ID and selected the appropriate Paper Type.
+            </p>
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button class="dialog-btn cancel-btn" @click="cancelPaperWarning">
+            <i class="el-icon-back"></i> Go Back to Review
+          </button>
+          <button class="dialog-btn confirm-btn confirm-btn-secondary" @click="confirmPaperWarning">
+            <i class="el-icon-check"></i> Continue Anyway
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -235,6 +305,8 @@ export default {
       isSubmitting: false,
       currentUserId: null,
       showConfirmDialog: false, // 自定义确认对话框显示状态
+      showProofWarningDialog: false, // 不需要证明但上传了证明的警告对话框
+      showPaperWarningDialog: false, // 论文类型注册但未输入论文ID的警告对话框
       editMode: false // 是否处于编辑模式
     }
   },
@@ -362,6 +434,52 @@ export default {
              this.userInfo.name && 
              this.paymentMethod && 
              this.uploadedProof; // 只需要有上传的凭证预览即可
+    },
+    
+    // 定义需要证明文件的产品类型
+    productsRequiringProof() {
+      return [
+        'IEEE Member',
+        'Attendee - IEEE Member',
+        'IEEE Student Member/Life Member'
+      ];
+    },
+    
+    // 检查当前选择的产品是否需要证明文件
+    selectedProductRequiresProof() {
+      if (!this.selectedProduct) return false;
+      return this.productsRequiringProof.includes(this.selectedProduct.code);
+    },
+    
+    // 检查是否上传了证明文件（从 window 对象检查）
+    hasUploadedProof() {
+      if (!this.currentUserId) return false;
+      const proofFileKey = `proofFile_${this.currentUserId}`;
+      return window[proofFileKey] instanceof File;
+    },
+    
+    // 检查是否需要显示证明文件警告（不需要但上传了）
+    shouldShowProofWarning() {
+      return !this.selectedProductRequiresProof && this.hasUploadedProof;
+    },
+    
+    // 检查是否选择了包含论文发表的注册类型但未输入论文ID
+    shouldShowPaperWarning() {
+      if (!this.selectedProduct) return false;
+      
+      const productCode = this.selectedProduct.code;
+      const paperType = this.userInfo.paperType;
+      const paperId = this.userInfo.paperId;
+      
+      // 检查产品代码是否为 IEEE Member 或 Non-IEEE Member
+      const isPaperRegistration = (productCode === 'IEEE Member' || productCode === 'Non-IEEE Member');
+      
+      // 如果是这两种注册类型，但 paperType 为 'none' 或未输入 paperId
+      if (isPaperRegistration && (paperType === 'none' || !paperId || paperId.trim() === '')) {
+        return true;
+      }
+      
+      return false;
     }
   },
   mounted() {
@@ -860,6 +978,20 @@ export default {
 
       console.log('🔍 Step4: 开始提交注册...');
       
+      // 检查是否上传了不需要的证明文件
+      if (this.shouldShowProofWarning) {
+        console.log('⚠️ Step4: 检测到上传了不需要的证明文件，显示警告对话框');
+        this.showProofWarningDialog = true;
+        return;
+      }
+      
+      // 检查是否选择了包含论文发表的注册类型但未输入论文ID
+      if (this.shouldShowPaperWarning) {
+        console.log('⚠️ Step4: 检测到选择了论文类型注册但未输入论文ID，显示警告对话框');
+        this.showPaperWarningDialog = true;
+        return;
+      }
+      
       // Check if there's an approved submission
       const hasApprovedSubmission = await this.checkApprovedSubmission();
       
@@ -1116,6 +1248,52 @@ export default {
       this.showConfirmDialog = false;
       // 执行提交
       this.performSubmission();
+    },
+
+    // 证明文件警告对话框方法
+    cancelProofWarning() {
+      this.showProofWarningDialog = false;
+      this.$message.info('Please review your registration details');
+    },
+
+    async confirmProofWarning() {
+      // 用户确认继续提交（即使上传了不需要的证明文件）
+      this.showProofWarningDialog = false;
+      
+      // 继续检查是否有已批准的注册
+      const hasApprovedSubmission = await this.checkApprovedSubmission();
+      
+      if (hasApprovedSubmission) {
+        this.showConfirmDialog = true;
+      } else {
+        this.performSubmission();
+      }
+    },
+
+    // 论文类型警告对话框方法
+    cancelPaperWarning() {
+      this.showPaperWarningDialog = false;
+      this.$message.info('Please review your registration details');
+    },
+
+    async confirmPaperWarning() {
+      // 用户确认继续提交（即使选择了论文类型注册但未输入论文ID）
+      this.showPaperWarningDialog = false;
+      
+      // 继续检查其他警告
+      if (this.shouldShowProofWarning) {
+        this.showProofWarningDialog = true;
+        return;
+      }
+      
+      // 继续检查是否有已批准的注册
+      const hasApprovedSubmission = await this.checkApprovedSubmission();
+      
+      if (hasApprovedSubmission) {
+        this.showConfirmDialog = true;
+      } else {
+        this.performSubmission();
+      }
     },
 
     goBack() {
@@ -1782,6 +1960,92 @@ export default {
     font-size: 14px;
     min-height: 48px;
     width: 100%;
+  }
+}
+
+/* 证明文件警告对话框特殊样式 */
+.dialog-header-info {
+  background: linear-gradient(135deg, #409EFF 0%, #66b1ff 100%);
+}
+
+.dialog-icon-info {
+  color: #409EFF;
+}
+
+.dialog-icon-info i {
+  border-color: #409EFF;
+  background: rgba(64, 158, 255, 0.1);
+}
+
+/* 论文类型警告对话框特殊样式 */
+.dialog-header-warning {
+  background: linear-gradient(135deg, #E6A23C 0%, #f0b86e 100%);
+}
+
+.dialog-icon-warning {
+  color: #E6A23C;
+}
+
+.dialog-icon-warning i {
+  border-color: #E6A23C;
+  background: rgba(230, 162, 60, 0.1);
+}
+
+.product-highlight {
+  margin: 16px 0;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%);
+  border-left: 4px solid #ff9800;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.product-highlight strong {
+  font-size: 18px;
+  color: #ff6b00;
+  font-weight: 600;
+}
+
+.warning-hint {
+  margin-top: 20px;
+  padding: 12px 16px;
+  background: #f0f9ff;
+  border-left: 4px solid #409EFF;
+  border-radius: 6px;
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.warning-hint i {
+  color: #409EFF;
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.confirm-btn-secondary {
+  background: linear-gradient(135deg, #909399 0%, #b1b3b8 100%);
+  border: none;
+}
+
+.confirm-btn-secondary:hover {
+  background: linear-gradient(135deg, #a6a9ad 0%, #c8cacd 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(144, 147, 153, 0.4);
+}
+
+@media (max-width: 576px) {
+  .product-highlight {
+    padding: 10px 16px;
+  }
+  
+  .product-highlight strong {
+    font-size: 16px;
+  }
+  
+  .warning-hint {
+    padding: 10px 12px;
+    font-size: 13px;
   }
 }
 </style>

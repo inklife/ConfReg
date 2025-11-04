@@ -127,7 +127,7 @@ router.post('/submit', requireAuth, upload.fields([
       totalAmountRMB = '',
       extraPageFeeUSD = '',
       extraPageFeeRMB = '',
-      registrationCategory = 'full', 
+      registrationCategory, 
       paymentMethod = 'international' 
     } = req.body;
 
@@ -140,10 +140,23 @@ router.post('/submit', requireAuth, upload.fields([
       });
     }
 
-    // 修复：如果 registrationCategory 是字符串 "undefined" 或无效值，日志中警告但不强制修改
+    // 检查是否是编辑模式
+    const editId = req.body.editId;
+
+    // 修复：捕获 undefined、'undefined'（字符串）、null、空字符串以及其他无效值
     if (!registrationCategory || registrationCategory === 'undefined' || !['full', 'attendee'].includes(registrationCategory)) {
       console.warn(`Invalid registration category received: "${registrationCategory}"`);
-      // registrationCategory = 'full';
+      
+      // 根据是否是编辑模式提供不同的错误提示
+      const errorMessage = editId 
+        ? 'Invalid registration category detected. Your data has NOT been updated and your original data remains unchanged. If you need to modify this registration, please return to Step 1 completely.'
+        : 'Invalid registration category detected. This registration cannot be processed. Please return to Step 1 completely and submit your registration. Clear your browser cache or use an incognito/private window if needed.';
+      
+      return res.status(400).json({
+        status: 8,
+        success: false,
+        message: errorMessage
+      });
     }
     const email = currentUser.email; // 使用当前用户的email
 
@@ -167,8 +180,25 @@ router.post('/submit', requireAuth, upload.fields([
     const screenshot = req.files.screenshot[0];
     const proof = req.files.proof ? req.files.proof[0] : null;
 
-    // Check if there's an edit mode ID in the request
-    const editId = req.body.editId;
+    // Define product codes that require proof of IEEE membership
+    const productsRequiringProof = [
+      'IEEE Member',
+      'Attendee - IEEE Member',
+      'IEEE Student Member/Life Member'
+    ];
+
+    // Check if the selected product requires proof and verify it's uploaded
+    if (productsRequiringProof.includes(productCode)) {
+      if (!proof) {
+        return res.status(400).json({
+          status: 9,
+          success: false,
+          message: `IEEE membership verification document is required for "${productCode}". Please upload your IEEE membership certificate and/or student ID verification in PDF format.`
+        });
+      }
+    }
+
+    // Check if there's an edit mode ID in the request (editId already declared above)
     let submission = null;
 
     if (editId) {
@@ -189,6 +219,21 @@ router.post('/submit', requireAuth, upload.fields([
           success: false,
           message: 'This registration has been refunded and cannot be modified.'
         });
+      }
+
+      // Check if the product type requires proof and verify it exists
+      // (either newly uploaded or already in the submission)
+      if (productsRequiringProof.includes(productCode)) {
+        const hasExistingProof = submission.proof && submission.proof.trim() !== '';
+        const hasNewProof = proof !== null;
+        
+        if (!hasExistingProof && !hasNewProof) {
+          return res.status(400).json({
+            status: 9,
+            success: false,
+            message: `IEEE membership verification document is required for "${productCode}". Please upload your IEEE membership certificate and/or student ID verification in PDF format.`
+          });
+        }
       }
       
       // Update existing submission
