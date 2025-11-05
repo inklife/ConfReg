@@ -19,7 +19,7 @@
           @click="goToUserPanel"
           title="Go to user panel"
         >
-          <i class="el-icon-arrow-right"></i>
+          <i class="el-icon-s-home"></i>
         </button>
       </div>
     </div>
@@ -1418,15 +1418,15 @@ export default {
 }
 
 .progress-nav-right {
-  background: linear-gradient(135deg, #409EFF 0%, #66b3ff 100%) !important;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+  background: linear-gradient(135deg, #35a3d6 0%, #0a7a86bb 100%) !important;
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.3);
 }
 
-.progress-nav-right:hover:not(:disabled) {
-  background: linear-gradient(135deg, #337ab7 0%, #409EFF 100%) !important;
+/* .progress-nav-right:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%) !important;
   transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
-}
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
+} */
 
 .progress-bar {
   flex: 1;

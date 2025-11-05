@@ -115,11 +115,24 @@
             <div 
               v-if="registration.status === 'rejected' && registration.review_notes" 
               class="rejection-reason-row">
-              <div class="rejection-reason-content">
-                <i class="el-icon-warning"></i>
-                <span class="rejection-label">Rejection Reason:</span>
-                <span class="rejection-text">{{ truncateText(registration.review_notes, 100) }}</span>
-              </div>
+              <el-collapse v-model="registration.expandedReason" class="rejection-collapse">
+                <el-collapse-item name="reason">
+                  <template slot="title">
+                    <div class="rejection-reason-header">
+                      <i class="el-icon-warning"></i>
+                      <span class="rejection-label">Rejection Reason:</span>
+                      <span 
+                        v-if="!registration.expandedReason || registration.expandedReason.length === 0"
+                        class="rejection-preview">
+                        {{ truncateText(registration.review_notes, 80) }}
+                      </span>
+                    </div>
+                  </template>
+                  <div class="rejection-reason-full">
+                    {{ registration.review_notes }}
+                  </div>
+                </el-collapse-item>
+              </el-collapse>
             </div>
           </div>
         </div>
@@ -392,7 +405,11 @@ export default {
         const response = await userService.getAllUserRegistrations();
         
         if (response && response.data) {
-          this.registrations = response.data;
+          // 初始化每个注册项的折叠状态
+          this.registrations = response.data.map(reg => ({
+            ...reg,
+            expandedReason: [] // 默认折叠状态（空数组表示不展开）
+          }));
         } else {
           this.registrations = [];
         }
@@ -1141,23 +1158,55 @@ export default {
 /* Rejection reason row in list */
 .rejection-reason-row {
   background: #fef0f0;
-  padding: 12px 20px;
+  padding: 0;
   margin-top: -1px;
   border-top: 1px solid #fde2e2;
-  border-radius: 0 0 8px 8px;
 }
 
-.rejection-reason-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+.rejection-collapse {
+  border: none;
+  background: transparent;
+}
+
+.rejection-collapse >>> .el-collapse-item__header {
+  background: transparent;
+  border: none;
+  padding: 12px 20px;
   font-size: 13px;
+  color: #606266;
+  line-height: 1.5;
+  height: auto;
+  min-height: 48px;
 }
 
-.rejection-reason-content i {
+.rejection-collapse >>> .el-collapse-item__wrap {
+  background: transparent;
+  border: none;
+}
+
+.rejection-collapse >>> .el-collapse-item__content {
+  padding: 0 20px 12px 20px;
+  color: #606266;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.rejection-collapse >>> .el-collapse-item__arrow {
+  color: #F56C6C;
+  margin-right: 8px;
+}
+
+.rejection-reason-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.rejection-reason-header i {
   color: #F56C6C;
   font-size: 16px;
-  margin-top: 2px;
   flex-shrink: 0;
 }
 
@@ -1165,12 +1214,25 @@ export default {
   color: #F56C6C;
   font-weight: 600;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.rejection-text {
+.rejection-preview {
   color: #606266;
   line-height: 1.5;
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rejection-reason-full {
+  color: #606266;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+  padding-left: 24px;
 }
 
 /* Responsive design */

@@ -1282,16 +1282,27 @@ class SubmissionManager extends BaseComponent {
                         </div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-label">价格</div>
-                        <div class="detail-value" style="color: #059669; font-weight: 600;">
-                            ${(() => {
-                                const isDomestic = submission.payment_method === 'domestic';
-                                const amount = isDomestic 
-                                    ? (submission.total_amount_rmb || submission.product_price_rmb || 0)
-                                    : (submission.total_amount_usd || submission.product_price || 0);
-                                const currency = isDomestic ? 'RMB' : 'USD';
-                                return `${parseFloat(amount).toFixed(2)} ${currency}`;
-                            })()}
+                        <div class="detail-label">基础价格</div>
+                        <div class="detail-value" style="color: #059669; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <span id="price-display-${submission.id}">
+                                ${(() => {
+                                    const isDomestic = submission.payment_method === 'domestic';
+                                    const amount = isDomestic 
+                                        ? (submission.total_amount_rmb || submission.product_price_rmb || 0)
+                                        : (submission.total_amount_usd || submission.product_price || 0);
+                                    const currency = isDomestic ? 'RMB' : 'USD';
+                                    return `${parseFloat(amount).toFixed(2)} ${currency}`;
+                                })()}
+                            </span>
+                            <button 
+                                class="btn btn-sm btn-outline-primary edit-price-btn" 
+                                data-submission-id="${submission.id}"
+                                style="padding: 2px 8px; font-size: 12px; border-radius: 4px; border: 1px solid #3b82f6; color: #3b82f6; background: white; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"
+                                title="编辑价格"
+                            >
+                                <i class="fas fa-edit" style="font-size: 11px;"></i>
+                                编辑
+                            </button>
                         </div>
                     </div>
                     <div class="detail-item">
@@ -1480,6 +1491,14 @@ class SubmissionManager extends BaseComponent {
                 this.deleteSubmission(submissionId);
             });
         });
+
+        // 编辑价格按钮
+        modal.querySelectorAll('.edit-price-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const submissionId = btn.getAttribute('data-submission-id');
+                this.editPrice(submissionId);
+            });
+        });
     }
 
     // 显示批准前的检查清单弹窗
@@ -1624,6 +1643,109 @@ class SubmissionManager extends BaseComponent {
         } catch (error) {
             console.error('Error re-reviewing submission:', error);
             alert('重新审核失败，请稍后重试');
+        }
+    }
+
+    // 全局方法：编辑价格
+    async editPrice(submissionId) {
+        try {
+            // 从 API 获取最新的提交信息
+            const response = await fetch(`/admin/submissions/${submissionId}`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                alert('❌ 获取注册信息失败');
+                return;
+            }
+
+            const result = await response.json();
+            if (!result.success || !result.data) {
+                alert('❌ 未找到注册信息');
+                return;
+            }
+
+            const submission = result.data;
+            const isDomestic = submission.payment_method === 'domestic';
+            const currentPrice = isDomestic 
+                ? (submission.product_price_rmb || 0)
+                : (submission.product_price || 0);
+            const currency = isDomestic ? 'RMB' : 'USD';
+
+            // 提示用户输入新价格
+            const newPriceStr = prompt(
+                `当前价格：${parseFloat(currentPrice).toFixed(2)} ${currency}\n\n` +
+                `请输入新的${currency}价格：`,
+                parseFloat(currentPrice).toFixed(2)
+            );
+
+            // 用户取消
+            if (newPriceStr === null) return;
+
+            // 验证输入
+            const newPrice = parseFloat(newPriceStr);
+            if (isNaN(newPrice) || newPrice < 0) {
+                alert('❌ 请输入有效的非负数价格');
+                return;
+            }
+
+            // 确认更新
+            if (!confirm(`确定要将价格从 ${parseFloat(currentPrice).toFixed(2)} ${currency} 更新为 ${newPrice.toFixed(2)} ${currency} 吗？`)) {
+                return;
+            }
+
+            // 调用API更新价格
+            const updateData = isDomestic 
+                ? { price_rmb: newPrice }
+                : { price_usd: newPrice };
+
+            const updateResponse = await fetch(`/admin/submissions/${submissionId}/price`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(updateData)
+            });
+
+            const data = await updateResponse.json();
+            if (data.success) {
+                alert('✅ 价格更新成功');
+                
+                // 更新本地数据
+                const submissionIndex = this.submissions.findIndex(s => s.id == submissionId);
+                if (submissionIndex !== -1) {
+                    if (isDomestic) {
+                        this.submissions[submissionIndex].product_price_rmb = newPrice;
+                        this.submissions[submissionIndex].total_amount_rmb = newPrice + (parseFloat(this.submissions[submissionIndex].extra_page_fee_rmb) || 0);
+                    } else {
+                        this.submissions[submissionIndex].product_price = newPrice;
+                        this.submissions[submissionIndex].total_amount_usd = newPrice + (parseFloat(this.submissions[submissionIndex].extra_page_fee_usd) || 0);
+                    }
+                }
+
+                // 更新弹窗中的显示（在全局 modal 中查找）
+                const globalModal = document.getElementById('submission-modal-global');
+                if (globalModal) {
+                    const priceDisplay = globalModal.querySelector(`#price-display-${submissionId}`);
+                    if (priceDisplay) {
+                        const extraFee = isDomestic 
+                            ? (parseFloat(submission.extra_page_fee_rmb) || 0)
+                            : (parseFloat(submission.extra_page_fee_usd) || 0);
+                        const totalAmount = newPrice + extraFee;
+                        priceDisplay.textContent = `${parseFloat(totalAmount).toFixed(2)} ${currency}`;
+                    }
+                }
+
+                // 重新加载列表以确保数据同步
+                this.loadSubmissions();
+            } else {
+                alert('❌ 价格更新失败：' + (data.message || '未知错误'));
+            }
+        } catch (error) {
+            console.error('Error updating price:', error);
+            alert('❌ 价格更新失败，请稍后重试');
         }
     }
 

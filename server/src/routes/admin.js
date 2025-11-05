@@ -621,6 +621,89 @@ router.post('/submissions/:id/re-review', requireAdmin, async (req, res) => {
   }
 });
 
+// 更新注册价格（管理员）
+router.put('/submissions/:id/price', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { price_rmb, price_usd } = req.body;
+
+    // 验证输入
+    if (price_rmb === undefined && price_usd === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供要更新的价格'
+      });
+    }
+
+    if (price_rmb !== undefined && (isNaN(price_rmb) || price_rmb < 0)) {
+      return res.status(400).json({
+        success: false,
+        message: '人民币价格必须是非负数'
+      });
+    }
+
+    if (price_usd !== undefined && (isNaN(price_usd) || price_usd < 0)) {
+      return res.status(400).json({
+        success: false,
+        message: '美元价格必须是非负数'
+      });
+    }
+
+    const submission = await RegistrationSubmission.findByPk(id);
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
+      });
+    }
+
+    // 记录原始价格用于日志
+    const oldPrices = {
+      product_price_rmb: submission.product_price_rmb,
+      product_price: submission.product_price,
+      total_amount_rmb: submission.total_amount_rmb,
+      total_amount_usd: submission.total_amount_usd
+    };
+
+    // 更新价格
+    if (price_rmb !== undefined) {
+      submission.product_price_rmb = parseFloat(price_rmb);
+      submission.total_amount_rmb = parseFloat(price_rmb) + (parseFloat(submission.extra_page_fee_rmb) || 0);
+    }
+
+    if (price_usd !== undefined) {
+      submission.product_price = parseFloat(price_usd);
+      submission.total_amount_usd = parseFloat(price_usd) + (parseFloat(submission.extra_page_fee_usd) || 0);
+    }
+
+    await submission.save();
+
+    // 记录操作日志
+    console.log(`[PRICE_UPDATE] Admin ${req.user.email} updated prices for submission #${id}`, {
+      old: oldPrices,
+      new: {
+        product_price_rmb: submission.product_price_rmb,
+        product_price: submission.product_price,
+        total_amount_rmb: submission.total_amount_rmb,
+        total_amount_usd: submission.total_amount_usd
+      }
+    });
+
+    res.json({
+      success: true,
+      message: '价格更新成功',
+      data: submission
+    });
+
+  } catch (error) {
+    console.error('Update price error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // 删除注册记录（高危操作，需要确认）
 router.delete('/submissions/:id', requireAdmin, async (req, res) => {
   try {

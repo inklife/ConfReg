@@ -79,10 +79,10 @@ const RegistrationSubmission = sequelize.define('RegistrationSubmission', {
     allowNull: false
   },
   registration_category: {
-    type: DataTypes.ENUM('full', 'student'),
+    type: DataTypes.ENUM('full', 'attendee'),
     allowNull: false,
     defaultValue: 'full',
-    comment: 'Registration category: full registration or student registration'
+    comment: 'Registration category: full registration or attendee registration'
   },
   payment_method: {
     type: DataTypes.ENUM('international', 'domestic'),
