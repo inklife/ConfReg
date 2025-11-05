@@ -132,7 +132,7 @@ class SubmissionManager extends BaseComponent {
                                     <th style="width: 14%;">机构</th>
                                     <th style="width: 12%;">Paper ID</th>
                                     <th style="width: 10%;">产品代码</th>
-                                    <th style="width: 8%;">价格</th>
+                                    <th style="width: 8%;">总价</th>
                                     <th style="width: 8%;">状态</th>
                                     <th style="width: 9%;">提交时间</th>
                                     <th style="width: 11%;">操作</th>
@@ -1288,8 +1288,8 @@ class SubmissionManager extends BaseComponent {
                                 ${(() => {
                                     const isDomestic = submission.payment_method === 'domestic';
                                     const amount = isDomestic 
-                                        ? (submission.total_amount_rmb || submission.product_price_rmb || 0)
-                                        : (submission.total_amount_usd || submission.product_price || 0);
+                                        ? (submission.product_price_rmb || 0)
+                                        : (submission.product_price || 0);
                                     const currency = isDomestic ? 'RMB' : 'USD';
                                     return `${parseFloat(amount).toFixed(2)} ${currency}`;
                                 })()}
@@ -1323,6 +1323,19 @@ class SubmissionManager extends BaseComponent {
                                 return extraFee > 0 
                                     ? `${parseFloat(extraFee).toFixed(2)} ${currency}`
                                     : '无';
+                            })()}
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">总价</div>
+                        <div class="detail-value" style="color: #059669; font-weight: 700; font-size: 16px;">
+                            ${(() => {
+                                const isDomestic = submission.payment_method === 'domestic';
+                                const totalAmount = isDomestic 
+                                    ? (submission.total_amount_rmb || 0)
+                                    : (submission.total_amount_usd || 0);
+                                const currency = isDomestic ? 'RMB' : 'USD';
+                                return `${parseFloat(totalAmount).toFixed(2)} ${currency}`;
                             })()}
                         </div>
                     </div>
@@ -1730,11 +1743,8 @@ class SubmissionManager extends BaseComponent {
                 if (globalModal) {
                     const priceDisplay = globalModal.querySelector(`#price-display-${submissionId}`);
                     if (priceDisplay) {
-                        const extraFee = isDomestic 
-                            ? (parseFloat(submission.extra_page_fee_rmb) || 0)
-                            : (parseFloat(submission.extra_page_fee_usd) || 0);
-                        const totalAmount = newPrice + extraFee;
-                        priceDisplay.textContent = `${parseFloat(totalAmount).toFixed(2)} ${currency}`;
+                        // 只显示基础价格，不包含超页费用
+                        priceDisplay.textContent = `${parseFloat(newPrice).toFixed(2)} ${currency}`;
                     }
                 }
 
