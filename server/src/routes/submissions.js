@@ -1371,17 +1371,24 @@ router.get('/registration/:id', requireAuth, async (req, res) => {
       updated_at: registration.updated_at
     };
     
-    // 添加图片信息
-    if (registration.proof_of_payment_image) {
+    // 添加图片信息（使用正确的字段名）
+    if (registration.screenshot) {
       responseData.images = {
-        screenshot: registration.proof_of_payment_image
+        screenshot: `/uploads/${registration.screenshot}`
       };
     }
     
-    if (registration.ieee_membership_proof) {
+    if (registration.proof) {
       if (!responseData.images) responseData.images = {};
-      responseData.images.proof = registration.ieee_membership_proof;
+      responseData.images.proof = `/uploads/${registration.proof}`;
     }
+    
+    console.log('📸 Registration images:', {
+      screenshot: registration.screenshot || 'null',
+      proof: registration.proof || 'null',
+      hasImages: !!(registration.screenshot || registration.proof),
+      responseImages: responseData.images
+    });
     
     res.json(responseData);
     

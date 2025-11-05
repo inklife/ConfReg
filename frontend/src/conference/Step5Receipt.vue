@@ -189,6 +189,136 @@
             </div> -->
           </div>
         </div>
+
+        <!-- 调试信息 (开发环境) -->
+        <div v-if="!hasUploadedFiles && backendRegistrationData" class="summary-section" style="background: #fffbf0; border-left: 4px solid #e6a23c;">
+          <h4 style="color: #e6a23c;">
+            <i class="el-icon-warning"></i> Upload Status
+          </h4>
+          <div style="padding: 12px; background: white; border-radius: 6px; font-size: 13px; color: #666;">
+            <p style="margin: 0 0 8px 0;">
+              <strong>Debug Info:</strong> No uploaded files detected in the backend response.
+            </p>
+            <p style="margin: 0 0 8px 0;">
+              Backend data available: <code>{{ !!backendRegistrationData }}</code>
+            </p>
+            <p style="margin: 0 0 8px 0;">
+              Images object: <code>{{ backendRegistrationData.images ? JSON.stringify(backendRegistrationData.images) : 'null' }}</code>
+            </p>
+            <p style="margin: 0;">
+              If you uploaded files but don't see them here, please refresh the page or contact support.
+            </p>
+          </div>
+        </div>
+
+        <!-- 上传文件展示 -->
+        <div class="summary-section" v-if="hasUploadedFiles">
+          <h4>Uploaded Documents</h4>
+          <div class="uploaded-files">
+            <!-- 证明文件 (支持图片和PDF) -->
+            <div class="file-preview" v-if="proofFileUrl">
+              <div class="file-label">
+                <i :class="isProofFilePDF ? 'el-icon-document' : 'el-icon-picture-outline'"></i>
+                <span>Proof Document</span>
+                <el-tag v-if="isProofFilePDF" size="mini" type="warning" style="margin-left: 8px;">PDF</el-tag>
+              </div>
+              <div class="file-preview-container">
+                <!-- PDF 预览 -->
+                <div v-if="isProofFilePDF" class="pdf-preview">
+                  <div class="pdf-icon-wrapper">
+                    <i class="el-icon-document"></i>
+                    <p>PDF Document</p>
+                    <span class="file-type-badge">PDF</span>
+                  </div>
+                </div>
+                <!-- 图片预览 -->
+                <el-image
+                  v-else
+                  ref="proofImage"
+                  :src="proofFileUrl"
+                  :preview-src-list="[proofFileUrl]"
+                  fit="contain"
+                  class="preview-image"
+                  @error="handleImageError('proof')"
+                >
+                  <div slot="error" class="image-slot">
+                    <i class="el-icon-picture-outline"></i>
+                    <p>Failed to load image</p>
+                  </div>
+                </el-image>
+                <div class="file-actions">
+                  <el-button 
+                    v-if="!isProofFilePDF"
+                    size="mini" 
+                    type="primary" 
+                    icon="el-icon-zoom-in"
+                    @click="previewProofImage"
+                  >
+                    Preview
+                  </el-button>
+                  <el-button 
+                    v-if="isProofFilePDF"
+                    size="mini" 
+                    type="primary" 
+                    icon="el-icon-view"
+                    @click="openPDFInNewTab(proofFileUrl)"
+                  >
+                    View PDF
+                  </el-button>
+                  <el-button 
+                    size="mini" 
+                    type="success" 
+                    icon="el-icon-download"
+                    @click="downloadFile(proofFileUrl, 'proof_document')"
+                  >
+                    Download
+                  </el-button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 付费截图 -->
+            <div class="file-preview" v-if="paymentScreenshotUrl">
+              <div class="file-label">
+                <i class="el-icon-picture-outline"></i>
+                <span>Payment Screenshot</span>
+              </div>
+              <div class="file-preview-container">
+                <el-image
+                  ref="paymentImage"
+                  :src="paymentScreenshotUrl"
+                  :preview-src-list="[paymentScreenshotUrl]"
+                  fit="contain"
+                  class="preview-image"
+                  @error="handleImageError('screenshot')"
+                >
+                  <div slot="error" class="image-slot">
+                    <i class="el-icon-picture-outline"></i>
+                    <p>Failed to load image</p>
+                  </div>
+                </el-image>
+                <div class="file-actions">
+                  <el-button 
+                    size="mini" 
+                    type="primary" 
+                    icon="el-icon-zoom-in"
+                    @click="previewPaymentImage"
+                  >
+                    Preview
+                  </el-button>
+                  <el-button 
+                    size="mini" 
+                    type="success" 
+                    icon="el-icon-download"
+                    @click="downloadFile(paymentScreenshotUrl, 'payment_screenshot')"
+                  >
+                    Download
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 下载和操作 -->
@@ -671,6 +801,48 @@ export default {
     currentUser() {
       // 直接从store获取用户信息，保持实时同步
       return this.$store.state.account.user;
+    },
+    // 证明文件URL
+    proofFileUrl() {
+      if (this.backendRegistrationData && this.backendRegistrationData.images && this.backendRegistrationData.images.proof) {
+        const url = this.backendRegistrationData.images.proof;
+        // 如果是相对路径，转换为完整URL
+        if (!url.startsWith('http')) {
+          return `${window.location.origin}${url}`;
+        }
+        return url;
+      }
+      return null;
+    },
+    // 判断证明文件是否为PDF
+    isProofFilePDF() {
+      if (this.proofFileUrl) {
+        return this.proofFileUrl.toLowerCase().endsWith('.pdf');
+      }
+      return false;
+    },
+    // 付费截图URL
+    paymentScreenshotUrl() {
+      if (this.backendRegistrationData && this.backendRegistrationData.images && this.backendRegistrationData.images.screenshot) {
+        const url = this.backendRegistrationData.images.screenshot;
+        // 如果是相对路径，转换为完整URL
+        if (!url.startsWith('http')) {
+          return `${window.location.origin}${url}`;
+        }
+        return url;
+      }
+      return null;
+    },
+    // 用于调试：显示后端返回的完整数据
+    hasUploadedFiles() {
+      const hasFiles = !!(this.proofFileUrl || this.paymentScreenshotUrl);
+      console.log('📎 Step5 - Uploaded files check:', {
+        hasFiles,
+        proofFileUrl: this.proofFileUrl,
+        paymentScreenshotUrl: this.paymentScreenshotUrl,
+        backendImages: this.backendRegistrationData?.images
+      });
+      return hasFiles;
     }
   },
   async mounted() {
@@ -1346,6 +1518,65 @@ export default {
 
     goToHome() {
       this.$router.push('/');
+    },
+
+    // 预览证明文件图片
+    previewProofImage() {
+      // 触发 el-image 组件的预览功能
+      if (this.$refs.proofImage) {
+        this.$refs.proofImage.clickHandler();
+      }
+    },
+
+    // 预览付费截图
+    previewPaymentImage() {
+      // 触发 el-image 组件的预览功能
+      if (this.$refs.paymentImage) {
+        this.$refs.paymentImage.clickHandler();
+      }
+    },
+
+    // 在新标签页打开PDF
+    openPDFInNewTab(url) {
+      window.open(url, '_blank');
+    },
+
+    // 下载文件（图片或PDF）
+    async downloadFile(url, filename) {
+      try {
+        const axios = (await import('axios')).default;
+        
+        // 获取文件数据
+        const response = await axios.get(url, {
+          responseType: 'blob',
+          withCredentials: true
+        });
+
+        // 从URL中提取文件扩展名
+        const ext = url.split('.').pop().split('?')[0] || 'jpg';
+        const fullFilename = `${filename}.${ext}`;
+
+        // 创建下载链接
+        const downloadUrl = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.setAttribute('download', fullFilename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+
+        this.$message.success('File downloaded successfully');
+      } catch (error) {
+        console.error('Error downloading file:', error);
+        this.$message.error('Failed to download file');
+      }
+    },
+
+    // 处理图片加载错误
+    handleImageError(type) {
+      console.error(`Failed to load ${type} file`);
+      this.$message.warning(`Failed to load ${type === 'proof' ? 'proof document' : 'payment screenshot'}`);
     }
   }
 }
@@ -1406,15 +1637,26 @@ export default {
   transform: none;
 }
 
+.progress-nav-left {
+  background: #c0c4cc !important;
+  box-shadow: none;
+}
+
+.progress-nav-left:hover:not(:disabled) {
+  background: #c0c4cc !important;
+  transform: none;
+  box-shadow: none;
+}
+
 .progress-nav-warning {
-  background: linear-gradient(135deg, #ff7043 0%, #ff6f00 100%) !important;
-  box-shadow: 0 2px 8px rgba(255, 112, 67, 0.3);
+  background: #c0c4cc !important;
+  box-shadow: none;
 }
 
 .progress-nav-warning:hover:not(:disabled) {
-  background: linear-gradient(135deg, #ff5722 0%, #e65100 100%) !important;
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(255, 87, 34, 0.4);
+  background: #c0c4cc !important;
+  transform: none;
+  box-shadow: none;
 }
 
 .progress-nav-right {
@@ -2052,10 +2294,164 @@ export default {
   width: 20px;
 }
 
+/* 上传文件展示样式 */
+.uploaded-files {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.file-preview {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.file-preview:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: #409EFF;
+}
+
+.file-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #333;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.file-label i {
+  color: #409EFF;
+  font-size: 18px;
+}
+
+.file-preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-image {
+  width: 100%;
+  height: 200px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: white;
+  border: 1px solid #dcdfe6;
+}
+
+/* PDF 预览样式 */
+.pdf-preview {
+  width: 100%;
+  height: 200px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  border: 2px dashed #c0c4cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.pdf-preview:hover {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  border-color: #909399;
+}
+
+.pdf-icon-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #606266;
+}
+
+.pdf-icon-wrapper i {
+  font-size: 64px;
+  color: #f56c6c;
+  margin-bottom: 12px;
+}
+
+.pdf-icon-wrapper p {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.file-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #f56c6c;
+  color: white;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.image-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #909399;
+  background: #f5f7fa;
+}
+
+.image-slot i {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.image-slot p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.file-actions .el-button {
+  flex: 1;
+  max-width: 120px;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .step-container {
     padding: 15px;
+  }
+  
+  .uploaded-files {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .preview-image,
+  .pdf-preview {
+    height: 180px;
+  }
+  
+  .file-actions .el-button {
+    max-width: none;
+  }
+  
+  .pdf-icon-wrapper i {
+    font-size: 48px;
+  }
+  
+  .pdf-icon-wrapper p {
+    font-size: 14px;
   }
   
   .header h1 {

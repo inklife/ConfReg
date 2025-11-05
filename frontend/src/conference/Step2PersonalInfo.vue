@@ -530,6 +530,14 @@ export default {
     goBack() {
       this.saveUserInfo(); // 保存当前输入
       
+      // Show warning toast
+      this.$message({
+        message: 'Only go back if you need to modify the registration type or re-upload your PDF. If you just moved forward to Step 3 instead of going back, your uploaded PDF will not be lost.',
+        type: 'warning',
+        duration: 11000,
+        showClose: true
+      });
+      
       if (this.id === 'new') {
         this.$router.push('/conference/new/step1');
       } else if (this.editMode && this.id) {

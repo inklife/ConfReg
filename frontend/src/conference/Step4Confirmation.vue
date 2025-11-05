@@ -107,6 +107,30 @@
             <strong>{{ paymentMethodName }}</strong>
           </div>
         </div>
+
+        <!-- IEEE 会员验证 PDF -->
+        <div class="info-section">
+          <h4>Verification PDF</h4>
+          <div class="info-row">
+            <span>File:</span>
+            <div v-if="uploadedProofFileName" class="file-with-remove">
+              <strong>{{ uploadedProofFileName }}</strong>
+              <el-button 
+                size="mini" 
+                @click="removeProofFile" 
+                class="remove-pdf-btn"
+                type="danger"
+                plain
+              >
+                Remove
+              </el-button>
+            </div>
+            <strong v-else class="empty-value">
+              Empty
+              <span v-if="!selectedProductRequiresProof" class="not-applicable">(Not Applicable)</span>
+            </strong>
+          </div>
+        </div>
       </div>
 
       <!-- 支付凭证上传 -->
@@ -286,6 +310,59 @@
         </div>
       </div>
     </div>
+
+    <!-- 组合警告对话框（同时有证明文件和论文类型问题） -->
+    <div v-if="showCombinedWarningDialog" class="custom-dialog-overlay" @click="cancelCombinedWarning">
+      <div class="custom-dialog custom-dialog-large" @click.stop>
+        <div class="dialog-header dialog-header-warning">
+          <h3><i class="el-icon-warning"></i> Warning: Multiple Issues Detected</h3>
+        </div>
+        <div class="dialog-content">
+          <div class="dialog-icon dialog-icon-warning">
+            <i class="el-icon-warning-outline"></i>
+          </div>
+          <div class="dialog-message">
+            <p class="warning-title">We have detected the following issues with your registration:</p>
+            
+            <!-- 问题1：上传了不需要的PDF -->
+            <div class="warning-issue">
+              <div class="issue-number">1</div>
+              <div class="issue-content">
+                <p class="issue-title">Unnecessary IEEE Membership Verification Uploaded</p>
+                <p class="warning-details">Your selected registration type is:</p>
+                <div class="product-highlight">
+                  <strong>{{ selectedProduct ? selectedProduct.code : '' }}</strong>
+                </div>
+                <p class="warning-details">This registration type does <strong>not require</strong> IEEE membership verification, but you have uploaded a PDF file.</p>
+              </div>
+            </div>
+            
+            <!-- 问题2：论文类型注册但没有Paper ID -->
+            <div class="warning-issue">
+              <div class="issue-number">2</div>
+              <div class="issue-content">
+                <p class="issue-title">Missing Paper Information</p>
+                <p class="warning-details">Your registration type typically includes paper publication, but you have not entered a Paper ID or selected Paper Type as "None".</p>
+              </div>
+            </div>
+            
+            <p class="warning-question">Do you want to continue with this submission?</p>
+            <p class="warning-hint">
+              <i class="el-icon-lightbulb"></i> 
+              We recommend going back to review and correct these issues, or you can continue if you are certain about your choices.
+            </p>
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button class="dialog-btn cancel-btn" @click="cancelCombinedWarning">
+            <i class="el-icon-back"></i> Go Back to Review
+          </button>
+          <button class="dialog-btn confirm-btn confirm-btn-secondary" @click="confirmCombinedWarning">
+            <i class="el-icon-check"></i> Continue Anyway
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -307,7 +384,9 @@ export default {
       showConfirmDialog: false, // 自定义确认对话框显示状态
       showProofWarningDialog: false, // 不需要证明但上传了证明的警告对话框
       showPaperWarningDialog: false, // 论文类型注册但未输入论文ID的警告对话框
-      editMode: false // 是否处于编辑模式
+      showCombinedWarningDialog: false, // 同时有证明和论文问题的组合警告对话框
+      editMode: false, // 是否处于编辑模式
+      proofFileExists: false // 追踪 proof 文件是否存在（响应式）
     }
   },
   computed: {
@@ -454,7 +533,11 @@ export default {
     // 检查是否上传了证明文件（从 window 对象检查）
     hasUploadedProof() {
       if (!this.currentUserId) return false;
-      const proofFileKey = `proofFile_${this.currentUserId}`;
+      
+      // 使用响应式属性触发重新计算
+      if (!this.proofFileExists) return false;
+      
+      const proofFileKey = this.getProofFileKey();
       return window[proofFileKey] instanceof File;
     },
     
@@ -480,6 +563,34 @@ export default {
       }
       
       return false;
+    },
+    
+    // 获取上传的PDF文件名
+    uploadedProofFileName() {
+      if (!this.currentUserId) return null;
+      
+      // 使用响应式属性触发重新计算
+      if (!this.proofFileExists) return null;
+      
+      // 首先尝试从 window 对象获取文件
+      const proofFileKey = this.getProofFileKey();
+      const proofFile = window[proofFileKey];
+      if (proofFile instanceof File) {
+        return proofFile.name;
+      }
+      
+      // 如果内存中没有，尝试从 localStorage 获取文件信息
+      try {
+        const savedProofInfo = localStorage.getItem(this.getStorageKey('conferenceProofFileInfo'));
+        if (savedProofInfo) {
+          const fileInfo = JSON.parse(savedProofInfo);
+          return fileInfo.name;
+        }
+      } catch (error) {
+        console.warn('Failed to load proof file info:', error);
+      }
+      
+      return null;
     }
   },
   mounted() {
@@ -515,12 +626,48 @@ export default {
 
       this.currentUserId = currentUser.id;
       
+      // 检查 proof 文件是否存在
+      this.checkProofFileExists();
+      
       // 首先尝试从后端恢复数据
       await this.loadBackendDataIfNeeded();
       
       // 然后加载本地保存的支付凭证
       this.loadUploadedProof();
       this.debugData();
+    },
+    
+    checkProofFileExists() {
+      if (!this.currentUserId) {
+        this.proofFileExists = false;
+        return;
+      }
+      
+      // 检查 window 对象中是否有文件
+      const proofFileKey = this.getProofFileKey();
+      const proofFile = window[proofFileKey];
+      if (proofFile instanceof File) {
+        this.proofFileExists = true;
+        return;
+      }
+      
+      // 检查 localStorage 中是否有文件信息
+      try {
+        const savedProofInfo = localStorage.getItem(this.getStorageKey('conferenceProofFileInfo'));
+        this.proofFileExists = !!savedProofInfo;
+      } catch (error) {
+        this.proofFileExists = false;
+      }
+    },
+    
+    getProofFileKey() {
+      // 生成带用户ID和注册记录ID的 proof file key
+      // 这样可以区分新建注册和编辑不同注册记录时的文件
+      if (this.id && this.id !== 'new') {
+        return `proofFile_${this.currentUserId}_${this.id}`;
+      }
+      // 新建注册时，只用用户ID
+      return `proofFile_${this.currentUserId}`;
     },
 
     getStorageKey(baseName) {
@@ -669,6 +816,8 @@ export default {
         // 加载证明文件图片（如果本地没有）
         if (images.proof && !localStorage.getItem(this.getStorageKey('conferenceProofFile'))) {
           await this.loadAndSaveImage(images.proof, 'conferenceProofFile');
+          // 更新 proof 文件存在状态
+          this.proofFileExists = true;
         }
         
         // 加载支付截图（如果本地没有）
@@ -970,6 +1119,24 @@ export default {
       this.$message.info('Payment proof removed');
     },
 
+    removeProofFile() {
+      // 从 window 对象移除文件
+      if (this.currentUserId) {
+        const proofFileKey = this.getProofFileKey();
+        delete window[proofFileKey];
+        
+        // 从 localStorage 移除文件信息
+        localStorage.removeItem(this.getStorageKey('conferenceProofFileInfo'));
+        
+        console.log('Step4 - Proof file removed from memory and storage:', proofFileKey);
+      }
+      
+      // 更新响应式属性，触发视图更新
+      this.proofFileExists = false;
+      
+      this.$message.success('Verification PDF removed successfully');
+    },
+
     async submitRegistration() {
       if (!this.canSubmit) {
         this.$message.error('Please complete all required fields and upload payment proof');
@@ -978,15 +1145,25 @@ export default {
 
       console.log('🔍 Step4: 开始提交注册...');
       
+      // 检查是否同时存在证明文件和论文类型问题
+      const hasProofWarning = this.shouldShowProofWarning;
+      const hasPaperWarning = this.shouldShowPaperWarning;
+      
+      if (hasProofWarning && hasPaperWarning) {
+        console.log('⚠️ Step4: 检测到同时存在证明文件和论文类型问题，显示组合警告对话框');
+        this.showCombinedWarningDialog = true;
+        return;
+      }
+      
       // 检查是否上传了不需要的证明文件
-      if (this.shouldShowProofWarning) {
+      if (hasProofWarning) {
         console.log('⚠️ Step4: 检测到上传了不需要的证明文件，显示警告对话框');
         this.showProofWarningDialog = true;
         return;
       }
       
       // 检查是否选择了包含论文发表的注册类型但未输入论文ID
-      if (this.shouldShowPaperWarning) {
+      if (hasPaperWarning) {
         console.log('⚠️ Step4: 检测到选择了论文类型注册但未输入论文ID，显示警告对话框');
         this.showPaperWarningDialog = true;
         return;
@@ -1143,8 +1320,8 @@ export default {
 
         // 处理第一步的证明文件
         // 注意：不从 localStorage 读取文件（文件可能很大）
-        // 而是从 sessionStorage 中获取文件引用（仅用于新建注册流程）
-        const proofFileKey = `proofFile_${this.currentUserId}`;
+        // 而是从 window 对象中获取文件引用
+        const proofFileKey = this.getProofFileKey();
         
         // 尝试从 window 对象获取临时存储的文件
         if (window[proofFileKey] && window[proofFileKey] instanceof File) {
@@ -1152,6 +1329,7 @@ export default {
             const proofFileToUpload = window[proofFileKey];
             formData.append('proof', proofFileToUpload);
             console.log('Added proof file to form data from memory:', {
+              key: proofFileKey,
               name: proofFileToUpload.name,
               size: proofFileToUpload.size,
               type: proofFileToUpload.type
@@ -1160,7 +1338,7 @@ export default {
             console.warn('Failed to process proof file, continuing without it:', error);
           }
         } else {
-          console.log('No proof file found in memory, continuing without it');
+          console.log('No proof file found in memory:', proofFileKey);
           // 编辑模式下，如果需要更新 proof 文件，用户需要重新上传
         }
 
@@ -1189,10 +1367,10 @@ export default {
           
           // 清理临时存储的文件
           if (this.currentUserId) {
-            const proofFileKey = `proofFile_${this.currentUserId}`;
+            const proofFileKey = this.getProofFileKey();
             if (window[proofFileKey]) {
               delete window[proofFileKey];
-              console.log('Cleaned up proof file from memory');
+              console.log('Cleaned up proof file from memory:', proofFileKey);
             }
           }
           
@@ -1285,6 +1463,26 @@ export default {
         this.showProofWarningDialog = true;
         return;
       }
+      
+      // 继续检查是否有已批准的注册
+      const hasApprovedSubmission = await this.checkApprovedSubmission();
+      
+      if (hasApprovedSubmission) {
+        this.showConfirmDialog = true;
+      } else {
+        this.performSubmission();
+      }
+    },
+
+    // 组合警告对话框方法
+    cancelCombinedWarning() {
+      this.showCombinedWarningDialog = false;
+      this.$message.info('Please review your registration details');
+    },
+
+    async confirmCombinedWarning() {
+      // 用户确认继续提交（即使同时存在证明文件和论文类型问题）
+      this.showCombinedWarningDialog = false;
       
       // 继续检查是否有已批准的注册
       const hasApprovedSubmission = await this.checkApprovedSubmission();
@@ -2046,6 +2244,135 @@ export default {
   .warning-hint {
     padding: 10px 12px;
     font-size: 13px;
+  }
+}
+
+/* PDF 文件信息样式 */
+.empty-value {
+  color: #909399;
+  font-style: italic;
+}
+
+.not-applicable {
+  color: #67C23A;
+  font-weight: normal;
+  margin-left: 8px;
+}
+
+.file-with-remove {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-with-remove strong {
+  flex: 1;
+  word-break: break-word;
+}
+
+.remove-pdf-btn {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+/* 组合警告对话框样式 */
+.custom-dialog-large {
+  max-width: 600px;
+  width: 95%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.custom-dialog-large .dialog-content {
+  flex: 1;
+  overflow-y: auto;
+  max-height: calc(90vh - 180px);
+}
+
+.custom-dialog-large .dialog-actions {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  background: white;
+  border-top: 1px solid #e8e8e8;
+  margin: 0;
+  padding: 16px 24px;
+}
+
+.warning-issue {
+  display: flex;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 16px;
+  background: #fff9f0;
+  border-left: 4px solid #E6A23C;
+  border-radius: 8px;
+  align-items: flex-start;
+}
+
+.issue-number {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #E6A23C 0%, #f0b86e 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(230, 162, 60, 0.3);
+}
+
+.issue-content {
+  flex: 1;
+}
+
+.issue-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.warning-issue .warning-details {
+  margin: 8px 0 4px;
+  font-size: 14px;
+}
+
+.warning-issue .product-highlight {
+  margin: 8px 0;
+}
+
+@media (max-width: 576px) {
+  .custom-dialog-large {
+    max-width: 100%;
+    max-height: 95vh;
+  }
+  
+  .custom-dialog-large .dialog-content {
+    max-height: calc(95vh - 160px);
+  }
+  
+  .warning-issue {
+    flex-direction: column;
+    gap: 12px;
+    margin: 12px 0;
+    padding: 12px;
+  }
+  
+  .issue-number {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+  
+  .issue-title {
+    font-size: 14px;
   }
 }
 </style>

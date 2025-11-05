@@ -450,6 +450,16 @@ export default {
       // 新建注册时，只用用户ID
       return `${baseName}_${this.currentUserId}`;
     },
+    
+    getProofFileKey() {
+      // 生成带用户ID和注册记录ID的 proof file key
+      // 这样可以区分新建注册和编辑不同注册记录时的文件
+      if (this.id && this.id !== 'new') {
+        return `proofFile_${this.currentUserId}_${this.id}`;
+      }
+      // 新建注册时，只用用户ID
+      return `proofFile_${this.currentUserId}`;
+    },
 
     async handleNewMode() {
       try {
@@ -746,15 +756,40 @@ export default {
     nextStep() {
       this.saveData();
       
-      // 将 proofFile 存储到 window 对象（临时内存存储，避免 localStorage 大小限制）
-      if (this.proofFile && this.currentUserId) {
-        const proofFileKey = `proofFile_${this.currentUserId}`;
-        window[proofFileKey] = this.proofFile;
-        console.log('Step1 - Proof file stored in memory:', {
-          key: proofFileKey,
-          fileName: this.proofFile.name,
-          fileSize: this.proofFile.size
-        });
+      // 检查选择的产品是否需要 PDF
+      if (!this.selectedProductRequiresProof) {
+        // 如果不需要 PDF，清除所有 PDF 相关信息
+        console.log('Step1 - Selected product does not require proof, cleaning up proof file');
+        
+        // 清除内存中的文件
+        if (this.currentUserId) {
+          const proofFileKey = this.getProofFileKey();
+          if (window[proofFileKey]) {
+            delete window[proofFileKey];
+            console.log('Step1 - Removed proof file from window:', proofFileKey);
+          }
+        }
+        
+        // 清除 localStorage 中的文件信息
+        if (this.currentUserId) {
+          localStorage.removeItem(this.getStorageKey('conferenceProofFileInfo'));
+          console.log('Step1 - Removed proof file info from localStorage');
+        }
+        
+        // 清除组件内的文件引用
+        this.proofFile = null;
+        this.proofPreview = null;
+      } else {
+        // 如果需要 PDF，将 proofFile 存储到 window 对象（临时内存存储，避免 localStorage 大小限制）
+        if (this.proofFile && this.currentUserId) {
+          const proofFileKey = this.getProofFileKey();
+          window[proofFileKey] = this.proofFile;
+          console.log('Step1 - Proof file stored in memory:', {
+            key: proofFileKey,
+            fileName: this.proofFile.name,
+            fileSize: this.proofFile.size
+          });
+        }
       }
       
       this.$emit('step-complete', {
