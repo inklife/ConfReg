@@ -883,10 +883,16 @@ class InvoiceManager extends BaseComponent {
                         </select>
                         <input type="text" class="search-input" id="search-input" placeholder="搜索申请人姓名、发票抬头、邮箱...">
                     </div>
-                    <button class="btn btn-primary" id="search-btn">
-                        <i class="fas fa-search"></i>
-                        搜索
-                    </button>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-primary" id="search-btn">
+                            <i class="fas fa-search"></i>
+                            搜索
+                        </button>
+                        <button class="btn btn-success" id="export-pending-btn" title="导出待开票申请（CSV格式）">
+                            <i class="fas fa-file-export"></i>
+                            导出待开票申请
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-container">
@@ -1710,22 +1716,32 @@ class InvoiceManager extends BaseComponent {
         // 状态筛选器
         const statusFilter = this.shadowRoot.getElementById('status-filter');
         if (statusFilter) {
-            statusFilter.addEventListener('change', (e) => {
+            // 移除旧的监听器（如果存在）
+            if (this._statusFilterHandler) {
+                statusFilter.removeEventListener('change', this._statusFilterHandler);
+            }
+            this._statusFilterHandler = (e) => {
                 this.statusFilter = e.target.value || '';
                 this.loadInvoices(1);
-            });
+            };
+            statusFilter.addEventListener('change', this._statusFilterHandler);
         }
         
         // 搜索输入框
         const searchInput = this.shadowRoot.getElementById('search-input');
         if (searchInput) {
+            // 移除旧的监听器（如果存在）
+            if (this._searchInputHandler) {
+                searchInput.removeEventListener('keypress', this._searchInputHandler);
+            }
             // 输入框回车事件
-            searchInput.addEventListener('keypress', (e) => {
+            this._searchInputHandler = (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault(); // 防止表单提交
                     this.performSearch();
                 }
-            });
+            };
+            searchInput.addEventListener('keypress', this._searchInputHandler);
             
             // 移除实时搜索，避免数据闪烁
             // 现在只在回车或点击搜索按钮时搜索
@@ -1734,9 +1750,27 @@ class InvoiceManager extends BaseComponent {
         // 搜索按钮
         const searchBtn = this.shadowRoot.getElementById('search-btn');
         if (searchBtn) {
-            searchBtn.addEventListener('click', () => {
+            // 移除旧的监听器（如果存在）
+            if (this._searchBtnHandler) {
+                searchBtn.removeEventListener('click', this._searchBtnHandler);
+            }
+            this._searchBtnHandler = () => {
                 this.performSearch();
-            });
+            };
+            searchBtn.addEventListener('click', this._searchBtnHandler);
+        }
+        
+        // 导出待开票申请按钮
+        const exportPendingBtn = this.shadowRoot.getElementById('export-pending-btn');
+        if (exportPendingBtn) {
+            // 移除旧的监听器（如果存在）
+            if (this._exportPendingBtnHandler) {
+                exportPendingBtn.removeEventListener('click', this._exportPendingBtnHandler);
+            }
+            this._exportPendingBtnHandler = () => {
+                this.exportPendingInvoices();
+            };
+            exportPendingBtn.addEventListener('click', this._exportPendingBtnHandler);
         }
         
         // 设置表格和分页事件监听器
@@ -3574,6 +3608,204 @@ class InvoiceManager extends BaseComponent {
             </div>
             ` : ''}
         `;
+    }
+
+    /**
+     * 导出待开票申请为CSV文件（UTF-8 with BOM）
+     */
+    async exportPendingInvoices() {
+        try {
+            // 显示加载提示
+            const exportBtn = this.shadowRoot.getElementById('export-pending-btn');
+            if (exportBtn) {
+                exportBtn.disabled = true;
+                exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导出中...';
+            }
+
+            // 获取待开票的申请（状态为pending的申请）
+            const response = await fetch('/admin/invoices/requests?status=pending&limit=10000', {
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error('获取待开票申请失败');
+            }
+
+            const data = await response.json();
+            const pendingInvoices = data.requests || [];
+
+            if (pendingInvoices.length === 0) {
+                this.showError('暂无待开票申请');
+                return;
+            }
+
+            // 定义CSV列头（与弹窗显示字段一致）
+            const headers = [
+                '姓名',
+                '邮箱',
+                '申请时间',
+                '联系人姓名',
+                '联系电话',
+                '联系邮箱',
+                '发票抬头',
+                '发票类型',
+                '发票类别',
+                '发票内容',
+                '发票金额',
+                '币种',
+                '注册系统编号',
+                '纳税人识别号',
+                '注册地址',
+                '注册电话',
+                '银行账号',
+                '开户行',
+                '邮寄地址',
+                '收件人',
+                '收件人电话',
+                '用户备注'
+            ];
+
+            // 准备CSV数据
+            const csvRows = [];
+            
+            // 添加列头
+            csvRows.push(headers.join(','));
+
+            // 添加数据行
+            for (const invoice of pendingInvoices) {
+                const userName = invoice.user?.fullname || invoice.user?.username || '';
+                const userEmail = invoice.user?.email || '';
+                const requestedAt = invoice.requestedAt || invoice.created_at || '';
+                const contactName = invoice.contactName || '';
+                const contactPhone = invoice.contactPhone || '';
+                const contactEmail = invoice.contactEmail || '';
+                const invoiceTitle = invoice.invoiceTitle || '';
+                const invoiceType = invoice.invoiceType === 'electronic' ? '电子发票' : '纸质发票';
+                const invoiceCategory = invoice.invoiceCategory === 'vat' ? '增值税专用发票' : '普通发票';
+                const content = invoice.content || '';
+                const invoiceAmount = invoice.invoiceAmount || invoice.amount || '0';
+                const currency = invoice.invoiceCurrency || 'RMB';
+                const registrationSystemNo = invoice.registrationSystemNo || '';
+                const taxNumber = invoice.taxNumber || '';
+                const registeredAddress = invoice.registeredAddress || '';
+                const registeredPhone = invoice.registeredPhone || '';
+                const bankAccount = invoice.bankAccount || '';
+                const bankName = invoice.bankName || '';
+                const mailingAddress = invoice.mailingAddress || '';
+                const recipient = invoice.recipient || '';
+                const recipientPhone = invoice.recipientPhone || '';
+                const notes = invoice.notes || '';
+
+                const row = [
+                    this.escapeCSV(userName),
+                    this.escapeCSV(userEmail),
+                    this.escapeCSV(new Date(requestedAt).toLocaleString('zh-CN')),
+                    this.escapeCSV(contactName),
+                    this.escapeCSVAsText(contactPhone),  // 强制为文本
+                    this.escapeCSV(contactEmail),
+                    this.escapeCSV(invoiceTitle),
+                    this.escapeCSV(invoiceType),
+                    this.escapeCSV(invoiceCategory),
+                    this.escapeCSV(content),
+                    this.escapeCSV(invoiceAmount),
+                    this.escapeCSV(currency),
+                    this.escapeCSVAsText(registrationSystemNo),  // 强制为文本
+                    this.escapeCSVAsText(taxNumber),  // 强制为文本
+                    this.escapeCSV(registeredAddress),
+                    this.escapeCSVAsText(registeredPhone),  // 强制为文本
+                    this.escapeCSVAsText(bankAccount),  // 强制为文本
+                    this.escapeCSV(bankName),
+                    this.escapeCSV(mailingAddress),
+                    this.escapeCSV(recipient),
+                    this.escapeCSVAsText(recipientPhone),  // 强制为文本
+                    this.escapeCSV(notes)
+                ];
+
+                csvRows.push(row.join(','));
+            }
+
+            // 生成CSV内容，添加UTF-8 BOM
+            const BOM = '\uFEFF';
+            const csvContent = BOM + csvRows.join('\n');
+
+            // 创建下载链接
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // 生成文件名：待开票申请_YYYYMMDD_HHMMSS.csv
+            const now = new Date();
+            const timestamp = now.getFullYear() + 
+                            String(now.getMonth() + 1).padStart(2, '0') + 
+                            String(now.getDate()).padStart(2, '0') + '_' +
+                            String(now.getHours()).padStart(2, '0') + 
+                            String(now.getMinutes()).padStart(2, '0') + 
+                            String(now.getSeconds()).padStart(2, '0');
+            link.download = `待开票申请_${timestamp}.csv`;
+            
+            // 触发下载
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            this.showSuccess(`成功导出 ${pendingInvoices.length} 条待开票申请`);
+
+        } catch (error) {
+            console.error('导出失败:', error);
+            this.showError('导出失败: ' + error.message);
+        } finally {
+            // 恢复按钮状态
+            const exportBtn = this.shadowRoot.getElementById('export-pending-btn');
+            if (exportBtn) {
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = '<i class="fas fa-file-export"></i> 导出待开票申请';
+            }
+        }
+    }
+
+    /**
+     * 转义CSV字段（处理逗号、引号、换行符）
+     */
+    escapeCSV(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        
+        // 转换为字符串
+        const str = String(value);
+        
+        // 如果包含逗号、引号或换行符，需要用引号包裹，并转义引号
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+            return `"${str.replace(/"/g, '""')}"`;
+        }
+        
+        return str;
+    }
+
+    /**
+     * 转义CSV字段并强制标记为文本格式（防止Excel将数字字符串转为数值）
+     * 使用制表符前缀的方式，这是最兼容的方法
+     */
+    escapeCSVAsText(value) {
+        if (value === null || value === undefined || value === '') {
+            return '';
+        }
+        
+        // 转换为字符串
+        const str = String(value);
+        
+        // 在字符串前添加制表符，强制Excel识别为文本
+        // 同时处理可能包含的特殊字符
+        const textValue = '\t' + str;
+        
+        // 如果包含逗号、引号或换行符，需要用引号包裹，并转义引号
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+            return `"${textValue.replace(/"/g, '""')}"`;
+        }
+        
+        return `"${textValue}"`;
     }
 
     disconnectedCallback() {

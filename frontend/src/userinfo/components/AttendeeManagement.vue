@@ -302,6 +302,16 @@
               <div v-show="showPaymentDetails" class="collapse-content">
                 <!-- International Bank Transfer Details -->
                 <div v-if="transferForm.feePaymentMethod === 'international'" class="payment-info-box">
+                  
+                  <!-- 手续费提示 -->
+                  <div class="transfer-fee-notice-wrapper">
+                    <div class="transfer-fee-notice-box" @click="showTransferFeeDialog = true">
+                      <i class="el-icon-warning"></i>
+                      <span class="notice-text">Important Notice about Transfer Fees</span>
+                      <i class="el-icon-arrow-right arrow-icon"></i>
+                    </div>
+                  </div>
+                  
                   <div class="bank-details">
                     <div class="detail-group">
                       <h5>Beneficiary's Details</h5>
@@ -470,6 +480,54 @@
         </el-timeline-item>
       </el-timeline>
     </el-dialog>
+
+    <!-- 手续费说明对话框 -->
+    <el-dialog
+      title="Important Notice about Transfer Fees"
+      :visible.sync="showTransferFeeDialog"
+      width="80%"
+      :close-on-click-modal="true"
+      custom-class="transfer-fee-dialog"
+    >
+      <div class="dialog-content">
+        <p class="dialog-notice">
+          <i class="el-icon-warning"></i>
+          <span>
+            <strong>Please note:</strong> We will accept the registration fee based on the actual amount received after deducting transfer fees. 
+            You may need to cover additional fees when making the payment or send a supplementary transfer to ensure the full amount is received.
+          </span>
+        </p>
+        
+        <div class="fee-image-wrapper">
+          <el-image
+            ref="feeImage"
+            :src="transferFeeImageUrl"
+            :preview-src-list="[transferFeeImageUrl]"
+            fit="contain"
+            class="fee-image"
+          >
+            <div slot="error" class="image-slot">
+              <i class="el-icon-picture-outline"></i>
+              <p>Failed to load image</p>
+            </div>
+          </el-image>
+          <div class="image-hint">
+            <i class="el-icon-zoom-in"></i> Click image to view full size
+          </div>
+        </div>
+        
+        <div class="dialog-footer-info">
+          <p>For detailed information about transfer fees, please visit:</p>
+          <a 
+            href="https://www.bochk.com/en/crossborder/remittance/charges.html" 
+            target="_blank" 
+            class="dialog-link"
+          >
+            <i class="el-icon-link"></i> Bank of China (Hong Kong) - Remittance Charges
+          </a>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -496,6 +554,8 @@ export default {
         usd: 150,
         rmb: 1100
       }, // 默认手续费
+      showTransferFeeDialog: false, // 手续费说明对话框
+      transferFeeImageUrl: require('../../assets/transfee.jpg'), // 手续费图片
       transferForm: {
         registrationId: '',
         newAttendee: {
@@ -1616,5 +1676,248 @@ export default {
 
 .remove-btn-inline {
   padding: 5px 15px;
+}
+
+/* 手续费说明样式 */
+.transfer-fee-notice-wrapper {
+  margin-bottom: 16px;
+}
+
+.transfer-fee-notice-box {
+  background: #fff7e6;
+  border: 1px solid #ffc069;
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.transfer-fee-notice-box:hover {
+  background: #ffe7ba;
+  border-color: #fa8c16;
+  box-shadow: 0 2px 8px rgba(250, 140, 22, 0.15);
+}
+
+.transfer-fee-notice-box .el-icon-warning {
+  color: #fa8c16;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.transfer-fee-notice-box .notice-text {
+  color: #d46b08;
+  font-weight: 500;
+  font-size: 14px;
+  flex: 1;
+}
+
+.transfer-fee-notice-box .arrow-icon {
+  color: #fa8c16;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.transfer-fee-notice-box:hover .arrow-icon {
+  transform: translateX(4px);
+}
+
+/* 手续费对话框样式 */
+.transfer-fee-dialog >>> .el-dialog {
+  border-radius: 10px;
+  max-width: 800px;
+}
+
+.transfer-fee-dialog >>> .el-dialog__header {
+  background: #fff7e6;
+  border-bottom: 1px solid #ffc069;
+  padding: 16px 20px;
+}
+
+.transfer-fee-dialog >>> .el-dialog__title {
+  color: #d46b08;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.transfer-fee-dialog >>> .el-dialog__body {
+  padding: 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dialog-notice {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+  padding: 12px;
+  border-radius: 8px;
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dialog-notice i {
+  color: #fa8c16;
+  font-size: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.dialog-notice span {
+  flex: 1;
+}
+
+.fee-image-wrapper {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  height: 50vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.fee-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.fee-image >>> img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.image-hint {
+  margin-top: 8px;
+  color: #909399;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.image-hint i {
+  font-size: 14px;
+}
+
+.image-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #909399;
+}
+
+.image-slot i {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.image-slot p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.dialog-footer-info {
+  background: #f0f7ff;
+  border: 1px solid #91d5ff;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.dialog-footer-info p {
+  margin: 0 0 8px 0;
+  color: #096dd9;
+  font-size: 13px;
+}
+
+.dialog-link {
+  color: #1890ff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.dialog-link:hover {
+  color: #40a9ff;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .transfer-fee-notice-box {
+    padding: 10px 12px;
+  }
+
+  .transfer-fee-notice-box .el-icon-warning {
+    font-size: 16px;
+  }
+
+  .transfer-fee-notice-box .notice-text {
+    font-size: 12px;
+  }
+
+  .transfer-fee-notice-box .arrow-icon {
+    font-size: 14px;
+  }
+
+  .transfer-fee-dialog >>> .el-dialog {
+    width: 95% !important;
+    max-width: 95%;
+  }
+
+  .transfer-fee-dialog >>> .el-dialog__body {
+    padding: 16px;
+    max-height: 70vh;
+  }
+
+  .dialog-notice {
+    font-size: 12px;
+    padding: 10px;
+  }
+
+  .fee-image-wrapper {
+    padding: 8px;
+    height: 45vh;
+  }
+
+  .image-hint {
+    font-size: 11px;
+  }
+
+  .dialog-footer-info {
+    padding: 10px;
+  }
+
+  .dialog-footer-info p {
+    font-size: 12px;
+  }
+
+  .dialog-link {
+    font-size: 13px;
+  }
 }
 </style>
