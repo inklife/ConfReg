@@ -881,16 +881,16 @@ class InvoiceManager extends BaseComponent {
                             <option value="completed">已完成</option>
                             <option value="rejected">已拒绝</option>
                         </select>
-                        <input type="text" class="search-input" id="search-input" placeholder="搜索申请人姓名、发票抬头、邮箱...">
+                        <input type="text" class="search-input" id="search-input" placeholder="搜索发票ID、申请人姓名、邮箱...">
                     </div>
                     <div style="display: flex; gap: 12px;">
                         <button class="btn btn-primary" id="search-btn">
                             <i class="fas fa-search"></i>
                             搜索
                         </button>
-                        <button class="btn btn-success" id="export-pending-btn" title="导出待开票申请（CSV格式）">
+                        <button class="btn btn-success" id="export-pending-btn" title="导出（CSV格式）">
                             <i class="fas fa-file-export"></i>
-                            导出待开票申请
+                            导出
                         </button>
                     </div>
                 </div>
@@ -1760,7 +1760,7 @@ class InvoiceManager extends BaseComponent {
             searchBtn.addEventListener('click', this._searchBtnHandler);
         }
         
-        // 导出待开票申请按钮
+        // 导出按钮
         const exportPendingBtn = this.shadowRoot.getElementById('export-pending-btn');
         if (exportPendingBtn) {
             // 移除旧的监听器（如果存在）
@@ -2027,6 +2027,11 @@ class InvoiceManager extends BaseComponent {
         }
         
         const adminNotes = prompt(`请输入${statusTexts[newStatus]}的备注（可选）:`);
+        
+        // 如果用户点击取消，prompt返回null，应该中止操作
+        if (adminNotes === null) {
+            return; // 用户取消操作
+        }
         
         try {
             const response = await fetch(`/admin/invoices/request/${invoiceId}/status`, {
@@ -3611,7 +3616,7 @@ class InvoiceManager extends BaseComponent {
     }
 
     /**
-     * 导出待开票申请为CSV文件（UTF-8 with BOM）
+     * 导出发票申请为CSV文件（UTF-8 with BOM）
      */
     async exportPendingInvoices() {
         try {
@@ -3641,6 +3646,9 @@ class InvoiceManager extends BaseComponent {
 
             // 定义CSV列头（与弹窗显示字段一致）
             const headers = [
+                '发票ID',
+                '发票状态',
+                'Paper ID',
                 '姓名',
                 '邮箱',
                 '申请时间',
@@ -3673,6 +3681,17 @@ class InvoiceManager extends BaseComponent {
 
             // 添加数据行
             for (const invoice of pendingInvoices) {
+                const invoiceId = invoice.id || '';
+                const invoiceStatus = (() => {
+                    const statusMap = {
+                        pending: '待处理',
+                        processing: '处理中',
+                        completed: '已完成',
+                        rejected: '已拒绝'
+                    };
+                    return statusMap[invoice.status] || invoice.status || '';
+                })();
+                const paperId = invoice.registration?.paper_id || '';
                 const userName = invoice.user?.fullname || invoice.user?.username || '';
                 const userEmail = invoice.user?.email || '';
                 const requestedAt = invoice.requestedAt || invoice.created_at || '';
@@ -3697,6 +3716,9 @@ class InvoiceManager extends BaseComponent {
                 const notes = invoice.notes || '';
 
                 const row = [
+                    this.escapeCSV(invoiceId),
+                    this.escapeCSV(invoiceStatus),
+                    this.escapeCSV(paperId),
                     this.escapeCSV(userName),
                     this.escapeCSV(userEmail),
                     this.escapeCSV(new Date(requestedAt).toLocaleString('zh-CN')),
@@ -3734,7 +3756,7 @@ class InvoiceManager extends BaseComponent {
             const link = document.createElement('a');
             link.href = url;
             
-            // 生成文件名：待开票申请_YYYYMMDD_HHMMSS.csv
+            // 生成文件名：发票申请_YYYYMMDD_HHMMSS.csv
             const now = new Date();
             const timestamp = now.getFullYear() + 
                             String(now.getMonth() + 1).padStart(2, '0') + 
@@ -3742,7 +3764,7 @@ class InvoiceManager extends BaseComponent {
                             String(now.getHours()).padStart(2, '0') + 
                             String(now.getMinutes()).padStart(2, '0') + 
                             String(now.getSeconds()).padStart(2, '0');
-            link.download = `待开票申请_${timestamp}.csv`;
+            link.download = `发票申请_${timestamp}.csv`;
             
             // 触发下载
             document.body.appendChild(link);
@@ -3750,7 +3772,7 @@ class InvoiceManager extends BaseComponent {
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
 
-            this.showSuccess(`成功导出 ${pendingInvoices.length} 条待开票申请`);
+            this.showSuccess(`成功导出 ${pendingInvoices.length} 条发票申请`);
 
         } catch (error) {
             console.error('导出失败:', error);
@@ -3760,7 +3782,7 @@ class InvoiceManager extends BaseComponent {
             const exportBtn = this.shadowRoot.getElementById('export-pending-btn');
             if (exportBtn) {
                 exportBtn.disabled = false;
-                exportBtn.innerHTML = '<i class="fas fa-file-export"></i> 导出待开票申请';
+                exportBtn.innerHTML = '<i class="fas fa-file-export"></i> 导出';
             }
         }
     }

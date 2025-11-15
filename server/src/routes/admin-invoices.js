@@ -111,33 +111,35 @@ router.get('/requests', requireAdmin, async (req, res) => {
       if (!searchTerm) {
         // 正常返回所有数据，不添加搜索条件
       } else {
-        // 处理邮箱搜索：如果包含@，取前半部分；否则直接搜索
-        const emailSearchTerm = searchTerm.includes('@') ? searchTerm.split('@')[0] : searchTerm;
+        // 如果搜索词是纯数字，只搜索发票ID（精准匹配）
+        if (/^\d+$/.test(searchTerm)) {
+          whereClause.id = parseInt(searchTerm);
+        } else {
+          // 非纯数字时，搜索用户信息
+          // 处理邮箱搜索：如果包含@，取前半部分；否则直接搜索
+          const emailSearchTerm = searchTerm.includes('@') ? searchTerm.split('@')[0] : searchTerm;
 
-        // 先查找匹配的用户ID
-        const matchingUsers = await User.findAll({
-          where: {
-            [Op.or]: [
-              { fullname: { [Op.like]: `%${searchTerm}%` } },
-              { username: { [Op.like]: `%${searchTerm}%` } },
-              { email: { [Op.like]: `%${emailSearchTerm}%` } }
-            ]
-          },
-          attributes: ['id']
-        });
+          // 先查找匹配的用户ID
+          const matchingUsers = await User.findAll({
+            where: {
+              [Op.or]: [
+                { fullname: { [Op.like]: `%${searchTerm}%` } },
+                { username: { [Op.like]: `%${searchTerm}%` } },
+                { email: { [Op.like]: `%${emailSearchTerm}%` } }
+              ]
+            },
+            attributes: ['id']
+          });
 
-        const userIds = matchingUsers.map(user => user.id);
+          const userIds = matchingUsers.map(user => user.id);
 
-        // 构建搜索条件：发票抬头 OR 用户匹配
-        const searchConditions = [
-          { invoiceTitle: { [Op.like]: `%${searchTerm}%` } }
-        ];
-
-        if (userIds.length > 0) {
-          searchConditions.push({ userId: { [Op.in]: userIds } });
+          if (userIds.length > 0) {
+            whereClause.userId = { [Op.in]: userIds };
+          } else {
+            // 没有匹配的用户时，返回空结果
+            whereClause.id = -1; // 不存在的ID，确保返回空结果
+          }
         }
-
-        whereClause[Op.or] = searchConditions;
       }
     }
 
