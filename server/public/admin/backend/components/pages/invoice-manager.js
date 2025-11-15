@@ -3627,20 +3627,20 @@ class InvoiceManager extends BaseComponent {
                 exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导出中...';
             }
 
-            // 获取待开票的申请（状态为pending的申请）
-            const response = await fetch('/admin/invoices/requests?status=pending&limit=10000', {
+            // 获取所有发票申请（不限制状态）
+            const response = await fetch('/admin/invoices/requests?limit=10000', {
                 credentials: 'include'
             });
 
             if (!response.ok) {
-                throw new Error('获取待开票申请失败');
+                throw new Error('获取发票申请失败');
             }
 
             const data = await response.json();
             const pendingInvoices = data.requests || [];
 
             if (pendingInvoices.length === 0) {
-                this.showError('暂无待开票申请');
+                this.showError('暂无发票申请');
                 return;
             }
 
