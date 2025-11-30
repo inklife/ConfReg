@@ -6,6 +6,7 @@ const RefundRequest = require('./RefundRequest');
 const InvoiceRequest = require('./InvoiceRequest');
 const InvoiceFile = require('./InvoiceFile');
 const MealVoucher = require('./MealVoucher');
+const PptUpload = require('./PptUpload');
 
 // 定义关联关系
 RegistrationSubmission.belongsTo(User, {
@@ -153,6 +154,19 @@ User.hasMany(MealVoucher, {
   as: 'reviewedVouchers'
 });
 
+// PptUpload 关联关系
+PptUpload.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user',
+  constraints: false  // 禁用外键约束，避免表名引用问题
+});
+
+User.hasMany(PptUpload, {
+  foreignKey: 'userId',
+  as: 'pptUploads',
+  constraints: false  // 禁用外键约束，避免表名引用问题
+});
+
 module.exports = {
   sequelize,
   User,
@@ -161,5 +175,6 @@ module.exports = {
   RefundRequest,
   InvoiceRequest,
   InvoiceFile,
-  MealVoucher
+  MealVoucher,
+  PptUpload
 };

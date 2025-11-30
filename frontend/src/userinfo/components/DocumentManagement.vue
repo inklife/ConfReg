@@ -67,52 +67,84 @@
         </div>
         
         <div class="document-grid">
+          <!-- 会议论文集 - 仅在有已批准注册时显示 -->
+          <div v-if="approvedRegistrations.length > 0" class="document-row">
+            <div class="document-icon proceedings-icon">
+              <i class="el-icon-notebook-2"></i>
+            </div>
+            <div class="document-info">
+              <h4>Conference Proceedings</h4>
+              <p>Download the full conference proceedings</p>
+            </div>
+            <div class="document-action">
+              <el-button 
+                type="primary" 
+                @click="downloadProceedings" 
+                :loading="downloadLoading.proceedings">
+                <i class="el-icon-download"></i>
+                Download
+              </el-button>
+            </div>
+          </div>
+          
           <!-- 收据 -->
-          <el-card class="document-card" shadow="hover">
+          <div class="document-row">
             <div class="document-icon">
               <i class="el-icon-tickets"></i>
             </div>
-            <h4>Payment Receipt</h4>
-            <p>Registration fee payment receipt for reimbursement and other purposes</p>
-            <el-button type="warning" @click="downloadDocument('receipt')" :loading="downloadLoading.receipt">
-              <i v-if="isDocumentDownloadable('receipt')" class="el-icon-download"></i>
-              {{ getDownloadButtonText('receipt') }}
-            </el-button>
-          </el-card>
+            <div class="document-info">
+              <h4>Payment Receipt</h4>
+              <p>Registration fee payment receipt for reimbursement and other purposes</p>
+            </div>
+            <div class="document-action">
+              <el-button type="warning" @click="downloadDocument('receipt')" :loading="downloadLoading.receipt">
+                <i v-if="isDocumentDownloadable('receipt')" class="el-icon-download"></i>
+                {{ getDownloadButtonText('receipt') }}
+              </el-button>
+            </div>
+          </div>
           
           <!-- 餐券 -->
-          <el-card class="document-card" shadow="hover">
+          <div class="document-row">
             <div class="document-icon">
               <i class="el-icon-food"></i>
             </div>
-            <h4>Extra Banquet Ticket</h4>
-            <p>Download extra banquet tickets for the conference banquet dinner</p>
-            <el-button 
-              type="success" 
-              @click="downloadDocument('mealVoucher')" 
-              :loading="downloadLoading.mealVoucher">
-              <i v-if="isDocumentDownloadable('mealVoucher')" class="el-icon-download"></i>
-              {{ getDownloadButtonText('mealVoucher') }}
-            </el-button>
-          </el-card>
+            <div class="document-info">
+              <h4>Extra Banquet Ticket</h4>
+              <p>Download extra banquet tickets for the conference banquet dinner</p>
+            </div>
+            <div class="document-action">
+              <el-button 
+                type="success" 
+                @click="downloadDocument('mealVoucher')" 
+                :loading="downloadLoading.mealVoucher">
+                <i v-if="isDocumentDownloadable('mealVoucher')" class="el-icon-download"></i>
+                {{ getDownloadButtonText('mealVoucher') }}
+              </el-button>
+            </div>
+          </div>
+        </div>
           
           <!-- 参会证书 -->
-          <!-- <el-card class="document-card" shadow="hover">
+          <!-- <div class="document-row">
             <div class="document-icon">
               <i class="el-icon-medal"></i>
             </div>
-            <h4>Attendance Certificate</h4>
-            <p>Attendance certificate available after conference ends</p>
-            <el-button 
-              type="primary" 
-              @click="downloadDocument('certificate')" 
-              :loading="downloadLoading.certificate"
-              :disabled="!isCertificateAvailable">
-              <i v-if="isCertificateAvailable && isDocumentDownloadable('certificate')" class="el-icon-download"></i>
-              {{ isCertificateAvailable ? 'Download Certificate' : 'Available After Conference' }}
-            </el-button>
-          </el-card> -->
-        </div>
+            <div class="document-info">
+              <h4>Attendance Certificate</h4>
+              <p>Attendance certificate available after conference ends</p>
+            </div>
+            <div class="document-action">
+              <el-button 
+                type="primary" 
+                @click="downloadDocument('certificate')" 
+                :loading="downloadLoading.certificate"
+                :disabled="!isCertificateAvailable">
+                <i v-if="isCertificateAvailable && isDocumentDownloadable('certificate')" class="el-icon-download"></i>
+                {{ isCertificateAvailable ? 'Download Certificate' : 'Available After Conference' }}
+              </el-button>
+            </div>
+          </div> -->
         
         <!-- 注册信息概览 - 仅在有注册时显示 -->
         <div v-if="approvedRegistrations.length > 0" class="registration-overview">
@@ -255,13 +287,14 @@ export default {
   name: 'DocumentManagement',
   data() {
     return {
-      hasApprovedRegistration: false,
+      hasApprovedRegistration: false, //  如果有已批准且已退款的注册也为 true 未作排除
       approvedRegistrations: [],
       approvedMealVouchers: [], // 新增：已批准的餐券列表
       downloadLoading: {
         receipt: false,
         certificate: false,
-        mealVoucher: false
+        mealVoucher: false,
+        proceedings: false
       },
       downloadHistory: [],
       isCertificateAvailable: false,
@@ -495,6 +528,51 @@ export default {
     // 刷新页面
     refreshPage() {
       window.location.reload();
+    },
+
+    // 下载会议论文集
+    async downloadProceedings() {
+      try {
+        this.downloadLoading.proceedings = true;
+        
+        const axios = (await import('axios')).default;
+        
+        const response = await axios.get('/api/pan/proceedings', {
+          withCredentials: true
+        });
+        
+        if (response.data.success && response.data.downloadUrl) {
+          // 使用返回的下载链接触发下载
+          window.open(response.data.downloadUrl, '_blank');
+          this.$message.success('Proceedings download started!');
+        } else {
+          throw new Error(response.data.message || 'Failed to get download link');
+        }
+        
+      } catch (error) {
+        console.error('Download proceedings failed:', error);
+        
+        if (error.response) {
+          const status = error.response.status;
+          const message = error.response.data?.message;
+          
+          if (status === 401) {
+            this.$message.error('Please login to download proceedings');
+          } else if (status === 403) {
+            this.$message.warning(message || 'You need at least one approved registration to download proceedings');
+          } else if (status === 503) {
+            this.$message.info(message || 'Proceedings download is not available yet');
+          } else {
+            this.$message.error(message || 'Failed to download proceedings. Please try again later.');
+          }
+        } else if (error.request) {
+          this.$message.error('Network error. Please check your connection and try again.');
+        } else {
+          this.$message.error(error.message || 'Failed to download proceedings');
+        }
+      } finally {
+        this.downloadLoading.proceedings = false;
+      }
     },
 
     // 刷新任务状态
@@ -755,7 +833,7 @@ export default {
         
         if (response && response.success && response.data) {
           this.approvedRegistrations = response.data;
-          this.hasApprovedRegistration = this.approvedRegistrations.length > 0;
+          this.hasApprovedRegistration = this.approvedRegistrations.length > 0; // 显示信息中包括 已批准且已退款的注册 并未排除
           console.log('DocumentManagement: Found approved registrations:', this.approvedRegistrations.length);
           console.log('DocumentManagement: Registrations data:', JSON.stringify(this.approvedRegistrations, null, 2));
         } else {
@@ -2356,55 +2434,73 @@ export default {
 }
 
 .document-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 32px;
 }
 
-.document-card {
-  text-align: center;
-  padding: 32px 20px;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  border: 1px solid #ebeef5;
-  min-height: 220px;
+.document-row {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  flex-direction: row;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  background: #fff;
+  transition: all 0.2s ease;
 }
 
-.document-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+.document-row:hover {
+  background-color: #fafafa;
+  border-color: #d9d9d9;
 }
 
 .document-icon {
-  font-size: 56px;
-  color: #409EFF;
-  margin-bottom: 18px;
+  font-size: 28px;
+  color: #6366F1;
+  flex-shrink: 0;
+  width: 40px;
+  text-align: center;
 }
 
-.document-card h4 {
+.document-row:nth-child(2) .document-icon {
+  color: #67C23A;
+}
+
+.document-row:nth-child(3) .document-icon {
+  color: #E6A23C;
+}
+
+.document-info {
+  flex: 1;
+  min-width: 0;
+  padding: 0 20px;
+}
+
+.document-row h4 {
   color: #303133;
-  font-size: 19px;
-  font-weight: 600;
-  margin: 16px 0 10px 0;
-}
-
-.document-card p {
-  color: #909399;
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 20px;
-}
-
-.document-card .el-button {
-  width: 85%;
-  padding: 11px 22px;
-  border-radius: 8px;
-  font-weight: 500;
   font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+
+.document-row p {
+  color: #909399;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.document-action {
+  flex-shrink: 0;
+}
+
+.document-action .el-button {
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
 }
 
 .registration-overview {
@@ -2433,34 +2529,21 @@ export default {
   border-radius: 4px;
 }
 
-/* 图标颜色自定义 */
-.document-card:nth-child(1) .document-icon {
-  color: #67C23A;
-}
-
-.document-card:nth-child(2) .document-icon {
-  color: #E6A23C;
-}
-
-.document-card:nth-child(3) .document-icon {
-  color: #909399;
-}
-
-.document-card:nth-child(4) .document-icon {
-  color: #409EFF;
+/* 会议论文集图标颜色 */
+.document-icon.proceedings-icon {
+  color: #6366F1 !important;
 }
 
 /* 响应式设计 */
 /* 平板设备 */
 @media (max-width: 1024px) {
   .document-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
+    gap: 10px;
   }
   
   .document-card {
-    padding: 28px 16px;
-    min-height: 210px;
+    padding: 14px 16px;
+    gap: 14px;
   }
   
   .registration-overview {
@@ -2527,36 +2610,36 @@ export default {
   }
   
   .document-grid {
-    grid-template-columns: 1fr;
-    gap: 12px; /* 减小卡片间距 */
-    margin-bottom: 20px; /* 减小底部间距 */
+    gap: 8px;
+    margin-bottom: 20px;
   }
   
-  .document-card {
-    padding: 16px 12px; /* 减小卡片内边距 */
-    min-height: 160px; /* 减小卡片最小高度 */
+  .document-row {
+    padding: 12px;
   }
   
   .document-icon {
-    font-size: 36px; /* 减小图标尺寸 */
-    margin-bottom: 10px; /* 减小底部间距 */
+    font-size: 24px;
+    width: 32px;
   }
   
-  .document-card h4 {
-    font-size: 15px; /* 减小标题字体 */
-    margin: 8px 0 6px 0; /* 减小间距 */
+  .document-info {
+    padding: 0 12px;
   }
   
-  .document-card p {
-    font-size: 12px; /* 减小描述字体 */
-    margin-bottom: 12px; /* 减小底部间距 */
-    line-height: 1.3; /* 优化行高 */
+  .document-row h4 {
+    font-size: 14px;
+    margin-bottom: 2px;
   }
   
-  .document-card .el-button {
-    width: 100%;
-    padding: 8px 14px; /* 减小按钮内边距 */
-    font-size: 13px; /* 减小按钮字体 */
+  .document-row p {
+    font-size: 12px;
+    display: none; /* 移动端隐藏描述 */
+  }
+  
+  .document-action .el-button {
+    padding: 6px 12px;
+    font-size: 12px;
   }
   
   .pending-downloads {
@@ -2665,20 +2748,20 @@ export default {
 /* 小屏手机设备 - 480px及以下 */
 @media (max-width: 480px) {
   .document-management {
-    padding: 8px; /* 进一步减小 */
+    padding: 8px;
   }
   
   .card-title {
-    font-size: 16px; /* 进一步减小 */
+    font-size: 16px;
   }
   
   .card-subtitle {
-    font-size: 12px; /* 进一步减小 */
-    display: none; /* 小屏幕隐藏副标题节省空间 */
+    font-size: 12px;
+    display: none;
   }
   
   .card-header {
-    padding: 8px 0; /* 减小头部间距 */
+    padding: 8px 0;
   }
   
   /* 格式选择进一步简化 */
@@ -2704,30 +2787,30 @@ export default {
     font-size: 11px;
   }
   
-  .document-card {
-    padding: 12px 8px; /* 进一步减小 */
-    min-height: 140px; /* 进一步减小高度 */
+  .document-row {
+    padding: 10px;
   }
   
   .document-icon {
-    font-size: 30px; /* 进一步减小图标 */
-    margin-bottom: 8px; /* 减小间距 */
+    font-size: 20px;
+    width: 28px;
   }
   
-  .document-card h4 {
-    font-size: 14px; /* 进一步减小 */
-    margin: 6px 0 4px 0; /* 减小间距 */
+  .document-info {
+    padding: 0 10px;
   }
   
-  .document-card p {
-    font-size: 11px; /* 进一步减小 */
-    margin-bottom: 10px; /* 减小间距 */
-    line-height: 1.2; /* 优化行高 */
+  .document-row h4 {
+    font-size: 13px;
   }
   
-  .document-card .el-button {
-    padding: 6px 10px; /* 进一步减小 */
-    font-size: 12px; /* 进一步减小 */
+  .document-row p {
+    display: none;
+  }
+  
+  .document-action .el-button {
+    padding: 5px 10px;
+    font-size: 11px;
   }
   
   .pending-task {

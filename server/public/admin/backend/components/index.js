@@ -18,6 +18,7 @@ export { default as TransferManager } from './pages/transfer-manager.js';
 export { default as RefundManager } from './pages/refund-manager.js';
 export { default as InvoiceManager } from './pages/invoice-manager.js';
 export { default as VoucherManager } from './pages/voucher-manager.js';
+export { default as PptManager } from './pages/ppt-manager.js';
 export { default as UserManager } from './pages/user-manager.js';
 export { default as StatisticsManager } from './pages/statistics-manager.js';
 export { default as SystemManager } from './pages/system-manager.js';
@@ -48,6 +49,7 @@ export function initializeComponents() {
         'refund-manager': 'RefundManager',
         'invoice-manager': 'InvoiceManager',
         'voucher-manager': 'VoucherManager',
+        'ppt-manager': 'PptManager',
         'user-manager': 'UserManager',
         'statistics-manager': 'StatisticsManager',
         'system-manager': 'SystemManager',

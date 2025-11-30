@@ -39,6 +39,11 @@
             <span slot="title">Registrations</span>
           </el-menu-item>
           
+          <el-menu-item index="pptupload">
+            <i class="el-icon-upload"></i>
+            <span slot="title">PPT Upload</span>
+          </el-menu-item>
+          
           <el-menu-item index="vouchers">
             <i class="el-icon-food"></i>
             <span slot="title">Extra Banquet Tickets</span>
@@ -240,6 +245,24 @@
             <div class="desktop-actions">
               <el-row :gutter="20">
                 <el-col :md="6" :lg="6" :xl="6">
+                  <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'documents'">
+                    <div class="action-icon">
+                      <i class="el-icon-download"></i>
+                    </div>
+                    <h4>Download Documents</h4>
+                    <p>Download proceedings, receipts and other documents</p>
+                  </el-card>
+                </el-col>
+                <el-col :md="6" :lg="6" :xl="6">
+                  <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'invoice'">
+                    <div class="action-icon">
+                      <i class="el-icon-document-add"></i>
+                    </div>
+                    <h4>Request Invoice</h4>
+                    <p>Apply for invoice for approved registrations</p>
+                  </el-card>
+                </el-col>
+                <el-col :md="6" :lg="6" :xl="6">
                   <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'attendee'">
                     <div class="action-icon">
                       <i class="el-icon-edit-outline"></i>
@@ -257,30 +280,20 @@
                     <p>Apply for refund for approved registrations</p>
                   </el-card>
                 </el-col>
-                <el-col :md="6" :lg="6" :xl="6">
-                  <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'invoice'">
-                    <div class="action-icon">
-                      <i class="el-icon-document-add"></i>
-                    </div>
-                    <h4>Request Invoice</h4>
-                    <p>Apply for invoice for approved registrations</p>
-                  </el-card>
-                </el-col>
-                <el-col :md="6" :lg="6" :xl="6">
-                  <el-card class="action-card" shadow="hover" @click.native="activeMenu = 'documents'">
-                    <div class="action-icon">
-                      <i class="el-icon-download"></i>
-                    </div>
-                    <h4>Download Documents</h4>
-                    <p>Download confirmation letters, receipts and other documents</p>
-                  </el-card>
-                </el-col>
               </el-row>
             </div>
             
             <!-- 移动端简化的快捷操作 -->
             <div class="mobile-actions">
               <div class="mobile-actions-grid">
+                <div class="mobile-action-item" @click="activeMenu = 'documents'">
+                  <i class="el-icon-download"></i>
+                  <span>Download Docs</span>
+                </div>
+                <div class="mobile-action-item" @click="activeMenu = 'invoice'">
+                  <i class="el-icon-document-add"></i>
+                  <span>Request Invoice</span>
+                </div>
                 <div class="mobile-action-item" @click="activeMenu = 'attendee'">
                   <i class="el-icon-edit-outline"></i>
                   <span>Attendee Transfer</span>
@@ -288,14 +301,6 @@
                 <div class="mobile-action-item" @click="activeMenu = 'refund'">
                   <i class="el-icon-money"></i>
                   <span>Request Refund</span>
-                </div>
-                <div class="mobile-action-item" @click="activeMenu = 'invoice'">
-                  <i class="el-icon-document-add"></i>
-                  <span>Request Invoice</span>
-                </div>
-                <div class="mobile-action-item" @click="activeMenu = 'documents'">
-                  <i class="el-icon-download"></i>
-                  <span>Download Docs</span>
                 </div>
               </div>
             </div>
@@ -324,6 +329,7 @@ import AttendeeManagement from './components/AttendeeManagement.vue';
 import RefundManagement from './components/RefundManagement.vue';
 import DocumentManagement from './components/DocumentManagement.vue';
 import InvoiceManagement from './components/InvoiceManagement.vue';
+import PptUploadManagement from './components/PptUploadManagement.vue';
 
 export default {
   name: 'UserDashboard',
@@ -334,7 +340,8 @@ export default {
     AttendeeManagement,
     RefundManagement,
     DocumentManagement,
-    InvoiceManagement
+    InvoiceManagement,
+    PptUploadManagement
   },
   data() {
     return {
@@ -361,6 +368,7 @@ export default {
         { index: 'overview', title: 'Overview', icon: 'el-icon-pie-chart' },
         { index: 'profile', title: 'Profile', icon: 'el-icon-user' },
         { index: 'registrations', title: 'Registrations', icon: 'el-icon-user-solid' },
+        { index: 'pptupload', title: 'PPT Upload', icon: 'el-icon-upload' },
         { index: 'vouchers', title: 'Banquet Tickets', icon: 'el-icon-food' },
         { index: 'attendee', title: 'Transfer', icon: 'el-icon-edit-outline' },
         { index: 'refund', title: 'Refund', icon: 'el-icon-money' },
@@ -378,7 +386,8 @@ export default {
         'attendee': 'AttendeeManagement',
         'refund': 'RefundManagement',
         'documents': 'DocumentManagement',
-        'invoice': 'InvoiceManagement'
+        'invoice': 'InvoiceManagement',
+        'pptupload': 'PptUploadManagement'
       };
       return componentMap[this.activeMenu];
     }

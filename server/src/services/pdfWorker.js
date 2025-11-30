@@ -441,6 +441,9 @@ async function generateReceiptPDF(submission, customOptions = {}) {
       signatureImage2: signatureBase64_2,
       signerNames: 'Jun Wang, Yunyun Feng',
       
+      // Currency display control
+      currencyNoticeDisplay: currency === 'USD' ? 'block' : 'none',
+      
       // Legacy fields (kept for compatibility)
       receiptNumber,
       issueDate: `${formatBeijingDateTime(now, 'date')} (UTC+8)`,

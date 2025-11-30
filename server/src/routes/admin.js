@@ -21,6 +21,7 @@ const simulateLoginCache = require('../utils/cache/simulateLoginCache');
 // 导入其他管理员路由
 const adminInvoiceRoutes = require('./admin-invoices');
 const adminTransferRoutes = require('./admin-transfers');
+const adminPptRoutes = require('./admin-ppt');
 
 const execAsync = promisify(exec);
 
@@ -1728,6 +1729,7 @@ router.post('/memory-cleanup', requireAdmin, async (req, res) => {
 // 挂载子路由
 router.use('/invoices', adminInvoiceRoutes);
 router.use('/transfers', adminTransferRoutes);
+router.use('/ppt', adminPptRoutes);
 
 // ==================== 导入导出功能 ====================
 

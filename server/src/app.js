@@ -27,6 +27,8 @@ const backupEmailRoutes = require('./routes/backup-email');
 const voucherRoutes = require('./routes/vouchers');
 const adminVoucherRoutes = require('./routes/admin-vouchers');
 const configRoutes = require('./routes/config');
+const panRoutes = require('./routes/pan');
+const pptUploadRoutes = require('./routes/ppt-upload');
 
 const app = express();
 const PORT = process.env.CONFREG_BE_PORT || 3000;
@@ -176,6 +178,8 @@ app.use('/api/email', emailRoutes);
 app.use('/api/backup-email', backupEmailRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/pan', panRoutes); // USTC Pan 下载服务
+app.use('/api/ppt-upload', pptUploadRoutes); // PPT上传服务
 
 // 统一的管理员路由 - 包含发票、转账等所有管理员功能
 app.use('/admin', adminRoutes);

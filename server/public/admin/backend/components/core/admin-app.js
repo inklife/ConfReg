@@ -292,6 +292,7 @@ class AdminApp extends BaseComponent {
             'refunds': 'refund-manager',
             'invoices': 'invoice-manager',
             'vouchers': 'voucher-manager',
+            'ppt': 'ppt-manager',
             'statistics': 'statistics-manager',
             'settings': 'settings-manager'
         };
@@ -339,6 +340,7 @@ class AdminApp extends BaseComponent {
             'refund-manager': 'refunds',
             'invoice-manager': 'invoices',
             'voucher-manager': 'vouchers',
+            'ppt-manager': 'ppt',
             'statistics-manager': 'statistics',
             'settings-manager': 'settings'
         };
@@ -453,6 +455,10 @@ class AdminApp extends BaseComponent {
 
                 case 'vouchers':
                     content = await this.loadVouchersContent();
+                    break;
+
+                case 'ppt':
+                    content = await this.loadPptContent();
                     break;
 
                 case 'users':
@@ -572,6 +578,25 @@ class AdminApp extends BaseComponent {
         } catch (error) {
             console.error('Failed to load voucher manager:', error);
             return this.createPlaceholderContent('餐券管理', 'fas fa-ticket-alt');
+        }
+    }
+
+    async loadPptContent() {
+        // 动态导入PPT管理组件
+        try {
+            const { default: PptManager } = await import('../pages/ppt-manager.js');
+            
+            // 注册组件（如果尚未注册）
+            if (!customElements.get('ppt-manager')) {
+                customElements.define('ppt-manager', PptManager);
+            }
+            
+            // 创建组件实例
+            const pptManager = document.createElement('ppt-manager');
+            return pptManager;
+        } catch (error) {
+            console.error('Failed to load ppt manager:', error);
+            return this.createPlaceholderContent('PPT管理', 'fas fa-file-powerpoint');
         }
     }
 
