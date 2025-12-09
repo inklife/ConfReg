@@ -172,6 +172,12 @@ const RegistrationSubmission = sequelize.define('RegistrationSubmission', {
     allowNull: false,
     defaultValue: ''
   },
+  payment_instructions: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+    defaultValue: '',
+    comment: 'Payment instructions/notes added by admin'
+  },
   review_time: {
     type: DataTypes.DATE
   },

@@ -132,6 +132,20 @@ async function renderTemplate(templateName, data) {
       template = template.replace('{{REVIEW_TIMELINE_ITEM}}', '');
     }
     
+    // Handle payment instructions section for receipt template
+    if (templateName === 'receipt') {
+      if (data.paymentInstructions) {
+        const paymentInstructionsSection = `
+                <!-- Payment Instructions -->
+                <div style="margin-top: 15px; padding: 10px 12px; background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 4px;">
+                    <div style="font-size: 0.85rem; color: #555; line-height: 1.5; white-space: pre-line;">${data.paymentInstructions}</div>
+                </div>`;
+        template = template.replace('{{PAYMENT_INSTRUCTIONS_SECTION}}', paymentInstructionsSection);
+      } else {
+        template = template.replace('{{PAYMENT_INSTRUCTIONS_SECTION}}', '');
+      }
+    }
+    
     for (const [key, value] of Object.entries(data)) {
       const regex = new RegExp(`{{${key}}}`, 'g');
       template = template.replace(regex, value || '');
@@ -443,6 +457,9 @@ async function generateReceiptPDF(submission, customOptions = {}) {
       
       // Currency display control
       currencyNoticeDisplay: currency === 'USD' ? 'block' : 'none',
+      
+      // Payment instructions (from registration submission)
+      paymentInstructions: submission.payment_instructions || '',
       
       // Legacy fields (kept for compatibility)
       receiptNumber,

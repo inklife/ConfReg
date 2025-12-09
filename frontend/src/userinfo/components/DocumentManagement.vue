@@ -836,6 +836,11 @@ export default {
           this.hasApprovedRegistration = this.approvedRegistrations.length > 0; // 显示信息中包括 已批准且已退款的注册 并未排除
           console.log('DocumentManagement: Found approved registrations:', this.approvedRegistrations.length);
           console.log('DocumentManagement: Registrations data:', JSON.stringify(this.approvedRegistrations, null, 2));
+          
+          // 如果有已批准的注册，后台预请求论文集下载链接以激活服务器缓存
+          if (this.approvedRegistrations.length > 0) {
+            this.prefetchProceedingsLink();
+          }
         } else {
           console.log('DocumentManagement: No data in response or response failed');
           this.hasApprovedRegistration = false;
@@ -844,6 +849,25 @@ export default {
       } catch (error) {
         console.error('DocumentManagement: Failed to load approved registrations:', error);
         await this.checkRegistrationStatusFallback();
+      }
+    },
+
+    // 后台预请求论文集下载链接，激活服务器缓存但不触发下载
+    async prefetchProceedingsLink() {
+      try {
+        console.log('📚 Prefetching proceedings link to warm up server cache...');
+        
+        const axios = (await import('axios')).default;
+        
+        // 静默请求，不显示任何加载状态或错误提示
+        await axios.get('/api/pan/proceedings', {
+          withCredentials: true
+        });
+        
+        console.log('📚 Proceedings link prefetched successfully (cache warmed up)');
+      } catch (error) {
+        // 静默处理错误，不影响用户体验
+        console.log('📚 Prefetch proceedings link skipped:', error.response?.status || error.message);
       }
     },
 

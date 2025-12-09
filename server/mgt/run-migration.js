@@ -73,7 +73,7 @@ async function runMigration(migrationFile) {
 }
 
 // 从命令行参数获取迁移文件名
-const migrationFile = process.argv[2] || 'add_transfer_fee_fields.sql';
+const migrationFile = process.argv[2];
 
 console.log('='.repeat(60));
 console.log('    数据库迁移工具');

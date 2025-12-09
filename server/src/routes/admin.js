@@ -705,6 +705,56 @@ router.put('/submissions/:id/price', requireAdmin, async (req, res) => {
   }
 });
 
+// 更新凭证附言（管理员）
+router.put('/submissions/:id/payment-instructions', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { payment_instructions } = req.body;
+
+    // 验证输入 - 允许为空字符串
+    if (payment_instructions === undefined || payment_instructions === null) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供凭证附言内容'
+      });
+    }
+
+    const submission = await RegistrationSubmission.findByPk(id);
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
+      });
+    }
+
+    // 记录原始值用于日志
+    const oldValue = submission.payment_instructions || '';
+
+    // 更新凭证附言
+    submission.payment_instructions = payment_instructions.trim();
+    await submission.save();
+
+    // 记录操作日志
+    console.log(`[PAYMENT_INSTRUCTIONS_UPDATE] Admin ${req.user.email} updated payment_instructions for submission #${id}`, {
+      old: oldValue,
+      new: submission.payment_instructions
+    });
+
+    res.json({
+      success: true,
+      message: '凭证附言更新成功',
+      data: submission
+    });
+
+  } catch (error) {
+    console.error('Update payment instructions error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // 删除注册记录（高危操作，需要确认）
 router.delete('/submissions/:id', requireAdmin, async (req, res) => {
   try {

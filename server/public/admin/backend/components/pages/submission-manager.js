@@ -1209,7 +1209,7 @@ class SubmissionManager extends BaseComponent {
     generateModalContent(submission) {
         return `
             <!-- 基本信息 -->
-            <div class="detail-group">
+            <div class="detail-group" style="margin-bottom: 0;">
                 <h4 class="detail-group-title">
                     <i class="fas fa-user"></i>
                     基本信息
@@ -1231,17 +1231,17 @@ class SubmissionManager extends BaseComponent {
             </div>
 
             <!-- 注册信息 -->
-            <div class="detail-group">
+            <div class="detail-group" style="margin-bottom: 0;">
                 <h4 class="detail-group-title">
                     <i class="fas fa-ticket-alt"></i>
                     注册信息
                 </h4>
-                <div class="detail-grid">
-                    <div class="detail-item">
+                <div class="detail-grid" style="margin-bottom: 0; gap: 8px;">
+                    <div class="detail-item" style="margin-bottom: 0;">
                         <div class="detail-label">Paper ID</div>
                         <div class="detail-value">${this.escapeHtml(submission.paper_id || '未填写')}</div>
                     </div>
-                    <div class="detail-item">
+                    <div class="detail-item" style="margin-bottom: 0;">
                         <div class="detail-label">Paper Type</div>
                         <div class="detail-value">
                             ${(() => {
@@ -1269,11 +1269,11 @@ class SubmissionManager extends BaseComponent {
                             })()}
                         </div>
                     </div>
-                    <div class="detail-item">
+                    <div class="detail-item" style="margin-bottom: 0;">
                         <div class="detail-label">注册类别</div>
                         <div class="detail-value">${this.escapeHtml(this.getRegistrationCategoryText(submission.registration_category) || '未知')}</div>
                     </div>
-                    <div class="detail-item">
+                    <div class="detail-item" style="margin-bottom: 0;">
                         <div class="detail-label">产品代码</div>
                         <div class="detail-value">
                             <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">
@@ -1281,7 +1281,7 @@ class SubmissionManager extends BaseComponent {
                             </code>
                         </div>
                     </div>
-                    <div class="detail-item">
+                    <div class="detail-item" style="margin-bottom: 0;">
                         <div class="detail-label">基础价格</div>
                         <div class="detail-value" style="color: #059669; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                             <span id="price-display-${submission.id}">
@@ -1305,13 +1305,13 @@ class SubmissionManager extends BaseComponent {
                             </button>
                         </div>
                     </div>
-                    <div class="detail-item">
+                    <div class="detail-item" style="margin-bottom: 0;">
                         <div class="detail-label">论文页数</div>
                         <div class="detail-value">
                             ${submission.paper_pages ? `${submission.paper_pages} 页` : '未填写'}
                         </div>
                     </div>
-                    <div class="detail-item">
+                    <div class="detail-item" style="margin-bottom: 0;">
                         <div class="detail-label">超页费用</div>
                         <div class="detail-value" style="color: ${(submission.extra_page_fee_usd > 0 || submission.extra_page_fee_rmb > 0) ? '#dc2626' : '#6b7280'};">
                             ${(() => {
@@ -1326,7 +1326,7 @@ class SubmissionManager extends BaseComponent {
                             })()}
                         </div>
                     </div>
-                    <div class="detail-item">
+                    <div class="detail-item" style="margin-bottom: 0;">
                         <div class="detail-label">总价</div>
                         <div class="detail-value" style="color: #059669; font-weight: 700; font-size: 16px;">
                             ${(() => {
@@ -1339,7 +1339,7 @@ class SubmissionManager extends BaseComponent {
                             })()}
                         </div>
                     </div>
-                    <div class="detail-item">
+                    <div class="detail-item" style="margin-bottom: 0;">
                         <div class="detail-label">状态</div>
                         <div class="detail-value">
                             <span class="status-badge status-${submission.is_refunded ? 'refunded' : (submission.status || 'pending')}">
@@ -1351,7 +1351,7 @@ class SubmissionManager extends BaseComponent {
             </div>
 
             <!-- 时间信息 -->
-            <div class="detail-group">
+            <div class="detail-group" style="padding-bottom: 0; margin-bottom: 0;">
                 <h4 class="detail-group-title">
                     <i class="fas fa-clock"></i>
                     时间/备注
@@ -1374,6 +1374,22 @@ class SubmissionManager extends BaseComponent {
                         <div class="detail-value">${this.escapeHtml(submission.review_notes)}</div>
                     </div>
                 ` : ''}
+                <div class="detail-item" style="margin-top: 12px;">
+                    <div class="detail-label" style="display: flex; align-items: center; gap: 8px;">
+                        凭证附言
+                        <button 
+                            class="btn btn-sm btn-outline-primary edit-payment-instructions-btn" 
+                            data-submission-id="${submission.id}"
+                            style="padding: 2px 8px; font-size: 12px; border-radius: 4px; border: 1px solid #3b82f6; color: #3b82f6; background: white; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"
+                            title="编辑凭证附言"
+                        >
+                            <i class="fas fa-edit" style="font-size: 11px;"></i>
+                            编辑
+                        </button>
+                        ${!submission.payment_instructions ? `<span style="color: #9ca3af; font-size: 13px; font-weight: 400;">暂无</span>` : ''}
+                    </div>
+                    ${submission.payment_instructions ? `<div id="payment-instructions-display-${submission.id}" style="color: #374151; white-space: pre-wrap; margin-top: 4px; font-size: 14px;">${this.escapeHtml(submission.payment_instructions)}</div>` : `<div id="payment-instructions-display-${submission.id}" style="display: none;"></div>`}
+                </div>
             </div>
 
             <!-- 支付凭证 -->
@@ -1510,6 +1526,14 @@ class SubmissionManager extends BaseComponent {
             btn.addEventListener('click', () => {
                 const submissionId = btn.getAttribute('data-submission-id');
                 this.editPrice(submissionId);
+            });
+        });
+
+        // 编辑凭证附言按钮
+        modal.querySelectorAll('.edit-payment-instructions-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const submissionId = btn.getAttribute('data-submission-id');
+                this.editPaymentInstructions(submissionId);
             });
         });
     }
@@ -1756,6 +1780,107 @@ class SubmissionManager extends BaseComponent {
         } catch (error) {
             console.error('Error updating price:', error);
             alert('❌ 价格更新失败，请稍后重试');
+        }
+    }
+
+    // 全局方法：编辑凭证附言
+    async editPaymentInstructions(submissionId) {
+        try {
+            // 从 API 获取最新的提交信息
+            const response = await fetch(`/admin/submissions/${submissionId}`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                alert('❌ 获取注册信息失败');
+                return;
+            }
+
+            const result = await response.json();
+            if (!result.success || !result.data) {
+                alert('❌ 未找到注册信息');
+                return;
+            }
+
+            const submission = result.data;
+            const currentInstructions = submission.payment_instructions || '';
+
+            // 提示用户输入凭证附言
+            const newInstructions = prompt(
+                '请输入凭证附言（Payment Instructions）：\n\n' +
+                '此字段用于记录与支付凭证相关的备注信息。',
+                currentInstructions
+            );
+
+            // 用户取消
+            if (newInstructions === null) return;
+
+            // 调用API更新凭证附言
+            const updateResponse = await fetch(`/admin/submissions/${submissionId}/payment-instructions`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({ payment_instructions: newInstructions })
+            });
+
+            const data = await updateResponse.json();
+            if (data.success) {
+                alert('✅ 凭证附言更新成功');
+                
+                // 更新本地数据
+                const submissionIndex = this.submissions.findIndex(s => s.id == submissionId);
+                if (submissionIndex !== -1) {
+                    this.submissions[submissionIndex].payment_instructions = newInstructions;
+                }
+
+                // 更新弹窗中的显示（在全局 modal 中查找）
+                const globalModal = document.getElementById('submission-modal-global');
+                if (globalModal) {
+                    const instructionsDisplay = globalModal.querySelector(`#payment-instructions-display-${submissionId}`);
+                    // 查找"暂无"标签（在编辑按钮后面的 span）
+                    const editBtn = globalModal.querySelector(`.edit-payment-instructions-btn[data-submission-id="${submissionId}"]`);
+                    const emptyLabel = editBtn ? editBtn.nextElementSibling : null;
+                    
+                    if (instructionsDisplay) {
+                        if (newInstructions.trim()) {
+                            instructionsDisplay.textContent = newInstructions;
+                            instructionsDisplay.style.display = 'block';
+                            instructionsDisplay.style.color = '#374151';
+                            instructionsDisplay.style.whiteSpace = 'pre-wrap';
+                            instructionsDisplay.style.marginTop = '4px';
+                            instructionsDisplay.style.fontSize = '14px';
+                            instructionsDisplay.className = '';
+                            // 隐藏"暂无"标签
+                            if (emptyLabel && emptyLabel.tagName === 'SPAN') {
+                                emptyLabel.style.display = 'none';
+                            }
+                        } else {
+                            instructionsDisplay.style.display = 'none';
+                            // 显示"暂无"标签
+                            if (emptyLabel && emptyLabel.tagName === 'SPAN') {
+                                emptyLabel.style.display = 'inline';
+                            } else if (editBtn) {
+                                // 如果不存在则创建
+                                const newLabel = document.createElement('span');
+                                newLabel.style.cssText = 'color: #9ca3af; font-size: 13px; font-weight: 400;';
+                                newLabel.textContent = '暂无';
+                                editBtn.after(newLabel);
+                            }
+                        }
+                    }
+                }
+
+                // 重新加载列表以确保数据同步
+                this.loadSubmissions();
+            } else {
+                alert('❌ 凭证附言更新失败：' + (data.message || '未知错误'));
+            }
+        } catch (error) {
+            console.error('Error updating payment instructions:', error);
+            alert('❌ 凭证附言更新失败，请稍后重试');
         }
     }
 

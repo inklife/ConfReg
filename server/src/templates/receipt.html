@@ -155,7 +155,7 @@
         .info-label {
             font-weight: 600;
             color: #333;
-            min-width: 140px;
+            min-width: 95px;
         }
         
         .info-value {
@@ -163,6 +163,10 @@
             flex: 1;
             white-space: pre-line;
             line-height: 1.4;
+        }
+
+        #attendeeAffiliation {
+            max-height: 40px;
         }
         
         .two-column-layout {
@@ -447,7 +451,7 @@
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Affiliation:</span>
-                                <span class="info-value">{{attendeeAffiliation}}</span>
+                                <span class="info-value" id="attendeeAffiliation">{{attendeeAffiliation}}</span>
                             </div>
                         </div>
                     </div>
@@ -519,6 +523,8 @@
                         </tbody>
                     </table>
                 </div>
+                
+                {{PAYMENT_INSTRUCTIONS_SECTION}}
                 
                 <!-- Signature Section -->
                 <div class="signature-section">
