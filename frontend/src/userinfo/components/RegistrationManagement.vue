@@ -582,7 +582,7 @@ export default {
       if (category === 'full') {
         return 'Full Registration';
       } else if (category === 'attendee' || category === 'student') {
-        return 'Attendee自尊心的地方小吃      Registration';
+        return 'Attendee Registration';
       }
       
       // 其他情况保持原值
