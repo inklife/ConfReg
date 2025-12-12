@@ -6,9 +6,40 @@
         <p class="card-subtitle">Manage your personal information and account settings</p>
       </div>
       
-      <el-tabs v-model="activeTab" @tab-click="handleTabChange" class="profile-tabs">
+      <!-- Custom Tab Navigation -->
+      <div class="custom-tabs">
+        <div class="custom-tabs-nav">
+          <div 
+            class="custom-tab-item"
+            :class="{ 'is-active': activeTab === 'personal' }"
+            @click="switchTab('personal')">
+            Personal Information
+          </div>
+          <div 
+            class="custom-tab-item"
+            :class="{ 'is-active': activeTab === 'password' }"
+            @click="switchTab('password')">
+            Change Password
+          </div>
+          <div 
+            class="custom-tab-item"
+            :class="{ 'is-active': activeTab === 'email' }"
+            @click="switchTab('email')">
+            Email Management
+          </div>
+          <div 
+            class="custom-tab-item"
+            :class="{ 'is-active': activeTab === 'username' }"
+            @click="switchTab('username')">
+            Update Username
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="custom-tabs-content">
         <!-- Personal Information Tab -->
-        <el-tab-pane label="Personal Information" name="personal">
+        <div v-show="activeTab === 'personal'" class="custom-tab-pane">
           <!-- 移动端下滑提示 -->
           <div class="scroll-hint-container" v-show="showScrollHint">
             <div class="scroll-hint">
@@ -74,10 +105,10 @@
               </button>
             </div>
           </el-form>
-        </el-tab-pane>
+        </div>
 
         <!-- Change Password Tab -->
-        <el-tab-pane label="Change Password" name="password">
+        <div v-show="activeTab === 'password'" class="custom-tab-pane">
           <!-- 移动端下滑提示 -->
           <div class="scroll-hint-container" v-show="showScrollHint">
             <div class="scroll-hint">
@@ -148,10 +179,10 @@
               </button>
             </div>
           </el-form>
-        </el-tab-pane>
+        </div>
 
         <!-- Email Management Tab -->
-        <el-tab-pane label="Email Management" name="email">
+        <div v-show="activeTab === 'email'" class="custom-tab-pane">
           <!-- 移动端下滑提示 -->
           <div class="scroll-hint-container" v-show="showScrollHint">
             <div class="scroll-hint">
@@ -302,10 +333,10 @@
               </div>
             </div>
           </div>
-        </el-tab-pane>
+        </div>
 
         <!-- Update Username Tab -->
-        <el-tab-pane label="Update Username" name="username">
+        <div v-show="activeTab === 'username'" class="custom-tab-pane">
           <!-- 移动端下滑提示 -->
           <div class="scroll-hint-container" v-show="showScrollHint">
             <div class="scroll-hint">
@@ -521,8 +552,8 @@
               </div>
             </div>
           </div>
-        </el-tab-pane>
-      </el-tabs>
+        </div>
+      </div>
     </el-card>
   </div>
 </template>
@@ -744,6 +775,11 @@ export default {
     }
   },
   methods: {
+    switchTab(tabName) {
+      this.activeTab = tabName;
+      this.handleTabChange({ name: tabName });
+    },
+    
     handleTabChange(tab) {
       // 更新URL参数以包含子选项卡
       const currentSubtab = this.$route.query.subtab;
@@ -1792,35 +1828,62 @@ export default {
   font-size: 14px;
 }
 
-/* Tab specific styles */
-.profile-tabs >>> .el-tabs__header {
-  margin-bottom: 0;
+/* Custom Tab Styles */
+.custom-tabs {
+  margin-bottom: 20px;
 }
 
-.profile-tabs >>> .el-tabs__item {
+.custom-tabs-nav {
+  display: flex;
+  border-bottom: 2px solid #e4e7ed;
+  position: relative;
+}
+
+.custom-tab-item {
+  flex: 0 0 auto;
+  padding: 14px 24px;
   font-size: 16px;
   font-weight: 500;
-  padding: 0 24px;
-  height: 48px;
-  line-height: 48px;
-  min-width: 120px;
-  text-align: center;
+  color: #606266;
   cursor: pointer;
+  position: relative;
   transition: all 0.3s ease;
+  user-select: none;
+  white-space: nowrap;
 }
 
-.profile-tabs >>> .el-tabs__item:hover {
+.custom-tab-item:hover {
+  color: #409EFF;
   background-color: #f5f7fa;
 }
 
-.profile-tabs >>> .el-tabs__item.is-active {
+.custom-tab-item.is-active {
+  color: #409EFF;
   background-color: #ecf5ff;
+}
+
+.custom-tab-item.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #409EFF;
+}
+
+.custom-tabs-content {
+  padding-top: 20px;
+}
+
+.custom-tab-pane {
+  min-height: 400px;
 }
 
 /* 移动端触摸优化 */
 @media (hover: none) and (pointer: coarse) {
   /* 针对触摸设备的特殊样式 */
-  .profile-tabs >>> .el-tabs__item {
+  .custom-tab-item {
     /* 确保足够的触摸目标大小 */
     min-height: 48px !important;
     min-width: 88px !important;
@@ -1833,7 +1896,7 @@ export default {
     -ms-user-select: none !important;
   }
   
-  .profile-tabs >>> .el-tabs__item:active {
+  .custom-tab-item:active {
     background-color: #d9ecff !important;
     transform: scale(0.95) !important;
     transition: all 0.1s ease !important;
@@ -1841,7 +1904,7 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .profile-tabs >>> .el-tabs__item {
+  .custom-tab-item {
     /* 确保足够的触摸目标大小 */
     min-height: 48px !important;
     touch-action: manipulation !important;
@@ -1851,7 +1914,7 @@ export default {
   }
   
   /* 为了确保点击区域覆盖整个tab，添加伪元素 */
-  .profile-tabs >>> .el-tabs__item::before {
+  .custom-tab-item::before {
     content: '' !important;
     position: absolute !important;
     top: 0 !important;
@@ -1862,25 +1925,29 @@ export default {
     cursor: pointer !important;
   }
   
-  .profile-tabs >>> .el-tabs__item:active {
+  .custom-tab-item:active {
     background-color: #d9ecff !important;
     transform: scale(0.98) !important;
   }
   
   /* 确保tab文本在伪元素上方 */
-  .profile-tabs >>> .el-tabs__item * {
+  .custom-tab-item * {
     position: relative !important;
     z-index: 2 !important;
     pointer-events: none !important;
   }
-}
-
-.profile-tabs >>> .el-tabs__content {
-  padding-top: 8px;
-}
-
-.profile-tabs >>> .el-tab-pane {
-  min-height: 400px;
+  
+  /* 移动端tab导航支持横向滚动 */
+  .custom-tabs-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .custom-tabs-nav::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Password form specific styles */
@@ -2702,14 +2769,22 @@ export default {
     line-height: 1.4;
   }
   
-  .profile-tabs .el-tabs__header {
-    margin-bottom: 16px;
+  /* 移动端自定义tabs样式 */
+  .custom-tabs-nav {
+    padding: 0 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
   
-  .profile-tabs >>> .el-tabs__item {
+  .custom-tabs-nav::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .custom-tab-item {
     padding: 12px 8px !important;
     font-size: 14px !important;
-    height: 56px !important;
+    min-height: 56px !important;
     line-height: 1.2 !important;
     min-width: 80px !important;
     display: flex !important;
@@ -2718,49 +2793,11 @@ export default {
     text-align: center !important;
     word-break: break-word !important;
     white-space: normal !important;
-    border-radius: 8px 8px 0 0 !important;
-    margin: 0 2px !important;
-    position: relative !important;
-    background-color: #f8f9fa !important;
-    border: 1px solid #e4e7ed !important;
-    border-bottom: none !important;
+    flex: 1 1 auto !important;
   }
   
-  .profile-tabs >>> .el-tabs__item:hover {
-    background-color: #ecf5ff !important;
-    border-color: #409EFF !important;
-    color: #409EFF !important;
-  }
-  
-  .profile-tabs >>> .el-tabs__item.is-active {
-    background-color: white !important;
-    border-color: #409EFF !important;
-    color: #409EFF !important;
-    font-weight: 600 !important;
-    z-index: 1 !important;
-  }
-  
-  .profile-tabs >>> .el-tabs__nav-wrap {
-    padding: 0 8px !important;
-  }
-  
-  .profile-tabs >>> .el-tabs__nav-scroll {
-    overflow-x: auto !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-  }
-  
-  .profile-tabs >>> .el-tabs__nav-scroll::-webkit-scrollbar {
-    display: none !important;
-  }
-  
-  .profile-tabs >>> .el-tabs__nav {
-    display: flex !important;
-    white-space: nowrap !important;
-  }
-  
-  .profile-tabs >>> .el-tabs__active-bar {
-    display: none !important;
+  .custom-tab-item.is-active::after {
+    height: 3px !important;
   }
   
   .profile-form,
@@ -2997,10 +3034,10 @@ export default {
     font-size: 13px;
   }
   
-  .profile-tabs >>> .el-tabs__item {
+  .custom-tab-item {
     padding: 16px 4px !important;
     font-size: 12px !important;
-    height: 64px !important;
+    min-height: 64px !important;
     line-height: 1.1 !important;
     min-width: 70px !important;
     flex: 1 !important;
@@ -3008,16 +3045,8 @@ export default {
   }
   
   /* 在小屏幕上让tab项平分宽度 */
-  .profile-tabs >>> .el-tabs__nav {
+  .custom-tabs-nav {
     width: 100% !important;
-  }
-  
-  .profile-tabs >>> .el-tabs__item:nth-child(1),
-  .profile-tabs >>> .el-tabs__item:nth-child(2),
-  .profile-tabs >>> .el-tabs__item:nth-child(3),
-  .profile-tabs >>> .el-tabs__item:nth-child(4) {
-    flex: 1 !important;
-    margin: 0 1px !important;
   }
   
   /* 480px以下屏幕的表单标签字体大小调整 */

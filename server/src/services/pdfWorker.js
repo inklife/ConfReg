@@ -40,51 +40,6 @@ function formatBeijingDateTime(date, format = 'full') {
   return date.toISOString();
 }
 
-// 复制pdfGenerator.js中的工具函数
-function containsChinese(text) {
-  if (!text) return false;
-  return /[\u4e00-\u9fff]/.test(text);
-}
-
-function convertChineseToReadable(text) {
-  if (!text || !containsChinese(text)) return text;
-  
-  const chineseMap = {
-    '中国科学技术大学': 'University of Science and Technology of China',
-    '北京大学': 'Peking University',
-    '清华大学': 'Tsinghua University',
-    '复旦大学': 'Fudan University',
-    '上海交通大学': 'Shanghai Jiao Tong University',
-    '浙江大学': 'Zhejiang University',
-    '南京大学': 'Nanjing University',
-    '西安交通大学': "Xi'an Jiaotong University",
-    '华中科技大学': 'Huazhong University of Science and Technology',
-    '哈尔滨工业大学': 'Harbin Institute of Technology',
-    '中山大学': 'Sun Yat-sen University',
-    '东南大学': 'Southeast University',
-    '大连理工大学': 'Dalian University of Technology',
-    '华南理工大学': 'South China University of Technology',
-    '电子科技大学': 'University of Electronic Science and Technology of China',
-    '西北工业大学': 'Northwestern Polytechnical University',
-    '北京理工大学': 'Beijing Institute of Technology',
-    '天津大学': 'Tianjin University',
-    '东北大学': 'Northeastern University',
-    '华东师范大学': 'East China Normal University'
-  };
-  
-  for (const [chinese, english] of Object.entries(chineseMap)) {
-    if (text.includes(chinese)) {
-      text = text.replace(chinese, english);
-    }
-  }
-  
-  if (containsChinese(text)) {
-    return `${text} (Chinese characters)`;
-  }
-  
-  return text;
-}
-
 function generateReceiptNumber(submissionId) {
   const hash = crypto.createHash('md5').update(submissionId.toString()).digest('hex').toUpperCase().slice(0, 6);
   return `ICPADS-${hash}`;
@@ -408,7 +363,7 @@ async function generateReceiptPDF(submission, customOptions = {}) {
     
     // 如果有product_code,使用更详细的描述
     if (submission.product_code) {
-      productDescription = convertChineseToReadable(submission.product_code);
+      productDescription = submission.product_code;
     }
 
     const templateData = {
@@ -419,8 +374,8 @@ async function generateReceiptPDF(submission, customOptions = {}) {
       confirmationNumber: receiptNumber,
       
       // Recipient Information
-      attendeeName: convertChineseToReadable(submission.name),
-      attendeeAffiliation: convertChineseToReadable(submission.affiliation) || '-', // No affiliation provided
+      attendeeName: submission.name,
+      attendeeAffiliation: submission.affiliation || '-', // No affiliation provided
       attendeeEmail: submission.email,
       
       // Order Information
@@ -466,7 +421,7 @@ async function generateReceiptPDF(submission, customOptions = {}) {
       issueDate: `${formatBeijingDateTime(now, 'date')} (UTC+8)`,
       issueTime: formatBeijingDateTime(now, 'time'),
       paperTitle: submission.paper_id || 'N/A',
-      productCode: convertChineseToReadable(submission.product_code),
+      productCode: submission.product_code,
       transactionDate: submission.submission_time ? 
         formatBeijingDateTime(submission.submission_time, 'datetime') : 'N/A',
       generationDateTime: `${formatBeijingDateTime(now, 'datetime')} (UTC+8)`,
@@ -498,10 +453,10 @@ async function generateConfirmationLetterPDF(submission, customOptions = {}) {
     
     const templateData = {
       issueDate: `${issueDateFormatted} (UTC+8)`,
-      participantName: convertChineseToReadable(submission.name),
+      participantName: submission.name,
       emailAddress: submission.email,
-      affiliation: convertChineseToReadable(submission.affiliation || 'N/A'),
-      registrationType: convertChineseToReadable(submission.product_code),
+      affiliation: submission.affiliation || 'N/A',
+      registrationType: submission.product_code,
       registrationDate: submission.submission_time ? 
         submission.submission_time.toISOString().split('T')[0] : 'N/A',
       verificationCode,
@@ -538,12 +493,12 @@ async function generateRegistrationInfoPDF(submission, customOptions = {}) {
     const qrCodeDataURL = await generateQRCode(verificationData);
     
     const templateData = {
-      fullName: convertChineseToReadable(submission.name),
+      fullName: submission.name,
       emailAddress: submission.email,
       phoneNumber: submission.phone || 'N/A',
-      affiliation: convertChineseToReadable(submission.affiliation || 'N/A'),
+      affiliation: submission.affiliation || 'N/A',
       paperId: submission.paper_id || 'N/A',
-      registrationType: convertChineseToReadable(submission.product_code),
+      registrationType: submission.product_code,
       registrationFee: submission.product_price,
       registrationStatus: submission.status?.toUpperCase() || 'PENDING',
       statusClass,
@@ -596,7 +551,7 @@ async function generateMealVoucherPDF(mealVoucher, customOptions = {}) {
     
     const templateData = {
       MARGIN_CLASS: `margin-${marginMode}`,
-      ATTENDEE_NAME: convertChineseToReadable(mealVoucher.attendee_name || mealVoucher.attendeeName),
+      ATTENDEE_NAME: mealVoucher.attendee_name || mealVoucher.attendeeName,
       EMAIL: mealVoucher.email,
       VOUCHER_CODE: mealVoucher.voucher_code || mealVoucher.voucherCode || 'N/A',
       QUANTITY: mealVoucher.quantity || 1,

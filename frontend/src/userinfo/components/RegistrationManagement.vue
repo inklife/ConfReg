@@ -63,27 +63,27 @@
               </div>
               
               <!-- Paper ID -->
-              <div class="paper-id-column">
+              <div class="paper-id-column" data-label="Paper ID">
                 <span class="cell-content">{{ (registration.registration_data && registration.registration_data.paper_id) || registration.paper_id || 'N/A' }}</span>
               </div>
               
               <!-- Attendee Name -->
-              <div class="name-column">
+              <div class="name-column" data-label="Name">
                 <span class="cell-content">{{ registration.attendee_name || 'Registration' }}</span>
               </div>
               
               <!-- Registration Type -->
-              <div class="type-column">
+              <div class="type-column" data-label="Type">
                 <span class="cell-content">{{ getRegistrationCategoryText(registration) }}</span>
               </div>
               
               <!-- Submitted Date -->
-              <div class="date-column">
+              <div class="date-column" data-label="Date">
                 <span class="cell-content">{{ formatDate(registration.created_at) }}</span>
               </div>
               
               <!-- Payment Amount -->
-              <div class="amount-column">
+              <div class="amount-column" data-label="Amount">
                 <span class="cell-content amount-text">{{ formatAmount(registration) }}</span>
               </div>
               
@@ -1243,31 +1243,54 @@ export default {
 
 @media (max-width: 768px) {
   .registration-management {
-    padding: 16px;
+    padding: 12px;
   }
   
   .page-header {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
   
   .page-header h2 {
-    font-size: 24px;
+    font-size: 22px;
+    margin-bottom: 6px;
   }
   
   .page-header p {
-    font-size: 14px;
+    font-size: 13px;
+  }
+  
+  .notice-banner {
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  
+  .notice-banner i {
+    font-size: 18px;
   }
   
   .empty-state {
-    padding: 60px 16px;
+    padding: 50px 16px;
   }
   
   .empty-icon {
     font-size: 48px;
+    margin-bottom: 16px;
   }
   
   .empty-state h3 {
     font-size: 18px;
+    margin-bottom: 8px;
+  }
+  
+  .empty-state p {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  
+  .registration-list-container {
+    background: transparent;
+    box-shadow: none;
   }
   
   /* 隐藏表头 */
@@ -1275,65 +1298,178 @@ export default {
     display: none;
   }
   
+  /* 卡片式布局 */
+  .registration-item {
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid #E4E7ED;
+    overflow: hidden;
+  }
+  
+  .registration-item:last-child {
+    margin-bottom: 0;
+  }
+  
   .registration-row {
-    flex-wrap: wrap;
-    padding: 16px;
-    gap: 12px;
-  }
-  
-  .registration-row > div {
-    position: relative;
-    padding-left: 100px;
-    min-height: 24px;
-  }
-  
-  .registration-row > div::before {
-    content: attr(data-label);
-    position: absolute;
-    left: 0;
-    font-weight: 600;
-    color: #909399;
-    font-size: 12px;
-  }
-  
-  .status-column,
-  .paper-id-column,
-  .name-column,
-  .type-column,
-  .date-column,
-  .amount-column {
-    flex: 0 0 100%;
-  }
-  
-  .status-column {
-    padding-left: 0;
-  }
-  
-  .status-column::before {
-    display: none;
-  }
-  
-  .actions-column {
-    flex: 0 0 100%;
-    margin-top: 8px;
+    flex-direction: column;
     padding: 0;
+    gap: 0;
+    min-width: auto;
+  }
+  
+  /* 顶部区域：状态、纸张ID、姓名 */
+  .registration-row .status-column {
+    width: 100%;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid #F5F7FA;
+    background: #FAFBFC;
+  }
+  
+  .registration-row .paper-id-column,
+  .registration-row .name-column,
+  .registration-row .type-column,
+  .registration-row .date-column,
+  .registration-row .amount-column {
+    width: 100%;
+    padding: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid #F5F7FA;
+  }
+  
+  .registration-row .paper-id-column::before,
+  .registration-row .name-column::before,
+  .registration-row .type-column::before,
+  .registration-row .date-column::before,
+  .registration-row .amount-column::before {
+    content: attr(data-label);
+    font-size: 12px;
+    color: #909399;
+    font-weight: 500;
+  }
+  
+  .registration-row .paper-id-column .cell-content,
+  .registration-row .name-column .cell-content,
+  .registration-row .type-column .cell-content,
+  .registration-row .date-column .cell-content {
+    font-size: 14px;
+    font-weight: 500;
+    color: #303133;
+  }
+  
+  .registration-row .paper-id-column .cell-content {
+    color: #409EFF;
+    font-family: 'Courier New', monospace;
+  }
+  
+  .registration-row .amount-column .amount-text {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  .registration-row .amount-column {
+    border-bottom: none;
+  }
+  
+  .registration-row .actions-column {
+    width: 100%;
+    padding: 12px 14px 14px;
+    background: #FAFBFC;
   }
   
   .action-buttons {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
   }
   
-  .action-btn-view,
+  .action-buttons .el-button {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  
+  .action-btn-view {
+    grid-column: 1 / 2;
+  }
+  
   .action-btn-edit {
-    grid-column: 1 / 2;
+    grid-column: 2 / 3;
   }
   
-  .action-buttons .action-btn-view:last-child {
-    grid-column: 1 / 2;
+  /* 当只有View按钮时占满 */
+  .action-buttons .action-btn-view:only-child,
+  .action-buttons .action-btn-view:last-child:first-child {
+    grid-column: 1 / 3;
   }
   
-  .cell-content {
+  /* 状态徽章在移动端稍大一些 */
+  .status-badge {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  /* 拒绝原因行 */
+  .rejection-reason-row {
+    margin-top: 0;
+    background: #FEF0F0;
+  }
+  
+  .rejection-collapse >>> .el-collapse-item__header {
+    padding: 10px 14px;
+    font-size: 12px;
+    min-height: 40px;
+  }
+  
+  .rejection-collapse >>> .el-collapse-item__content {
+    padding: 0 14px 10px 14px;
+    font-size: 12px;
+  }
+  
+  .rejection-reason-full {
+    padding-left: 20px;
+  }
+  
+  /* Add registration button */
+  .add-registration {
+    padding: 16px 14px 20px;
+    background: transparent;
+    border-top: none;
+  }
+  
+  /* Dialog调整 */
+  .registration-detail {
+    padding: 10px 0;
+  }
+  
+  .detail-section {
+    margin-bottom: 20px;
+  }
+  
+  .detail-section h4 {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+  
+  .detail-item {
+    margin-bottom: 12px;
+  }
+  
+  .detail-item label {
+    font-size: 11px;
+  }
+  
+  .detail-item span {
+    font-size: 13px;
+  }
+  
+  .rejection-section {
+    padding: 14px;
+  }
+  
+  .rejection-content {
     font-size: 13px;
   }
 }

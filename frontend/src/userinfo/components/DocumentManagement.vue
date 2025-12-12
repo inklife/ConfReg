@@ -275,6 +275,48 @@
         <el-button @click="registrationSelectionDialog = false">Cancel</el-button>
       </span>
     </el-dialog>
+
+    <!-- 论文集选择对话框 -->
+    <el-dialog
+      title="Conference Proceedings"
+      :visible.sync="proceedingsDialog"
+      width="80%"
+      :close-on-click-modal="false">
+      <div class="proceedings-selection-content">
+        <p class="selection-tip">Select a proceeding file to download:</p>
+        
+        <el-table
+          :data="proceedingsList"
+          border
+          highlight-current-row
+          style="width: 100%; margin-top: 15px;">
+          <el-table-column type="index" label="#" width="50"></el-table-column>
+          <el-table-column prop="name" label="File Name" min-width="300"></el-table-column>
+          <el-table-column label="Action" width="150" align="center" fixed="right">
+            <template slot-scope="scope">
+              <el-button
+                type="primary"
+                size="mini"
+                @click="downloadProceedingFile(scope.row.id, scope.row.name)">
+                <i class="el-icon-download"></i>
+                Download
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="proceedingsDialog = false">Close</el-button>
+      </span>
+    </el-dialog>
+    
+    <!-- 自定义全屏loading -->
+    <div v-if="customLoading" class="custom-loading-overlay">
+      <div class="custom-loading-content">
+        <div class="custom-loading-spinner"></div>
+        <div class="custom-loading-text">Loading...</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -321,7 +363,15 @@ export default {
       // 注册选择对话框
       registrationSelectionDialog: false,
       selectedRegistrationId: null,
-      pendingDownloadType: null // 待处理的下载类型
+      pendingDownloadType: null, // 待处理的下载类型
+      
+      // 论文集相关
+      proceedingsDialog: false,
+      proceedingsList: [],
+      downloadingProceedings: {}, // 记录正在下载的论文集 { id: true/false }
+      
+      // 自定义loading
+      customLoading: false
     };
   },
   computed: {
@@ -530,7 +580,7 @@ export default {
       window.location.reload();
     },
 
-    // 下载会议论文集
+    // 打开论文集列表对话框
     async downloadProceedings() {
       try {
         this.downloadLoading.proceedings = true;
@@ -541,37 +591,92 @@ export default {
           withCredentials: true
         });
         
-        if (response.data.success && response.data.downloadUrl) {
-          // 使用返回的下载链接触发下载
-          window.open(response.data.downloadUrl, '_blank');
-          this.$message.success('Proceedings download started!');
+        if (response.data.success && response.data.proceedings) {
+          this.proceedingsList = response.data.proceedings;
+          this.proceedingsDialog = true;
+          this.downloadingProceedings = {}; // 重置下载状态
         } else {
-          throw new Error(response.data.message || 'Failed to get download link');
+          throw new Error(response.data.message || 'Failed to get proceedings list');
         }
         
       } catch (error) {
-        console.error('Download proceedings failed:', error);
+        console.error('Load proceedings list failed:', error);
         
         if (error.response) {
           const status = error.response.status;
           const message = error.response.data?.message;
           
           if (status === 401) {
-            this.$message.error('Please login to download proceedings');
+            this.$message.error('Please login to view proceedings');
           } else if (status === 403) {
-            this.$message.warning(message || 'You need at least one approved registration to download proceedings');
+            this.$message.warning(message || 'You need at least one approved registration to view proceedings');
           } else if (status === 503) {
-            this.$message.info(message || 'Proceedings download is not available yet');
+            this.$message.info(message || 'Proceedings are not yet published and are still being prepared.');
           } else {
-            this.$message.error(message || 'Failed to download proceedings. Please try again later.');
+            this.$message.error(message || 'Failed to load proceedings list. Please try again later.');
           }
         } else if (error.request) {
           this.$message.error('Network error. Please check your connection and try again.');
         } else {
-          this.$message.error(error.message || 'Failed to download proceedings');
+          this.$message.error(error.message || 'Failed to load proceedings list');
         }
       } finally {
         this.downloadLoading.proceedings = false;
+      }
+    },
+    
+    // 下载单个论文集文件
+    async downloadProceedingFile(id, name) {
+      let loadingTimer = null;
+      
+      // 1秒后如果还没完成，才显示loading
+      loadingTimer = setTimeout(() => {
+        this.customLoading = true;
+      }, 1000);
+      
+      try {
+        const axios = (await import('axios')).default;
+        
+        const response = await axios.get(`/api/pan/proceedings/${id}`, {
+          withCredentials: true
+        });
+        
+        if (response.data.success && response.data.downloadUrl) {
+          // 使用返回的下载链接触发下载
+          window.open(response.data.downloadUrl, '_blank');
+          this.$message.success(`${name} download started!`);
+        } else {
+          throw new Error(response.data.message || 'Failed to get download link');
+        }
+        
+      } catch (error) {
+        console.error('Download proceeding file failed:', error);
+        
+        if (error.response) {
+          const status = error.response.status;
+          const message = error.response.data?.message;
+          
+          if (status === 401) {
+            this.$message.error('Please login to download');
+          } else if (status === 403) {
+            this.$message.warning(message || 'You need at least one approved registration to download');
+          } else if (status === 404) {
+            this.$message.error('Proceeding file not found');
+          } else {
+            this.$message.error(message || 'Failed to download. Please try again later.');
+          }
+        } else if (error.request) {
+          this.$message.error('Network error. Please check your connection and try again.');
+        } else {
+          this.$message.error(error.message || 'Failed to download');
+        }
+      } finally {
+        // 清理定时器
+        if (loadingTimer) {
+          clearTimeout(loadingTimer);
+        }
+        // 关闭loading
+        this.customLoading = false;
       }
     },
 
@@ -836,11 +941,6 @@ export default {
           this.hasApprovedRegistration = this.approvedRegistrations.length > 0; // 显示信息中包括 已批准且已退款的注册 并未排除
           console.log('DocumentManagement: Found approved registrations:', this.approvedRegistrations.length);
           console.log('DocumentManagement: Registrations data:', JSON.stringify(this.approvedRegistrations, null, 2));
-          
-          // 如果有已批准的注册，后台预请求论文集下载链接以激活服务器缓存
-          if (this.approvedRegistrations.length > 0) {
-            this.prefetchProceedingsLink();
-          }
         } else {
           console.log('DocumentManagement: No data in response or response failed');
           this.hasApprovedRegistration = false;
@@ -849,25 +949,6 @@ export default {
       } catch (error) {
         console.error('DocumentManagement: Failed to load approved registrations:', error);
         await this.checkRegistrationStatusFallback();
-      }
-    },
-
-    // 后台预请求论文集下载链接，激活服务器缓存但不触发下载
-    async prefetchProceedingsLink() {
-      try {
-        console.log('📚 Prefetching proceedings link to warm up server cache...');
-        
-        const axios = (await import('axios')).default;
-        
-        // 静默请求，不显示任何加载状态或错误提示
-        await axios.get('/api/pan/proceedings', {
-          withCredentials: true
-        });
-        
-        console.log('📚 Proceedings link prefetched successfully (cache warmed up)');
-      } catch (error) {
-        // 静默处理错误，不影响用户体验
-        console.log('📚 Prefetch proceedings link skipped:', error.response?.status || error.message);
       }
     },
 
@@ -3038,5 +3119,67 @@ export default {
     font-size: 13px;
     padding: 10px 12px;
   }
+}
+
+/* 自定义大号loading样式 */
+.large-loading .el-loading-spinner {
+  font-size: 60px !important;
+}
+
+.large-loading .el-loading-spinner .el-icon-loading {
+  font-size: 60px !important;
+}
+
+.large-loading .el-loading-spinner svg {
+  width: 60px !important;
+  height: 60px !important;
+}
+
+.large-loading .el-loading-text {
+  font-size: 24px !important;
+  margin-top: 20px !important;
+  font-weight: 500 !important;
+}
+
+/* 自定义全屏loading */
+.custom-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-loading-content {
+  text-align: center;
+}
+
+.custom-loading-spinner {
+  width: 80px;
+  height: 80px;
+  border: 6px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #409EFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.custom-loading-text {
+  color: #fff;
+  font-size: 28px;
+  font-weight: 500;
+  margin-top: 30px;
+  letter-spacing: 2px;
 }
 </style>

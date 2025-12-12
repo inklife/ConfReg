@@ -201,18 +201,25 @@
                     @click.native="handleStatusCardClick">
                     <div class="status-content">
                       <div class="status-icon">
-                        <i class="el-icon-warning" v-if="registrationStats.pending > 0" style="color: #E6A23C"></i>
+                        <i class="el-icon-warning" v-if="registrationStats.pending > 0 && registrationStats.approved === 0" style="color: #E6A23C"></i>
                         <i class="el-icon-success" v-else style="color: #67C23A"></i>
                       </div>
                       <div class="status-text">
-                        <!-- 有待审核的注册 -->
-                        <h4 v-if="registrationStats.pending > 0">{{ registrationStats.pending }} Pending Registration{{ registrationStats.pending > 1 ? 's' : '' }}</h4>
-                        <!-- 有已批准的注册 -->
-                        <h4 v-else>{{ registrationStats.approved }} Approved Registration{{ registrationStats.approved > 1 ? 's' : '' }}</h4>
+                        <!-- 优先显示已批准的注册ID列表 -->
+                        <h4 v-if="registrationStats.approved > 0">Approved Registration ID:</h4>
+                        <!-- 其次显示待审核的注册 -->
+                        <h4 v-else-if="registrationStats.pending > 0">{{ registrationStats.pending }} Pending Registration{{ registrationStats.pending > 1 ? 's' : '' }}</h4>
                         
                         <!-- 对应的描述信息 -->
-                        <p v-if="registrationStats.pending > 0">Your registration is under review</p>
-                        <p v-else-if="registrationStats.approved > 0">Click to download receipt • Approved registrations</p>
+                        <p v-if="registrationStats.approved > 0" class="approved-ids">
+                          <span 
+                            v-for="(id, index) in approvedRegistrationIds" 
+                            :key="id"
+                            :class="'id-color-' + (index % 6)">
+                            {{ id }}<template v-if="index < approvedRegistrationIds.length - 1">, </template>
+                          </span>
+                        </p>
+                        <p v-else-if="registrationStats.pending > 0">Your registration is under review</p>
                       </div>
                       <!-- 下载图标提示 - 只在有已批准注册时显示
                       <div v-if="registrationStats.approved > 0" class="download-indicator">
@@ -355,6 +362,7 @@ export default {
         refunds: 0,
         invoices: 0
       },
+      approvedRegistrationIds: [], // 存储已批准的注册ID列表
       // 当前处理的任务
       currentTaskId: null,
       isGenerating: false,
@@ -474,6 +482,7 @@ export default {
           // 重置统计信息
           this.registrationStats.approved = 0;
           this.registrationStats.pending = 0;
+          this.approvedRegistrationIds = []; // 重置已批准注册ID列表
           
           // 计算各状态的注册数量（排除已退款的注册）
           registrations.forEach(registration => {
@@ -485,6 +494,10 @@ export default {
             switch (registration.status) {
               case 'approved':
                 this.registrationStats.approved++;
+                // 收集已批准的注册ID
+                if (registration.id) {
+                  this.approvedRegistrationIds.push(registration.id);
+                }
                 break;
               case 'pending':
                 this.registrationStats.pending++;
@@ -1288,7 +1301,7 @@ export default {
 }
 
 .nav-grid-item i {
-  font-size: 20px;
+  font-size: 24px;
   margin-bottom: 4px;
   color: #409EFF;
 }
@@ -1298,7 +1311,7 @@ export default {
 }
 
 .nav-grid-item span {
-  font-size: 11px;
+  font-size: 14px;
   text-align: center;
   line-height: 1.2;
   color: #606266;
@@ -1684,6 +1697,19 @@ export default {
   line-height: 1.4;
 }
 
+.status-text p.approved-ids {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.approved-ids .id-color-0 { color: #409EFF; }
+.approved-ids .id-color-1 { color: #67C23A; }
+.approved-ids .id-color-2 { color: #E6A23C; }
+.approved-ids .id-color-3 { color: #F56C6C; }
+.approved-ids .id-color-4 { color: #9C27B0; }
+.approved-ids .id-color-5 { color: #00BCD4; }
+
 .continue-registration-card {
   background: linear-gradient(135deg, #409EFF 0%, #67C23A 100%);
   border: none;
@@ -1851,11 +1877,11 @@ export default {
   }
   
   .nav-grid-item i {
-    font-size: 18px;
+    font-size: 22px;
   }
   
   .nav-grid-item span {
-    font-size: 10px;
+    font-size: 13px;
     word-break: break-word;
     max-width: 100%;
   }
@@ -2000,7 +2026,7 @@ export default {
   }
   
   .nav-grid-item span {
-    font-size: 9px;
+    font-size: 11px;
     line-height: 1.1;
   }
 }
