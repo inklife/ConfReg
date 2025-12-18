@@ -5,6 +5,8 @@
 
 const puppeteer = require('puppeteer-core');
 const path = require('path');
+const https = require('https');
+const http = require('http');
 const { getChromiumExecutablePath } = require('../utils/cross-platform-chromium');
 const cacheManager = require('../utils/cache/cacheManager');
 
@@ -173,17 +175,67 @@ async function getDownloadLink(hash) {
 }
 
 /**
- * 从缓存获取下载链接（如果存在且未过期）
- * @param {string} hash - USTC Pan 分享链接的 hash
- * @returns {string|null} 缓存的下载链接或 null
+ * 验证 URL 的响应头是否包含 Content-Disposition
+ * @param {string} url - 要验证的下载链接
+ * @returns {Promise<boolean>} 如果包含 Content-Disposition 返回 true,否则返回 false
  */
-function getCachedLink(hash) {
+async function validateDownloadUrl(url) {
+    return new Promise((resolve) => {
+        try {
+            const urlObj = new URL(url);
+            const client = urlObj.protocol === 'https:' ? https : http;
+            
+            const request = client.request(url, {
+                method: 'HEAD',
+                timeout: 10000
+            }, (res) => {
+                const hasContentDisposition = res.headers['content-disposition'] !== undefined;
+                console.log(`[PanUstc] URL validation: ${hasContentDisposition ? 'VALID' : 'INVALID'} - Content-Disposition ${hasContentDisposition ? 'found' : 'not found'}`);
+                resolve(hasContentDisposition);
+            });
+
+            request.on('error', (err) => {
+                console.error('[PanUstc] URL validation error:', err.message);
+                resolve(false);
+            });
+
+            request.on('timeout', () => {
+                console.error('[PanUstc] URL validation timeout');
+                request.destroy();
+                resolve(false);
+            });
+
+            request.end();
+        } catch (err) {
+            console.error('[PanUstc] URL validation exception:', err.message);
+            resolve(false);
+        }
+    });
+}
+
+/**
+ * 从缓存获取下载链接(如果存在且未过期)
+ * @param {string} hash - USTC Pan 分享链接的 hash
+ * @returns {Promise<string|null>} 缓存的下载链接或 null
+ */
+async function getCachedLink(hash) {
     const cacheKey = `${CACHE_PREFIX}${hash}`;
     const cached = cacheManager.get(cacheKey);
     
     if (cached) {
         console.log(`[PanUstc] Cache hit for hash: ${hash}`);
-        return cached.url;
+        
+        // 验证缓存的 URL 是否仍然有效
+        const isValid = await validateDownloadUrl(cached.url);
+        
+        if (isValid) {
+            console.log(`[PanUstc] Cached URL is valid for hash: ${hash}`);
+            return cached.url;
+        } else {
+            console.log(`[PanUstc] Cached URL is invalid, removing from cache for hash: ${hash}`);
+            cacheManager.delete(cacheKey);
+            return null;
+        }
     }
     
     return null;
@@ -207,7 +259,7 @@ function cacheLink(hash, url) {
  */
 async function getOrFetchDownloadLink(hash) {
     // 1. 尝试从缓存获取
-    const cachedLink = getCachedLink(hash);
+    const cachedLink = await getCachedLink(hash);
     if (cachedLink) {
         return cachedLink;
     }
