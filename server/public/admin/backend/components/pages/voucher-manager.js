@@ -967,7 +967,7 @@ class VoucherManager extends BaseComponent {
                             </h4>
                             <div class="image-container">
                                 <div class="image-item">
-                                    <a href="${voucher.payment_screenshot}" class="pixel-voyager-link" target="_blank">
+                                    <a href="${voucher.payment_screenshot}" class="image-viewer-link">
                                         <img src="${voucher.payment_screenshot}" class="image-preview" alt="支付截图">
                                     </a>
                                 </div>
@@ -1042,7 +1042,7 @@ class VoucherManager extends BaseComponent {
         document.addEventListener('keydown', handleEscape);
 
         // 初始化图片查看器
-        this.initializePixelVoyager(modal);
+        this.initializeImageViewer(modal);
     }
 
     async approveVoucher(id) {
@@ -1220,38 +1220,9 @@ class VoucherManager extends BaseComponent {
         return div.innerHTML;
     }
 
-    initializePixelVoyager(modal) {
-        // 为动态生成的内容初始化 PixelVoyager
-        setTimeout(() => {
-            if (typeof PixelVoyager !== 'undefined') {
-                try {
-                    // 获取模态框内的所有图片链接
-                    const imageLinks = modal.querySelectorAll('.pixel-voyager-link');
-                    
-                    if (imageLinks.length > 0) {
-                        // 为每个链接添加点击事件来手动调用 PixelVoyager
-                        imageLinks.forEach((link, index) => {
-                            link.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                
-                                // 使用 PixelVoyager.openImage API 直接打开图片
-                                const imageUrl = link.getAttribute('href');
-                                if (imageUrl) {
-                                    PixelVoyager.openImage(imageUrl);
-                                }
-                            });
-                        });
-                        
-                        console.log(`PixelVoyager configured for ${imageLinks.length} images in modal`);
-                    }
-                } catch (error) {
-                    console.warn('Failed to configure PixelVoyager:', error);
-                }
-            } else {
-                console.warn('PixelVoyager not available, images will open in new tab');
-            }
-        }, 100);
+    initializeImageViewer(modal) {
+        // 使用 SimpleImageViewer 初始化图片查看功能
+        SimpleImageViewer.initializeLinks(modal, '.image-viewer-link');
     }
 
     addGlobalModalStyles() {
@@ -1450,9 +1421,10 @@ class VoucherManager extends BaseComponent {
                 box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
             }
 
-            #voucher-modal-global .pixel-voyager-link {
+            #voucher-modal-global .image-viewer-link {
                 display: block;
                 text-decoration: none;
+                cursor: pointer;
             }
 
             #voucher-modal-global .modal-actions {

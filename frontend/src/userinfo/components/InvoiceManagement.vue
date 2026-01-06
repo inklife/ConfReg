@@ -1023,7 +1023,20 @@ export default {
           ...this.form
         };
         
-        await invoiceService.createRequest(requestData);
+        const response = await invoiceService.createRequest(requestData);
+        
+        // 检查是否有警告信息
+        if (response.warning && response.warning.hasCompletedInvoice) {
+          this.$alert(
+            response.warning.warningMessage,
+            'Warning / 警告',
+            {
+              confirmButtonText: 'OK',
+              type: 'warning',
+              dangerouslyUseHTMLString: true
+            }
+          );
+        }
         
         this.$message.success('Invoice request submitted successfully!');
         
@@ -1115,7 +1128,8 @@ export default {
         completed: 'Completed',
         rejected: 'Rejected',
         cancelled: 'Cancelled',
-        approved: 'Approved'
+        approved: 'Approved',
+        red_inked: 'Red-Inked / 已冲红'
       };
       return statusMap[status] || status;
     },
@@ -1126,7 +1140,8 @@ export default {
         processing: 'info',
         completed: 'success',
         rejected: 'danger',
-        cancelled: 'info'
+        cancelled: 'info',
+        red_inked: 'warning'
       };
       return typeMap[status] || 'info';
     }

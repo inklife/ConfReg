@@ -777,6 +777,8 @@ class TransferManager extends BaseComponent {
         const modal = document.getElementById('transfer-detail-modal-global');
         if (modal) {
             modal.style.display = 'block';
+            // 初始化图片查看器
+            SimpleImageViewer.initializeLinks(modal);
         }
     }
 
@@ -890,7 +892,7 @@ class TransferManager extends BaseComponent {
                 <div class="detail-item" style="margin-top: 16px;">
                     <label>支付凭证截图</label>
                     <div class="image-preview-container" style="margin-top: 8px;">
-                        <a href="/uploads/${transfer.feePaymentScreenshot}" target="_blank" class="pixel-voyager-link">
+                        <a href="/uploads/${transfer.feePaymentScreenshot}" class="image-viewer-link">
                             <img src="/uploads/${transfer.feePaymentScreenshot}" 
                                  alt="Payment Screenshot" 
                                  class="payment-screenshot-preview"

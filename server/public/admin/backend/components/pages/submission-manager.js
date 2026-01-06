@@ -12,9 +12,21 @@ class SubmissionManager extends BaseComponent {
         this.currentFilter = '';
         this.currentSort = 'created_desc';
         this.isLoading = false;
+        
+        // 加载模式: 'pagination' 或 'infinite'
+        this.loadMode = 'infinite'; // 默认使用无限滚动模式
+        
+        // 分页模式相关 (保留，当loadMode='pagination'时使用)
         this.currentPage = 1;
         this.pageSize = 5;
         this.totalPages = 0;
+        
+        // 无限滚动模式相关 (当loadMode='infinite'时使用)
+        this.infiniteScrollOffset = 0; // 当前已加载的数据偏移量
+        this.infiniteScrollLimit = 10; // 每次加载的数据量
+        this.hasMoreData = true; // 是否还有更多数据
+        this.isLoadingMore = false; // 是否正在加载更多数据
+        
         this.currentSubmissionId = null;
         this.hasReceivedParameters = false;
         this.initialLoadTimeout = null;
@@ -80,6 +92,75 @@ class SubmissionManager extends BaseComponent {
                     display: none;
                 }
             }
+
+            /* 无限滚动模式样式 */
+            .infinite-scroll-container {
+                margin-top: 24px;
+                padding: 16px;
+                text-align: center;
+            }
+
+            .load-more-area {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 12px;
+            }
+
+            #load-more-btn {
+                padding: 10px 24px;
+                font-size: 14px;
+                font-weight: 500;
+                background: #f3f4f6;
+                color: #374151;
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            #load-more-btn:hover {
+                background: #e5e7eb;
+                border-color: #9ca3af;
+                transform: translateY(-1px);
+            }
+
+            .loading-more-indicator {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                color: #6b7280;
+                font-size: 14px;
+            }
+
+            .loading-more-indicator .loading-spinner {
+                width: 20px;
+                height: 20px;
+                border: 2px solid #e5e7eb;
+                border-top-color: #3b82f6;
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+            }
+
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+
+            .no-more-data {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #10b981;
+                font-size: 14px;
+                font-weight: 500;
+            }
+
+            .no-more-data i {
+                font-size: 16px;
+            }
         `;
 
         await SharedStylesLoader.applyStyles(this.shadowRoot, [
@@ -144,8 +225,8 @@ class SubmissionManager extends BaseComponent {
                         </table>
                     </div>
 
-                    <!-- 分页 -->
-                    <div class="pagination-container">
+                    <!-- 分页模式 (当loadMode='pagination'时显示) -->
+                    <div class="pagination-container" id="pagination-container" style="display: none;">
                         <div class="pagination-info" id="pagination-info">
                             第 1 页，共 1 页
                         </div>
@@ -171,6 +252,24 @@ class SubmissionManager extends BaseComponent {
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- 无限滚动模式 (当loadMode='infinite'时显示) -->
+                    <div class="infinite-scroll-container" id="infinite-scroll-container" style="display: none;">
+                        <div class="load-more-area">
+                            <button class="btn btn-secondary" id="load-more-btn" style="display: none;">
+                                <i class="fas fa-chevron-down"></i>
+                                加载更多
+                            </button>
+                            <div class="loading-more-indicator" id="loading-more-indicator" style="display: none;">
+                                <div class="loading-spinner"></div>
+                                <span>正在加载更多...</span>
+                            </div>
+                            <div class="no-more-data" id="no-more-data" style="display: none;">
+                                <i class="fas fa-check-circle"></i>
+                                <span>已加载全部数据</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -185,10 +284,28 @@ class SubmissionManager extends BaseComponent {
         // 等待下一个tick确保DOM渲染完成
         await new Promise(resolve => setTimeout(resolve, 0));
 
+        // 根据loadMode显示对应的UI
+        this.updateUIForLoadMode();
+
         this.bindEvents();
         
         // 延迟初始加载，给参数传递一些时间
         this.scheduleInitialLoad();
+    }
+
+    updateUIForLoadMode() {
+        const paginationContainer = this.shadowRoot.getElementById('pagination-container');
+        const infiniteScrollContainer = this.shadowRoot.getElementById('infinite-scroll-container');
+        
+        if (this.loadMode === 'pagination') {
+            // 分页模式
+            if (paginationContainer) paginationContainer.style.display = 'block';
+            if (infiniteScrollContainer) infiniteScrollContainer.style.display = 'none';
+        } else {
+            // 无限滚动模式
+            if (paginationContainer) paginationContainer.style.display = 'none';
+            if (infiniteScrollContainer) infiniteScrollContainer.style.display = 'block';
+        }
     }
 
     scheduleInitialLoad() {
@@ -237,7 +354,17 @@ class SubmissionManager extends BaseComponent {
         const statusFilter = this.shadowRoot.getElementById('status-filter');
         statusFilter?.addEventListener('change', (e) => {
             this.currentFilter = e.target.value;
-            this.currentPage = 1;
+            
+            // 重置状态
+            if (this.loadMode === 'pagination') {
+                this.currentPage = 1;
+            } else {
+                // 无限滚动模式：重置并重新加载
+                this.infiniteScrollOffset = 0;
+                this.hasMoreData = true;
+                this.submissions = [];
+            }
+            
             this.loadSubmissions();
         });
 
@@ -304,6 +431,58 @@ class SubmissionManager extends BaseComponent {
                 jumpBtn?.click();
             }
         });
+
+        // 无限滚动模式事件
+        if (this.loadMode === 'infinite') {
+            // 加载更多按钮
+            const loadMoreBtn = this.shadowRoot.getElementById('load-more-btn');
+            loadMoreBtn?.addEventListener('click', () => {
+                this.loadMoreSubmissions();
+            });
+
+            // 滚动事件监听（表格容器）
+            const tableContainer = this.shadowRoot.querySelector('.table-container');
+            if (tableContainer) {
+                tableContainer.addEventListener('scroll', () => {
+                    this.handleScroll(tableContainer);
+                });
+            }
+
+            // 鼠标滚轮事件（主容器）
+            const contentArea = this.shadowRoot.querySelector('.content-area');
+            if (contentArea) {
+                contentArea.addEventListener('wheel', (e) => {
+                    // 向下滚动且接近底部时自动加载
+                    if (e.deltaY > 0) {
+                        const container = this.shadowRoot.querySelector('.table-container');
+                        if (container) {
+                            const scrollTop = container.scrollTop;
+                            const scrollHeight = container.scrollHeight;
+                            const clientHeight = container.clientHeight;
+                            
+                            // 距离底部200px时触发加载
+                            if (scrollHeight - scrollTop - clientHeight < 200) {
+                                this.loadMoreSubmissions();
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    handleScroll(container) {
+        if (this.loadMode !== 'infinite') return;
+        if (this.isLoadingMore || !this.hasMoreData) return;
+
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+
+        // 距离底部100px时触发加载
+        if (scrollHeight - scrollTop - clientHeight < 100) {
+            this.loadMoreSubmissions();
+        }
     }
 
     disconnectedCallback() {
@@ -325,7 +504,17 @@ class SubmissionManager extends BaseComponent {
             // 只在搜索词真正改变时才执行搜索
             if (newSearchTerm !== this.searchTerm) {
                 this.searchTerm = newSearchTerm;
-                this.currentPage = 1;
+                
+                // 重置状态
+                if (this.loadMode === 'pagination') {
+                    this.currentPage = 1;
+                } else {
+                    // 无限滚动模式：重置并重新加载
+                    this.infiniteScrollOffset = 0;
+                    this.hasMoreData = true;
+                    this.submissions = [];
+                }
+                
                 this.loadSubmissions();
             }
         }
@@ -336,11 +525,22 @@ class SubmissionManager extends BaseComponent {
         this.showLoadingState();
 
         try {
-            const params = new URLSearchParams({
-                page: this.currentPage,
-                limit: this.pageSize,
-                sort: this.currentSort
-            });
+            const params = new URLSearchParams();
+            
+            // 根据加载模式设置不同的参数
+            if (this.loadMode === 'pagination') {
+                // 分页模式
+                params.append('page', this.currentPage);
+                params.append('limit', this.pageSize);
+            } else {
+                // 无限滚动模式：将offset转换为page
+                // 后端API使用page和limit，所以我们需要计算当前page
+                const currentPage = Math.floor(this.infiniteScrollOffset / this.infiniteScrollLimit) + 1;
+                params.append('page', currentPage);
+                params.append('limit', this.infiniteScrollLimit);
+            }
+            
+            params.append('sort', this.currentSort);
 
             if (this.currentFilter) {
                 params.append('status', this.currentFilter);
@@ -361,12 +561,48 @@ class SubmissionManager extends BaseComponent {
             const data = await response.json();
             
             if (data.success) {
-                this.submissions = data.data.submissions || [];
-                const pagination = data.data.pagination || {};
-                this.totalPages = pagination.total || 1;
-                
-                this.renderSubmissions();
-                this.updatePagination();
+                if (this.loadMode === 'pagination') {
+                    // 分页模式：替换数据
+                    this.submissions = data.data.submissions || [];
+                    const pagination = data.data.pagination || {};
+                    this.totalPages = pagination.total || 1;
+                    
+                    this.renderSubmissions();
+                    this.updatePagination();
+                } else {
+                    // 无限滚动模式：追加数据
+                    const newSubmissions = data.data.submissions || [];
+                    
+                    if (this.infiniteScrollOffset === 0) {
+                        // 首次加载，替换数据
+                        this.submissions = newSubmissions;
+                    } else {
+                        // 后续加载，检查ID去重并追加
+                        const existingIds = new Set(this.submissions.map(s => s.id));
+                        const uniqueNewSubmissions = newSubmissions.filter(s => !existingIds.has(s.id));
+                        
+                        // 如果没有新的唯一数据，说明已经加载完了
+                        if (uniqueNewSubmissions.length === 0) {
+                            this.hasMoreData = false;
+                            this.updateInfiniteScrollUI();
+                            this.isLoading = false;
+                            return;
+                        }
+                        
+                        // 追加唯一的新数据
+                        this.submissions = [...this.submissions, ...uniqueNewSubmissions];
+                    }
+                    
+                    // 检查是否还有更多数据：
+                    // 如果返回的数据为空或数量少于请求的限制，说明没有更多数据
+                    this.hasMoreData = newSubmissions.length >= this.infiniteScrollLimit;
+                    
+                    // 更新偏移量
+                    this.infiniteScrollOffset = this.submissions.length;
+                    
+                    this.renderSubmissions();
+                    this.updateInfiniteScrollUI();
+                }
             } else {
                 throw new Error(data.message || '加载数据失败');
             }
@@ -376,6 +612,123 @@ class SubmissionManager extends BaseComponent {
         } finally {
             this.isLoading = false;
         }
+    }
+
+    async loadMoreSubmissions() {
+        if (this.loadMode !== 'infinite') return;
+        if (this.isLoadingMore || !this.hasMoreData || this.isLoading) return;
+
+        this.isLoadingMore = true;
+        this.showLoadingMoreState();
+
+        try {
+            // 将offset转换为page（后端API使用page和limit）
+            const currentPage = Math.floor(this.infiniteScrollOffset / this.infiniteScrollLimit) + 1;
+            
+            const params = new URLSearchParams({
+                page: currentPage,
+                limit: this.infiniteScrollLimit,
+                sort: this.currentSort
+            });
+
+            if (this.currentFilter) {
+                params.append('status', this.currentFilter);
+            }
+
+            if (this.searchTerm) {
+                params.append('search', this.searchTerm);
+            }
+
+            const response = await fetch(`/admin/submissions?${params}`, {
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load more submissions');
+            }
+
+            const data = await response.json();
+            
+            if (data.success) {
+                const newSubmissions = data.data.submissions || [];
+                
+                // 如果返回空数据，说明没有更多了
+                if (newSubmissions.length === 0) {
+                    this.hasMoreData = false;
+                    this.updateInfiniteScrollUI();
+                    return;
+                }
+                
+                // 检查ID去重：过滤掉已存在的数据
+                const existingIds = new Set(this.submissions.map(s => s.id));
+                const uniqueNewSubmissions = newSubmissions.filter(s => !existingIds.has(s.id));
+                
+                // 如果没有新的唯一数据，说明已经加载完了（服务器可能返回了重复数据）
+                if (uniqueNewSubmissions.length === 0) {
+                    this.hasMoreData = false;
+                    this.updateInfiniteScrollUI();
+                    return;
+                }
+                
+                // 追加唯一的新数据
+                this.submissions = [...this.submissions, ...uniqueNewSubmissions];
+                
+                // 检查是否还有更多数据：
+                // 如果返回的数据量少于请求的限制，说明没有更多数据了
+                this.hasMoreData = newSubmissions.length >= this.infiniteScrollLimit;
+                
+                // 更新偏移量
+                this.infiniteScrollOffset = this.submissions.length;
+                
+                this.renderSubmissions();
+                this.updateInfiniteScrollUI();
+            } else {
+                throw new Error(data.message || '加载更多数据失败');
+            }
+        } catch (error) {
+            console.error('Error loading more submissions:', error);
+            alert('加载更多数据失败，请稍后重试');
+        } finally {
+            this.isLoadingMore = false;
+            this.hideLoadingMoreState();
+        }
+    }
+
+    showLoadingMoreState() {
+        const loadingIndicator = this.shadowRoot.getElementById('loading-more-indicator');
+        const loadMoreBtn = this.shadowRoot.getElementById('load-more-btn');
+        const noMoreData = this.shadowRoot.getElementById('no-more-data');
+        
+        if (loadingIndicator) loadingIndicator.style.display = 'flex';
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+        if (noMoreData) noMoreData.style.display = 'none';
+    }
+
+    hideLoadingMoreState() {
+        const loadingIndicator = this.shadowRoot.getElementById('loading-more-indicator');
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+    }
+
+    updateInfiniteScrollUI() {
+        const loadMoreBtn = this.shadowRoot.getElementById('load-more-btn');
+        const noMoreData = this.shadowRoot.getElementById('no-more-data');
+        const loadingIndicator = this.shadowRoot.getElementById('loading-more-indicator');
+        
+        if (this.hasMoreData && this.submissions.length > 0) {
+            // 还有更多数据，显示加载更多按钮
+            if (loadMoreBtn) loadMoreBtn.style.display = 'inline-flex';
+            if (noMoreData) noMoreData.style.display = 'none';
+        } else if (this.submissions.length > 0) {
+            // 没有更多数据了
+            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+            if (noMoreData) noMoreData.style.display = 'flex';
+        } else {
+            // 没有数据
+            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+            if (noMoreData) noMoreData.style.display = 'none';
+        }
+        
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
 
     renderSubmissions() {
@@ -831,10 +1184,12 @@ class SubmissionManager extends BaseComponent {
                 box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
             }
 
-            #submission-modal-global .pixel-voyager-link {
+            #submission-modal-global .image-viewer-link {
                 display: block;
                 text-decoration: none;
+                cursor: pointer;
             }
+
 
             #submission-modal-global .no-image {
                 width: 100%;
@@ -1147,8 +1502,8 @@ class SubmissionManager extends BaseComponent {
         // 设置图片处理
         this.setupImageHandlers(modal);
         
-        // 初始化 PixelVoyager 图片查看器
-        this.initializePixelVoyager(modal);
+        // 初始化图片查看器
+        this.initializeImageViewer(modal);
     }
 
     // 验证批准检查清单
@@ -1404,7 +1759,7 @@ class SubmissionManager extends BaseComponent {
                         ${submission.screenshot ? `
                             <div class="image-item">
                                 <div class="detail-label">支付截图</div>
-                                <a href="/uploads/${submission.screenshot}" target="_blank" class="pixel-voyager-link">
+                                <a href="/uploads/${submission.screenshot}" class="image-viewer-link">
                                     <img src="/uploads/${submission.screenshot}" 
                                          class="image-preview" 
                                          alt="支付截图" 
@@ -1425,7 +1780,7 @@ class SubmissionManager extends BaseComponent {
                                         </div>
                                     </a>
                                 ` : `
-                                    <a href="/uploads/${submission.proof}" target="_blank" class="pixel-voyager-link">
+                                    <a href="/uploads/${submission.proof}" class="image-viewer-link">
                                         <img src="/uploads/${submission.proof}" 
                                              class="image-preview" 
                                              alt="证明文件" 
@@ -1967,38 +2322,9 @@ class SubmissionManager extends BaseComponent {
         });
     }
 
-    initializePixelVoyager(modal) {
-        // 为动态生成的内容初始化 PixelVoyager
-        setTimeout(() => {
-            if (typeof PixelVoyager !== 'undefined') {
-                try {
-                    // 获取模态框内的所有图片链接
-                    const imageLinks = modal.querySelectorAll('.pixel-voyager-link');
-                    
-                    if (imageLinks.length > 0) {
-                        // 为每个链接添加点击事件来手动调用 PixelVoyager
-                        imageLinks.forEach((link, index) => {
-                            link.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                
-                                // 使用 PixelVoyager.openImage API 直接打开图片
-                                const imageUrl = link.getAttribute('href');
-                                if (imageUrl) {
-                                    PixelVoyager.openImage(imageUrl);
-                                }
-                            });
-                        });
-                        
-                        console.log(`PixelVoyager configured for ${imageLinks.length} images in modal`);
-                    }
-                } catch (error) {
-                    console.warn('Failed to configure PixelVoyager:', error);
-                }
-            } else {
-                console.warn('PixelVoyager not available, images will open in new tab');
-            }
-        }, 100);
+    initializeImageViewer(modal) {
+        // 使用 SimpleImageViewer 初始化图片查看功能
+        SimpleImageViewer.initializeLinks(modal);
     }
 
     getStatusText(status) {
@@ -2022,7 +2348,16 @@ class SubmissionManager extends BaseComponent {
         
         // 更新内部状态
         this.currentFilter = filterValue;
-        this.currentPage = 1;
+        
+        // 重置状态
+        if (this.loadMode === 'pagination') {
+            this.currentPage = 1;
+        } else {
+            // 无限滚动模式：重置并重新加载
+            this.infiniteScrollOffset = 0;
+            this.hasMoreData = true;
+            this.submissions = [];
+        }
         
         // 更新筛选选择框的值
         const statusFilter = this.shadowRoot.getElementById('status-filter');

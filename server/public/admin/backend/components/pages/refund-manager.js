@@ -165,36 +165,8 @@ class RefundManager extends BaseComponent {
         // 设置事件监听器
         this.setupEventListeners();
         
-        // 配置 PixelVoyager
-        this.configurePixelVoyager();
-        
         // 加载数据
         this.loadRefunds();
-    }
-
-    configurePixelVoyager() {
-        // 确保 PixelVoyager 可用时进行配置
-        const configureVoyager = () => {
-            if (typeof PixelVoyager !== 'undefined' && PixelVoyager.configure) {
-                try {
-                    PixelVoyager.configure({
-                        zoomMode: 'cursor',
-                        cornerColor: 'rgba(59, 130, 246, 0.8)', // 蓝色主题色
-                        moveThreshold: 3,
-                        blockingDelay: 300
-                    });
-                    console.log('PixelVoyager configured successfully');
-                } catch (error) {
-                    console.warn('Failed to configure PixelVoyager:', error);
-                }
-            } else {
-                // 如果还没加载，延迟重试
-                setTimeout(configureVoyager, 200);
-            }
-        };
-        
-        // 延迟配置，确保 PixelVoyager 已加载
-        setTimeout(configureVoyager, 100);
     }
 
     setupEventListeners() {

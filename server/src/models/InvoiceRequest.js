@@ -116,9 +116,9 @@ const InvoiceRequest = sequelize.define('InvoiceRequest', {
     allowNull: true,
     field: 'contact_email'
   },
-  // 申请状态：pending(待处理)、processing(处理中)、completed(已完成)、rejected(已拒绝)
+  // 申请状态：pending(待处理)、processing(处理中)、completed(已完成)、rejected(已拒绝)、red_inked(已冲红)
   status: {
-    type: DataTypes.ENUM('pending', 'processing', 'completed', 'rejected'),
+    type: DataTypes.ENUM('pending', 'processing', 'completed', 'rejected', 'red_inked'),
     allowNull: false,
     defaultValue: 'pending'
   },

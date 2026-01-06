@@ -210,6 +210,15 @@ class InvoiceManager extends BaseComponent {
                 `;
             case 'completed':
                 return `
+                    <button class="btn btn-red-ink btn-action-warning" data-invoice-id="${invoiceId}" title="标记为已冲红" style="${buttonStyle} background: #fff7ed; border-color: #fb923c; color: #ea580c;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </button>
+                    <button class="btn btn-re-review btn-action-secondary" data-invoice-id="${invoiceId}" title="重新审核" style="${buttonStyle} background: #f8fafc; border-color: #94a3b8; color: #475569;">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                `;
+            case 'red_inked':
+                return `
                     <button class="btn btn-re-review btn-action-secondary" data-invoice-id="${invoiceId}" title="重新审核" style="${buttonStyle} background: #f8fafc; border-color: #94a3b8; color: #475569;">
                         <i class="fas fa-redo"></i>
                     </button>
@@ -232,14 +241,16 @@ class InvoiceManager extends BaseComponent {
             pending: 'status-pending',
             processing: 'status-processing',
             completed: 'status-completed',
-            rejected: 'status-rejected'
+            rejected: 'status-rejected',
+            red_inked: 'status-red-inked'
         };
         
         const statusTexts = {
             pending: '待处理',
             processing: '处理中',
             completed: '已完成',
-            rejected: '已拒绝'
+            rejected: '已拒绝',
+            red_inked: '已冲红'
         };
         
         // 安全地访问嵌套属性
@@ -531,6 +542,11 @@ class InvoiceManager extends BaseComponent {
                 color: #991b1b;
             }
 
+            .status-red-inked {
+                background: #fed7aa;
+                color: #9a3412;
+            }
+
             .actions-cell {
                 display: flex;
                 gap: 6px;
@@ -579,6 +595,14 @@ class InvoiceManager extends BaseComponent {
                 border-color: #64748b !important;
                 color: white !important;
                 box-shadow: 0 2px 8px rgba(148, 163, 184, 0.25);
+            }
+
+            /* 警告按钮悬停效果 - 橙色 */
+            .btn-action-warning:hover {
+                background: #fb923c !important;
+                border-color: #ea580c !important;
+                color: white !important;
+                box-shadow: 0 2px 8px rgba(251, 146, 60, 0.25);
             }
 
             .loading-state {
@@ -1816,6 +1840,8 @@ class InvoiceManager extends BaseComponent {
                     this.updateStatus(invoiceId, 'completed');
                 } else if (button.classList.contains('btn-reject')) {
                     this.updateStatus(invoiceId, 'rejected');
+                } else if (button.classList.contains('btn-red-ink')) {
+                    this.markAsRedInked(invoiceId);
                 } else if (button.classList.contains('btn-re-review')) {
                     this.reReviewInvoice(invoiceId);
                 }
@@ -1995,8 +2021,13 @@ class InvoiceManager extends BaseComponent {
             const data = await response.json();
             console.log('Invoice details response:', data); // 添加调试日志
             
-            // API 返回的数据格式是 { request: {...} }
+            // API 返回的数据格式是 { request: {...}, relatedRequests: [...] }
             const invoice = data.request || data;
+            const relatedRequests = data.relatedRequests || [];
+            
+            // 将关联申请信息附加到发票对象
+            invoice.relatedRequests = relatedRequests;
+            
             this.showDetailsModal(invoice);
             
         } catch (error) {
@@ -2280,6 +2311,43 @@ class InvoiceManager extends BaseComponent {
         } catch (error) {
             console.error('Error re-reviewing invoice:', error);
             this.showError('重新审核失败: ' + error.message);
+        }
+    }
+
+    async markAsRedInked(invoiceId) {
+        const adminNotes = prompt('请输入冲红原因（选填）：', '原发票作废，需重新开具');
+        
+        if (adminNotes === null) {
+            return; // 用户取消
+        }
+
+        if (!confirm('确定要将此发票标记为"已冲红"吗？此操作表示原发票已作废。')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/admin/invoices/request/${invoiceId}/red-ink`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    adminNotes: adminNotes
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || '标记冲红失败');
+            }
+            
+            this.showSuccess('已成功标记为已冲红');
+            this.loadData(); // 重新加载数据和统计
+            
+        } catch (error) {
+            console.error('Error marking as red-inked:', error);
+            this.showError('标记冲红失败: ' + error.message);
         }
     }
 
@@ -2776,7 +2844,67 @@ class InvoiceManager extends BaseComponent {
         const amount = `${invoice.invoiceAmount || invoice.amount || '0'} ${invoice.invoiceCurrency || 'RMB'}`;
         const requestedAt = invoice.requestedAt || invoice.created_at || new Date().toISOString();
         
+        // 检查是否有关联申请
+        const relatedRequests = invoice.relatedRequests || [];
+        const hasRelatedRequests = relatedRequests.length > 0;
+        
+        // 判断关联申请中是否有冲突（已完成的申请）
+        const hasConflict = relatedRequests.some(req => req.status === 'completed');
+        const hasPendingConflict = relatedRequests.some(req => ['pending', 'processing'].includes(req.status));
+        
         return `
+            ${hasRelatedRequests ? `
+            <div class="detail-section related-requests-warning" style="background: ${hasConflict ? '#fff7ed' : '#eff6ff'}; border: 2px solid ${hasConflict ? '#fb923c' : '#3b82f6'}; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <div class="detail-title" style="color: ${hasConflict ? '#ea580c' : '#2563eb'}; margin-bottom: 12px;">
+                    ${hasConflict ? '⚠️ 注意：该注册已有已完成的发票申请' : 'ℹ️ 提示：该注册有其他发票申请记录'}
+                </div>
+                <div style="font-size: 14px; color: var(--gray-700); margin-bottom: 12px;">
+                    <strong>注册系统编号 #${invoice.registrationSystemNo || invoice.registration?.id || 'N/A'}</strong> 存在以下其他发票申请：
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    ${relatedRequests.map(req => {
+                        const statusColors = {
+                            pending: '#eab308',
+                            processing: '#3b82f6',
+                            completed: '#22c55e',
+                            rejected: '#ef4444',
+                            red_inked: '#fb923c'
+                        };
+                        const statusTexts = {
+                            pending: '待处理',
+                            processing: '处理中',
+                            completed: '已完成',
+                            rejected: '已拒绝',
+                            red_inked: '已冲红'
+                        };
+                        return `
+                        <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="font-weight: 600; margin-right: 8px;">发票申请 #${req.id}</span>
+                                <span style="background: ${statusColors[req.status]}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
+                                    ${statusTexts[req.status]}
+                                </span>
+                                <span style="margin-left: 8px; color: var(--gray-600); font-size: 13px;">
+                                    ${req.invoiceAmount || '0'} ${req.invoiceCurrency || 'RMB'}
+                                </span>
+                                <span style="margin-left: 8px; color: var(--gray-500); font-size: 12px;">
+                                    ${new Date(req.requestedAt || req.created_at).toLocaleDateString('zh-CN')}
+                                </span>
+                            </div>
+                            <button class="btn btn-sm" onclick="window.invoiceManagerInstance.viewDetails(${req.id})" style="padding: 4px 12px; font-size: 12px;">
+                                查看详情
+                            </button>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+                ${hasConflict ? `
+                <div style="margin-top: 12px; padding: 12px; background: #fef2f2; border-radius: 6px; font-size: 13px; color: #991b1b;">
+                    <i class="fas fa-info-circle"></i> <strong>建议操作：</strong>如果此申请需要重新开票，请先将已完成的申请标记为"已冲红"状态。
+                </div>
+                ` : ''}
+            </div>
+            ` : ''}
             <div class="detail-grid">
                 <div class="detail-section">
                     <div class="detail-title">
@@ -3054,6 +3182,17 @@ class InvoiceManager extends BaseComponent {
                     </button>
                 `;
             case 'completed':
+                return `
+                    <button class="btn btn-re-review" onclick="window.invoiceManagerInstance.reReviewInvoice(${invoiceId}); document.getElementById('invoice-details-modal-global').style.display='none';" style="${buttonStyle} background: #eab308; border-color: #ca8a04; color: white;">
+                        <i class="fas fa-redo"></i>
+                        重新审核
+                    </button>
+                    <button class="btn btn-red-ink" onclick="window.invoiceManagerInstance.markAsRedInked(${invoiceId}); document.getElementById('invoice-details-modal-global').style.display='none';" style="${buttonStyle} background: #ef4444; border-color: #dc2626; color: white;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        标记为已冲红
+                    </button>
+                `;
+            case 'red_inked':
                 return `
                     <button class="btn btn-re-review" onclick="window.invoiceManagerInstance.reReviewInvoice(${invoiceId}); document.getElementById('invoice-details-modal-global').style.display='none';" style="${buttonStyle} background: var(--yellow-500); border-color: var(--yellow-500); color: white;">
                         <i class="fas fa-redo"></i>

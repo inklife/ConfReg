@@ -212,8 +212,19 @@ router.get('/request/:id', requireAdmin, async (req, res) => {
       });
     }
 
+    // 查询同一注册的其他发票申请（用于提示管理员）
+    const relatedRequests = await InvoiceRequest.findAll({
+      where: {
+        registrationId: request.registrationId,
+        id: { [Op.ne]: request.id } // 排除当前申请
+      },
+      attributes: ['id', 'status', 'invoiceAmount', 'invoiceCurrency', 'requestedAt', 'processedAt'],
+      order: [['requestedAt', 'DESC']]
+    });
+
     res.json({
-      request: request
+      request: request,
+      relatedRequests: relatedRequests // 返回关联的其他申请
     });
 
   } catch (error) {
@@ -230,7 +241,7 @@ router.put('/request/:id/status', requireAdmin, async (req, res) => {
   try {
     const { status, adminNotes } = req.body;
 
-    if (!['pending', 'processing', 'completed', 'rejected'].includes(status)) {
+    if (!['pending', 'processing', 'completed', 'rejected', 'red_inked'].includes(status)) {
       return res.status(400).json({
         error: '无效的状态值'
       });
@@ -329,6 +340,60 @@ router.post('/request/:id/re-review', requireAdmin, async (req, res) => {
     console.error('重新审核失败:', error);
     res.status(500).json({
       error: '重新审核失败',
+      details: error.message
+    });
+  }
+});
+
+// 标记为已冲红（管理员）
+router.post('/request/:id/red-ink', requireAdmin, async (req, res) => {
+  try {
+    const { adminNotes } = req.body;
+    
+    const request = await InvoiceRequest.findByPk(req.params.id);
+    if (!request) {
+      return res.status(404).json({
+        error: '发票申请不存在'
+      });
+    }
+
+    // 只有已完成的发票才能标记为已冲红
+    if (request.status !== 'completed') {
+      return res.status(400).json({
+        error: '只有已完成的发票才能标记为已冲红',
+        currentStatus: request.status
+      });
+    }
+
+    // 更新为已冲红状态
+    await request.update({
+      status: 'red_inked',
+      adminNotes: adminNotes || '已冲红',
+      processedAt: new Date()
+    });
+
+    res.json({
+      message: '已成功标记为已冲红',
+      request: await InvoiceRequest.findByPk(req.params.id, {
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'username', 'fullname', 'email']
+          },
+          {
+            model: RegistrationSubmission,
+            as: 'registration',
+            attributes: ['id', 'name', 'email', 'phone', 'affiliation', 'paper_type', 'paper_id', 'paper_pages', 'product_code', 'product_price', 'product_price_rmb', 'total_amount_usd', 'total_amount_rmb', 'extra_page_fee_usd', 'extra_page_fee_rmb', 'registration_category', 'payment_method', 'status', 'submission_time', 'review_time']
+          }
+        ]
+      })
+    });
+
+  } catch (error) {
+    console.error('标记冲红失败:', error);
+    res.status(500).json({
+      error: '标记冲红失败',
       details: error.message
     });
   }

@@ -87,18 +87,35 @@ router.post('/request', requireAuth, async (req, res) => {
     }
 
     // 检查是否已有待处理的发票申请
-    const existingRequest = await InvoiceRequest.findOne({
+    const existingPendingRequest = await InvoiceRequest.findOne({
       where: {
         registrationId: registrationId,
         status: ['pending', 'processing']
       }
     });
 
-    if (existingRequest) {
+    if (existingPendingRequest) {
       return res.status(400).json({
-        error: '该注册记录已有待处理的发票申请'
+        error: '该注册记录已有待处理的发票申请',
+        existingRequestId: existingPendingRequest.id,
+        existingStatus: existingPendingRequest.status
       });
     }
+
+    // 检查是否已有完成的发票申请（这种情况需要冲红原发票）
+    const existingCompletedRequest = await InvoiceRequest.findOne({
+      where: {
+        registrationId: registrationId,
+        status: 'completed'
+      }
+    });
+
+    // 如果有已完成的申请，返回警告信息（但允许提交）
+    const warningInfo = existingCompletedRequest ? {
+      hasCompletedInvoice: true,
+      completedRequestId: existingCompletedRequest.id,
+      warningMessage: '此注册已有已开具的发票，再次申请需要管理员冲红原发票。This registration already has a completed invoice, re-applying requires red-inking the original invoice.'
+    } : null;
 
     // 验证开票金额
     if (!invoiceAmount || invoiceAmount <= 0) {
@@ -152,7 +169,8 @@ router.post('/request', requireAuth, async (req, res) => {
         id: invoiceRequest.id,
         status: invoiceRequest.status,
         requestedAt: invoiceRequest.requestedAt
-      }
+      },
+      warning: warningInfo // 如果有已完成的申请，返回警告信息
     });
 
   } catch (error) {

@@ -33,10 +33,18 @@
           :label-width="labelWidth"
           class="user-form"
         >
-          <el-form-item label="Full Name" prop="name" required>
+          <el-form-item label="First Name" prop="firstName" required>
             <el-input 
-              v-model="userInfo.name" 
-              placeholder="Enter your full name"
+              v-model="userInfo.firstName" 
+              placeholder="Enter your first name"
+              size="large"
+            ></el-input>
+          </el-form-item>
+
+          <el-form-item label="Last Name" prop="lastName" required>
+            <el-input 
+              v-model="userInfo.lastName" 
+              placeholder="Enter your last name"
               size="large"
             ></el-input>
           </el-form-item>
@@ -146,7 +154,9 @@ export default {
   data() {
     return {
       userInfo: {
-        name: '',
+        firstName: '',
+        lastName: '',
+        name: '', // 自动计算的 full name
         email: '',
         phone: '',
         affiliation: '',
@@ -159,8 +169,11 @@ export default {
       labelWidth: '120px',
       registrationCategory: null, // 保存注册类型
       rules: {
-        name: [
-          { required: true, message: 'Please enter your full name', trigger: 'blur' }
+        firstName: [
+          { required: true, message: 'Please enter your first name', trigger: 'blur' }
+        ],
+        lastName: [
+          { required: true, message: 'Please enter your last name', trigger: 'blur' }
         ],
         phone: [
           { required: true, message: 'Please enter your phone number', trigger: 'blur' }
@@ -198,11 +211,16 @@ export default {
   },
   computed: {
     canProceed() {
-      // 检查必填字段：name, email, phone, paperType
-      return this.userInfo.name.trim() && 
+      // 检查必填字段：firstName, lastName, email, phone, paperType
+      return this.userInfo.firstName.trim() && 
+             this.userInfo.lastName.trim() && 
              this.userInfo.email.trim() && 
              this.userInfo.phone.trim() &&
              this.userInfo.paperType;
+    },
+    // 自动计算 full name
+    fullName() {
+      return `${this.userInfo.firstName.trim()} ${this.userInfo.lastName.trim()}`.trim();
     },
     // 避免与ElementUI Form组件的内部fields属性冲突
     formFields() {
@@ -351,7 +369,11 @@ export default {
           const regData = response.data.registration_data;
           
           // 保存用户信息到 localStorage
+          // 从 full name 拆分为 firstName 和 lastName
+          const nameParts = (regData.name || '').trim().split(' ');
           const userInfo = {
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
             name: regData.name,
             email: regData.email,
             phone: regData.phone,
@@ -426,14 +448,18 @@ export default {
       const currentUser = this.$store.state.account.user;
       if (currentUser) {
         // 只在字段为空时进行预填充，避免覆盖用户已输入的数据
-        if (!this.userInfo.name) {
-          this.userInfo.name = currentUser.fullname || currentUser.name || currentUser.username || '';
+        if (!this.userInfo.firstName && !this.userInfo.lastName) {
+          const fullName = currentUser.fullname || currentUser.name || currentUser.username || '';
+          const nameParts = fullName.trim().split(' ');
+          this.userInfo.firstName = nameParts[0] || '';
+          this.userInfo.lastName = nameParts.slice(1).join(' ') || '';
         }
         // Email总是从用户账户信息中获取，确保数据一致性
         this.userInfo.email = currentUser.email || '';
         
         console.log('Pre-filled form with store user data:', {
-          name: this.userInfo.name,
+          firstName: this.userInfo.firstName,
+          lastName: this.userInfo.lastName,
           email: this.userInfo.email
         });
       }
@@ -454,8 +480,11 @@ export default {
           
           // 使用服务器数据补充或更新表单信息
           // 优先保留已有数据，只填充空字段
-          if (!this.userInfo.name && (serverUser.fullname || serverUser.name)) {
-            this.userInfo.name = serverUser.fullname || serverUser.name || '';
+          if (!this.userInfo.firstName && !this.userInfo.lastName && (serverUser.fullname || serverUser.name)) {
+            const fullName = serverUser.fullname || serverUser.name || '';
+            const nameParts = fullName.trim().split(' ');
+            this.userInfo.firstName = nameParts[0] || '';
+            this.userInfo.lastName = nameParts.slice(1).join(' ') || '';
           }
           // Email总是从服务器用户数据中获取，确保数据一致性
           if (serverUser.email) {
@@ -470,7 +499,8 @@ export default {
           }
           
           console.log('Enhanced form with server user data:', {
-            name: this.userInfo.name,
+            firstName: this.userInfo.firstName,
+            lastName: this.userInfo.lastName,
             email: this.userInfo.email,
             phone: this.userInfo.phone,
             affiliation: this.userInfo.affiliation
@@ -484,6 +514,8 @@ export default {
 
     clearUserInfo() {
       this.userInfo = {
+        firstName: '',
+        lastName: '',
         name: '',
         email: '',
         phone: '',
@@ -511,6 +543,8 @@ export default {
     nextStep() {
       this.$refs.userForm.validate((valid) => {
         if (valid) {
+          // 自动计算 full name
+          this.userInfo.name = this.fullName;
           this.saveUserInfo();
           this.$emit('step-complete', { userInfo: this.userInfo });
           
