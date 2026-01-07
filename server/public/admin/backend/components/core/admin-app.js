@@ -265,7 +265,7 @@ class AdminApp extends BaseComponent {
         // 监听浏览器hash变化，支持前进/后退和直接输入URL
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.slice(1);
-            const validTabs = ['dashboard', 'submissions', 'transfers', 'refunds', 'invoices', 'vouchers', 'users', 'statistics', 'settings'];
+            const validTabs = ['dashboard', 'submissions', 'transfers', 'refunds', 'invoices', 'vouchers', 'email-notify', 'users', 'statistics', 'settings'];
             
             if (hash && validTabs.includes(hash)) {
                 console.log(`Hash changed to: ${hash}`);
@@ -292,6 +292,7 @@ class AdminApp extends BaseComponent {
             'refunds': 'refund-manager',
             'invoices': 'invoice-manager',
             'vouchers': 'voucher-manager',
+            'email-notify': 'email-notification-manager',
             'statistics': 'statistics-manager',
             'settings': 'settings-manager'
         };
@@ -455,6 +456,10 @@ class AdminApp extends BaseComponent {
                     content = await this.loadVouchersContent();
                     break;
 
+                case 'email-notify':
+                    content = await this.loadEmailNotificationContent();
+                    break;
+
                 case 'ppt':
                     content = await this.loadPptContent();
                     break;
@@ -576,6 +581,25 @@ class AdminApp extends BaseComponent {
         } catch (error) {
             console.error('Failed to load voucher manager:', error);
             return this.createPlaceholderContent('餐券管理', 'fas fa-ticket-alt');
+        }
+    }
+
+    async loadEmailNotificationContent() {
+        // 动态导入邮件通知组件
+        try {
+            const { default: EmailNotificationManager } = await import('../pages/email-notification-manager.js');
+            
+            // 注册组件（如果尚未注册）
+            if (!customElements.get('email-notification-manager')) {
+                customElements.define('email-notification-manager', EmailNotificationManager);
+            }
+            
+            // 创建组件实例
+            const emailNotificationManager = document.createElement('email-notification-manager');
+            return emailNotificationManager;
+        } catch (error) {
+            console.error('Failed to load email notification manager:', error);
+            return this.createPlaceholderContent('邮件通知', 'fas fa-envelope');
         }
     }
 
@@ -738,7 +762,7 @@ class AdminApp extends BaseComponent {
         // 延迟执行，确保所有组件都已初始化完成
         setTimeout(() => {
             const hash = window.location.hash.slice(1);
-            const validTabs = ['dashboard', 'submissions', 'transfers', 'refunds', 'invoices', 'vouchers', 'users', 'statistics', 'settings'];
+            const validTabs = ['dashboard', 'submissions', 'transfers', 'refunds', 'invoices', 'vouchers', 'email-notify', 'users', 'statistics', 'settings'];
             
             if (hash && validTabs.includes(hash)) {
                 // 如果有有效的hash，设置对应的标签页

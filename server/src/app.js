@@ -29,6 +29,7 @@ const adminVoucherRoutes = require('./routes/admin-vouchers');
 const configRoutes = require('./routes/config');
 const panRoutes = require('./routes/pan');
 const pptUploadRoutes = require('./routes/ppt-upload');
+const adminEmailNotificationRoutes = require('./routes/admin-email-notification');
 
 const app = express();
 const PORT = process.env.CONFREG_BE_PORT || 3000;
@@ -185,6 +186,7 @@ app.use('/api/ppt-upload', pptUploadRoutes); // PPT上传服务
 app.use('/admin', adminRoutes);
 app.use('/admin/vouchers', adminVoucherRoutes);
 app.use('/admin/config', configRoutes); // 管理后台也可以访问配置 API
+app.use('/admin/email-notification', adminEmailNotificationRoutes); // 邮件通知管理
 
 // Admin panel route
 // app.get('/admin', (req, res) => {

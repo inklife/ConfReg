@@ -8,6 +8,7 @@ const path = require('path');
 const multer = require('multer');
 const csv = require('csv-parser');
 const RegistrationSubmission = require('../models/RegistrationSubmission');
+const emailService = require('../utils/emailService');
 const User = require('../models/User');
 const { RefundRequest } = require('../models');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
@@ -359,7 +360,7 @@ router.get('/pdf-worker-status', requireAdmin, async (req, res) => {
 // 获取所有注册提交（管理员）
 router.get('/submissions', requireAdmin, async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10 } = req.query;
+    const { status, search, product_code, page = 1, limit = 10 } = req.query;
     
     let where = {};
     
@@ -372,6 +373,11 @@ router.get('/submissions', requireAdmin, async (req, res) => {
         // 如果筛选非退款状态，排除已退款的记录
         where.is_refunded = false;
       }
+    }
+
+    // 产品代码筛选
+    if (product_code) {
+      where.product_code = product_code;
     }
 
     // 搜索功能：支持姓名、邮箱和 Paper ID 搜索
@@ -535,10 +541,46 @@ router.post('/submissions/:id/approve', requireAdmin, async (req, res) => {
 
     await submission.save();
 
+    // 发送审核通过邮件（尽力而为，不影响主流程）
+    let emailResult = { success: false };
+    try {
+      const userName = submission.name || 'Attendee';
+      const subject = 'ICPADS 2025 - Registration Approved';
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head><meta charset="utf-8"></head>
+          <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
+            <p>Dear ${userName},</p>
+            <p>Your ICPADS 2025 registration has been <strong style=\"color:#16a34a;\">approved</strong>.</p>
+            <p>
+              Registration Info:<br/>
+              - Product: <strong>${submission.product_code || 'N/A'}</strong><br/>
+              - Paper ID: <strong>${submission.paper_id || 'N/A'}</strong>
+            </p>
+            <p>Thank you for your registration. We look forward to seeing you at the conference.</p>
+            <p style=\"color:#6b7280; font-size:12px;\">This email was sent automatically. Please do not reply.</p>
+          </body>
+        </html>`;
+      const text = `Dear ${userName},\n\nYour ICPADS 2025 registration has been approved.\n\nProduct: ${submission.product_code || 'N/A'}\nPaper ID: ${submission.paper_id || 'N/A'}\n\nThank you.`;
+
+      await emailService.sendEmail({
+        to: submission.email,
+        subject,
+        html,
+        text
+      });
+      emailResult = { success: true };
+    } catch (e) {
+      console.warn('Send approval email failed:', e?.message || e);
+      emailResult = { success: false, error: e?.message || 'send email failed' };
+    }
+
     res.json({
       success: true,
       message: 'Submission approved successfully',
-      data: submission
+      data: submission,
+      email: emailResult
     });
 
   } catch (error) {
@@ -571,10 +613,43 @@ router.post('/submissions/:id/reject', requireAdmin, async (req, res) => {
 
     await submission.save();
 
+    // 发送拒绝邮件（包含原因，尽力而为，不影响主流程）
+    let emailResult = { success: false };
+    try {
+      const userName = submission.name || 'Attendee';
+      const reason = (notes || submission.review_notes || '').trim();
+      const subject = 'ICPADS 2025 - Registration Rejected';
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head><meta charset="utf-8"></head>
+          <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
+            <p>Dear ${userName},</p>
+            <p>We regret to inform you that your ICPADS 2025 registration has been <strong style=\"color:#dc2626;\">rejected</strong>.</p>
+            ${reason ? `<p><strong>Reason:</strong> ${reason.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` : ''}
+            <p>You may contact the organizing committee for further assistance.</p>
+            <p style=\"color:#6b7280; font-size:12px;\">This email was sent automatically. Please do not reply.</p>
+          </body>
+        </html>`;
+      const text = `Dear ${userName},\n\nYour ICPADS 2025 registration has been rejected.${reason ? `\nReason: ${reason}` : ''}`;
+
+      await emailService.sendEmail({
+        to: submission.email,
+        subject,
+        html,
+        text
+      });
+      emailResult = { success: true };
+    } catch (e) {
+      console.warn('Send rejection email failed:', e?.message || e);
+      emailResult = { success: false, error: e?.message || 'send email failed' };
+    }
+
     res.json({
       success: true,
       message: 'Submission rejected successfully',
-      data: submission
+      data: submission,
+      email: emailResult
     });
 
   } catch (error) {

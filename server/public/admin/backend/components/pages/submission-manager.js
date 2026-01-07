@@ -10,6 +10,7 @@ class SubmissionManager extends BaseComponent {
         super();
         this.submissions = [];
         this.currentFilter = '';
+        this.productCodeFilter = ''; // 产品代码筛选
         this.currentSort = 'created_desc';
         this.isLoading = false;
         
@@ -190,12 +191,27 @@ class SubmissionManager extends BaseComponent {
                                 <option value="rejected">已拒绝</option>
                                 <option value="refunded">已退款</option>
                             </select>
+                            <select class="filter-select" id="product-code-filter">
+                                <option value="">全部产品</option>
+                                <option value="IEEE Member">IEEE Member</option>
+                                <option value="Non-IEEE Member">Non-IEEE Member</option>
+                                <option value="Attendee - IEEE Member">Attendee - IEEE Member</option>
+                                <option value="Attendee - Non-IEEE Member">Attendee - Non-IEEE Member</option>
+                                <option value="IEEE Student Member/Life Member">IEEE Student Member/Life Member</option>
+                                <option value="Student - Non-IEEE Member">Student - Non-IEEE Member</option>
+                            </select>
                             <input type="text" class="search-input" id="search-input" placeholder="搜索姓名、邮箱或 Paper ID...">
                         </div>
-                        <button class="btn btn-primary" id="search-btn">
-                            <i class="fas fa-search"></i>
-                            搜索
-                        </button>
+                        <div style="display: flex; gap: 13px;">
+                            <button class="btn btn-primary" id="search-btn">
+                                <i class="fas fa-search"></i>
+                                搜索
+                            </button>
+                            <button class="btn btn-success" id="export-btn" style="background-color: #10b981; border-color: #10b981;" title="导出全部数据">
+                                <i class="fas fa-file-export"></i>
+                                导出
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="toolbar-right">
@@ -368,6 +384,24 @@ class SubmissionManager extends BaseComponent {
             this.loadSubmissions();
         });
 
+        // 产品代码筛选
+        const productCodeFilter = this.shadowRoot.getElementById('product-code-filter');
+        productCodeFilter?.addEventListener('change', (e) => {
+            this.productCodeFilter = e.target.value;
+            
+            // 重置状态
+            if (this.loadMode === 'pagination') {
+                this.currentPage = 1;
+            } else {
+                // 无限滚动模式：重置并重新加载
+                this.infiniteScrollOffset = 0;
+                this.hasMoreData = true;
+                this.submissions = [];
+            }
+            
+            this.loadSubmissions();
+        });
+
         // 搜索功能
         const searchInput = this.shadowRoot.getElementById('search-input');
         const searchBtn = this.shadowRoot.getElementById('search-btn');
@@ -391,6 +425,12 @@ class SubmissionManager extends BaseComponent {
                 this.performSearch();
             });
         }
+
+        // 导出按钮
+        const exportBtn = this.shadowRoot.getElementById('export-btn');
+        exportBtn?.addEventListener('click', () => {
+            this.exportSubmissions();
+        });
 
         // 刷新按钮（保留原有功能）
         const refreshBtn = this.shadowRoot.getElementById('refresh-btn');
@@ -497,6 +537,184 @@ class SubmissionManager extends BaseComponent {
         this.isSettingFilter = false;
     }
 
+    async exportSubmissions() {
+        try {
+            const exportBtn = this.shadowRoot.getElementById('export-btn');
+            if (exportBtn) {
+                exportBtn.disabled = true;
+                const originalContent = exportBtn.innerHTML;
+                exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导出中...';
+                
+                // 恢复按钮状态的帮助函数
+                const resetBtn = () => {
+                    exportBtn.disabled = false;
+                    exportBtn.innerHTML = originalContent;
+                };
+
+                try {
+                    // 获取所有数据 (limit=10000)
+                    const params = new URLSearchParams({
+                        page: 1,
+                        limit: 10000,
+                        sort: this.currentSort
+                    });
+
+                    if (this.currentFilter) {
+                        params.append('status', this.currentFilter);
+                    }
+
+                    if (this.productCodeFilter) {
+                        params.append('product_code', this.productCodeFilter);
+                    }
+
+                    if (this.searchTerm) {
+                        params.append('search', this.searchTerm);
+                    }
+
+                    const response = await fetch(`/admin/submissions?${params}`, {
+                        credentials: 'include'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('导出数据请求失败');
+                    }
+
+                    const data = await response.json();
+                    
+                    if (!data.success || !data.data || !data.data.submissions) {
+                        throw new Error('返回数据格式错误');
+                    }
+
+                    const submissions = data.data.submissions;
+
+                    if (submissions.length === 0) {
+                        alert('当前条件下没有可导出的数据');
+                        resetBtn();
+                        return;
+                    }
+
+                    // CSV 表头
+                    const headers = [
+                        'ID',
+                        '姓名',
+                        '邮箱',
+                        '机构',
+                        'Paper ID',
+                        'Paper Type',
+                        '注册类别',
+                        '产品代码',
+                        '基础价格',
+                        '论文页数',
+                        '超页费用',
+                        '总价',
+                        '币种',
+                        '状态',
+                        '提交时间',
+                        '审核时间',
+                        '审核备注',
+                        '凭证附言'
+                    ];
+
+                    const csvRows = [headers.join(',')];
+
+                    for (const sub of submissions) {
+                        const isDomestic = sub.payment_method === 'domestic';
+                        const currency = isDomestic ? 'RMB' : 'USD';
+                        const basePrice = isDomestic ? sub.product_price_rmb : sub.product_price;
+                        const extraFee = isDomestic ? sub.extra_page_fee_rmb : sub.extra_page_fee_usd;
+                        const totalAmount = isDomestic ? sub.total_amount_rmb : sub.total_amount_usd;
+
+                        // 状态显示逻辑
+                        const statusText = sub.is_refunded ? '全额退款' : this.getStatusText(sub.status);
+                        
+                        // Paper Type 转换
+                        const getPaperTypeText = (type) => {
+                             const map = {
+                                'research': 'Research Paper',
+                                'poster': 'Poster',
+                                'none': 'None'
+                             };
+                             return map[type] || type || '';
+                        };
+
+                        const row = [
+                            this.escapeCSV(sub.id),
+                            this.escapeCSV(sub.name || sub.fullname || sub.realname),
+                            this.escapeCSV(sub.email),
+                            this.escapeCSV(sub.affiliation),
+                            this.escapeCSVAsText(sub.paper_id), // 可能是数字字符串，防止转大数
+                            this.escapeCSV(getPaperTypeText(sub.paper_type)),
+                            this.escapeCSV(this.getRegistrationCategoryText(sub.registration_category)),
+                            this.escapeCSV(sub.product_code),
+                            this.escapeCSV(basePrice || 0),
+                            this.escapeCSV(sub.paper_pages || 0),
+                            this.escapeCSV(extraFee || 0),
+                            this.escapeCSV(totalAmount || 0),
+                            this.escapeCSV(currency),
+                            this.escapeCSV(statusText),
+                            this.escapeCSV(this.formatDate(sub.submission_time || sub.created_at)),
+                            this.escapeCSV(sub.review_time ? this.formatDate(sub.review_time) : ''),
+                            this.escapeCSV(sub.review_notes),
+                            this.escapeCSV(sub.payment_instructions)
+                        ];
+
+                        csvRows.push(row.join(','));
+                    }
+
+                    // 生成并下载
+                    const BOM = '\uFEFF';
+                    const csvContent = BOM + csvRows.join('\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = window.URL.createObjectURL(blob);
+                    
+                    const now = new Date();
+                    const timestamp = now.getFullYear() + 
+                                    String(now.getMonth() + 1).padStart(2, '0') + 
+                                    String(now.getDate()).padStart(2, '0') + '_' +
+                                    String(now.getHours()).padStart(2, '0') + 
+                                    String(now.getMinutes()).padStart(2, '0') + 
+                                    String(now.getSeconds()).padStart(2, '0');
+                                    
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `注册数据_全部_${timestamp}.csv`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                    
+                    resetBtn();
+
+                } catch (err) {
+                    console.error('Export error:', err);
+                    alert('导出失败: ' + err.message);
+                    resetBtn();
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    escapeCSV(value) {
+        if (value === null || value === undefined) return '';
+        const str = String(value);
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+            return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+    }
+
+    escapeCSVAsText(value) {
+        if (value === null || value === undefined || value === '') return '';
+        const str = String(value);
+        const textValue = '\t' + str;
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+            return `"${textValue.replace(/"/g, '""')}"`;
+        }
+        return `"${textValue}"`;
+    }
+
     performSearch() {
         const searchInput = this.shadowRoot.getElementById('search-input');
         if (searchInput) {
@@ -544,6 +762,10 @@ class SubmissionManager extends BaseComponent {
 
             if (this.currentFilter) {
                 params.append('status', this.currentFilter);
+            }
+
+            if (this.productCodeFilter) {
+                params.append('product_code', this.productCodeFilter);
             }
 
             if (this.searchTerm) {
@@ -633,6 +855,10 @@ class SubmissionManager extends BaseComponent {
 
             if (this.currentFilter) {
                 params.append('status', this.currentFilter);
+            }
+
+            if (this.productCodeFilter) {
+                params.append('product_code', this.productCodeFilter);
             }
 
             if (this.searchTerm) {
@@ -1968,16 +2194,30 @@ class SubmissionManager extends BaseComponent {
 
             const data = await response.json();
             if (data.success) {
-                alert('批准成功');
+                // 关闭模态框
                 const modal = document.getElementById('submission-modal-global');
                 if (modal) modal.remove();
+                
+                // 显示成功提示
+                console.log('准备显示批准成功提示...');
+                this.showMessage('批准成功', 'success');
+                console.log('已调用 showMessage');
+                
+                // 如果邮件发送成功，额外提示
+                if (data.email && data.email.success) {
+                    setTimeout(() => {
+                        this.showMessage('已向用户发送审核通过邮件', 'success');
+                    }, 1500);
+                }
+                
+                // 重新加载列表
                 this.loadSubmissions();
             } else {
-                alert('批准失败：' + (data.message || '未知错误'));
+                this.showMessage('批准失败：' + (data.message || '未知错误'), 'error');
             }
         } catch (error) {
             console.error('Error approving submission:', error);
-            alert('批准失败，请稍后重试');
+            this.showMessage('批准失败，请稍后重试', 'error');
         }
     }
 
@@ -2000,16 +2240,30 @@ class SubmissionManager extends BaseComponent {
 
             const data = await response.json();
             if (data.success) {
-                alert('拒绝成功');
+                // 关闭模态框
                 const modal = document.getElementById('submission-modal-global');
                 if (modal) modal.remove();
+                
+                // 显示成功提示
+                console.log('准备显示拒绝成功提示...');
+                this.showMessage('拒绝成功', 'success');
+                console.log('已调用 showMessage');
+                
+                // 如果邮件发送成功，额外提示
+                if (data.email && data.email.success) {
+                    setTimeout(() => {
+                        this.showMessage('已向用户发送拒绝原因邮件', 'success');
+                    }, 1500);
+                }
+                
+                // 重新加载列表
                 this.loadSubmissions();
             } else {
-                alert('拒绝失败：' + (data.message || '未知错误'));
+                this.showMessage('拒绝失败：' + (data.message || '未知错误'), 'error');
             }
         } catch (error) {
             console.error('Error rejecting submission:', error);
-            alert('拒绝失败，请稍后重试');
+            this.showMessage('拒绝失败，请稍后重试', 'error');
         }
     }
 

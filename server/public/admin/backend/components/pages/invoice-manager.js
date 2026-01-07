@@ -3070,7 +3070,7 @@ class InvoiceManager extends BaseComponent {
             <div class="file-list">
                 <div class="detail-title">
                     <i class="fas fa-paperclip"></i> 发票文件 (${invoice.files.length})
-                    ${['processing', 'completed'].includes(invoice.status) ? `
+                    ${['pending', 'processing', 'completed'].includes(invoice.status) ? `
                         <button class="btn btn-sm btn-primary" onclick="window.invoiceManagerInstance.showFileEditMode(${invoice.id})" style="margin-left: 12px; padding: 4px 8px; font-size: 12px;">
                             <i class="fas fa-edit"></i> 编辑文件
                         </button>
@@ -3110,7 +3110,7 @@ class InvoiceManager extends BaseComponent {
                         `;
                     }).join('')}
                 </div>
-                ${['processing', 'completed'].includes(invoice.status) ? `
+                ${['pending', 'processing', 'completed'].includes(invoice.status) ? `
                 <div class="file-edit-controls" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200);">
                     <div style="margin-bottom: 12px;">
                         <button class="btn btn-primary btn-add-file" onclick="window.invoiceManagerInstance.showUploadModal(${invoice.id})">
@@ -3126,7 +3126,7 @@ class InvoiceManager extends BaseComponent {
                 </div>
                 ` : ''}
             </div>
-            ` : ['processing', 'completed'].includes(invoice.status) ? `
+            ` : ['pending', 'processing', 'completed'].includes(invoice.status) ? `
             <div class="file-list">
                 <div class="detail-title">
                     <i class="fas fa-paperclip"></i> 发票文件 (0)
@@ -3160,23 +3160,13 @@ class InvoiceManager extends BaseComponent {
         
         switch (status) {
             case 'pending':
-                return `
-                    <button class="btn btn-process" data-invoice-id="${invoiceId}" onclick="window.invoiceManagerInstance.updateStatus(${invoiceId}, 'processing'); document.getElementById('invoice-details-modal-global').style.display='none';" style="${buttonStyle} background: var(--blue-500); border-color: var(--blue-500); color: white;">
-                        <i class="fas fa-play"></i>
-                        开始处理
-                    </button>
-                    <button class="btn btn-reject" data-invoice-id="${invoiceId}" onclick="window.invoiceManagerInstance.updateStatus(${invoiceId}, 'rejected'); document.getElementById('invoice-details-modal-global').style.display='none';" style="${buttonStyle} background: var(--red-500); border-color: var(--red-500); color: white;">
-                        <i class="fas fa-times"></i>
-                        拒绝申请
-                    </button>
-                `;
             case 'processing':
                 return `
                     <button class="btn btn-complete" onclick="window.invoiceManagerInstance.updateStatus(${invoiceId}, 'completed'); document.getElementById('invoice-details-modal-global').style.display='none';" style="${buttonStyle} background: var(--green-600); border-color: var(--green-600); color: white;">
                         <i class="fas fa-check"></i>
                         标记完成
                     </button>
-                    <button class="btn btn-reject" onclick="window.invoiceManagerInstance.updateStatus(${invoiceId}, 'rejected'); document.getElementById('invoice-details-modal-global').style.display='none';" style="${buttonStyle} background: var(--red-500); border-color: var(--red-500); color: white;">
+                    <button class="btn btn-reject" data-invoice-id="${invoiceId}" onclick="window.invoiceManagerInstance.updateStatus(${invoiceId}, 'rejected'); document.getElementById('invoice-details-modal-global').style.display='none';" style="${buttonStyle} background: var(--red-500); border-color: var(--red-500); color: white;">
                         <i class="fas fa-times"></i>
                         拒绝申请
                     </button>

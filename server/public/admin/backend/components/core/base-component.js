@@ -537,7 +537,8 @@ class BaseComponent extends HTMLElement {
     showMessage(message, type = 'info') {
         const event = new CustomEvent('show-message', {
             detail: { message, type },
-            bubbles: true
+            bubbles: true,
+            composed: true  // 允许事件穿透 Shadow DOM 边界
         });
         this.dispatchEvent(event);
     }
@@ -546,7 +547,8 @@ class BaseComponent extends HTMLElement {
     emit(eventName, detail = {}) {
         const event = new CustomEvent(eventName, {
             detail,
-            bubbles: true
+            bubbles: true,
+            composed: true  // 允许事件穿透 Shadow DOM 边界
         });
         this.dispatchEvent(event);
     }

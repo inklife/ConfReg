@@ -21,6 +21,7 @@ export { default as VoucherManager } from './pages/voucher-manager.js';
 export { default as UserManager } from './pages/user-manager.js';
 export { default as StatisticsManager } from './pages/statistics-manager.js';
 export { default as SystemManager } from './pages/system-manager.js';
+export { default as EmailNotificationManager } from './pages/email-notification-manager.js';
 export { default as MessageNotification } from './core/message-notification.js';
 
 // 主应用
@@ -51,6 +52,7 @@ export function initializeComponents() {
         'user-manager': 'UserManager',
         'statistics-manager': 'StatisticsManager',
         'system-manager': 'SystemManager',
+        'email-notification-manager': 'EmailNotificationManager',
         'message-notification': 'MessageNotification'
     };
 }
