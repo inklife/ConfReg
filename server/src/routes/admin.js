@@ -559,10 +559,14 @@ router.post('/submissions/:id/approve', requireAdmin, async (req, res) => {
               - Paper ID: <strong>${submission.paper_id || 'N/A'}</strong>
             </p>
             <p>Thank you for your registration. We look forward to seeing you at the conference.</p>
+            <p style="background-color:#f0f9ff; border-left:4px solid #3b82f6; padding:12px; margin:16px 0;">
+              <strong style="color:#1e40af;">📄 Invoice Application</strong><br/>
+              <span style="color:#374151; font-size:14px;">You can now apply for an invoice through your user dashboard.</span>
+            </p>
             <p style=\"color:#6b7280; font-size:12px;\">This email was sent automatically. Please do not reply.</p>
           </body>
         </html>`;
-      const text = `Dear ${userName},\n\nYour ICPADS 2025 registration has been approved.\n\nProduct: ${submission.product_code || 'N/A'}\nPaper ID: ${submission.paper_id || 'N/A'}\n\nThank you.`;
+      const text = `Dear ${userName},\n\nYour ICPADS 2025 registration has been approved.\n\nProduct: ${submission.product_code || 'N/A'}\nPaper ID: ${submission.paper_id || 'N/A'}\n\n📄 Invoice Application:\nYou can now apply for an invoice through your user dashboard.\n\nThank you.`;
 
       await emailService.sendEmail({
         to: submission.email,

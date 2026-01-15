@@ -8,6 +8,7 @@ const { sequelize } = require('../config/database');
 const { InvoiceRequest, InvoiceFile, RegistrationSubmission, User } = require('../models');
 const { requireAdmin } = require('../middleware/auth');
 const { Op } = require('sequelize');
+const emailService = require('../utils/emailService');
 
 // 配置multer用于管理员上传发票文件
 const storage = multer.diskStorage({
@@ -265,22 +266,89 @@ router.put('/request/:id/status', requireAdmin, async (req, res) => {
 
     await request.update(updateData);
 
+    // 发送邮件通知（尽力而为，不影响主流程）
+    let emailResult = { success: false };
+    const updatedRequest = await InvoiceRequest.findByPk(req.params.id, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username', 'fullname', 'email']
+        },
+        {
+          model: RegistrationSubmission,
+          as: 'registration',
+          attributes: ['id', 'name', 'email', 'phone', 'affiliation', 'paper_type', 'paper_id', 'paper_pages', 'product_code', 'product_price', 'product_price_rmb', 'total_amount_usd', 'total_amount_rmb', 'extra_page_fee_usd', 'extra_page_fee_rmb', 'registration_category', 'payment_method', 'status', 'submission_time', 'review_time']
+        }
+      ]
+    });
+
+    try {
+      const userName = updatedRequest.user?.fullname || updatedRequest.registration?.name || 'User';
+      const userEmail = updatedRequest.user?.email || updatedRequest.registration?.email;
+      
+      if (userEmail && status === 'completed') {
+        // 发送完成通知邮件
+        const subject = 'ICPADS 2025 - Invoice Ready for Download';
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <head><meta charset="utf-8"></head>
+            <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
+              <p>Dear ${userName},</p>
+              <p>Your invoice request has been <strong style="color:#16a34a;">completed</strong>.</p>
+              <p>
+                Invoice Details:<br/>
+                - Invoice ID: <strong>#${updatedRequest.id}</strong><br/>
+                - Amount: <strong>${updatedRequest.invoiceAmount} ${updatedRequest.invoiceCurrency}</strong>
+              </p>
+              <p style="background-color:#f0f9ff; border-left:4px solid #3b82f6; padding:12px; margin:16px 0;">
+                <strong style="color:#1e40af;">📥 Download Your Invoice</strong><br/>
+                <span style="color:#374151; font-size:14px;">You can now download your invoice from your user dashboard.</span>
+              </p>
+              <p>Thank you for your patience.</p>
+              <p style="color:#6b7280; font-size:12px;">This email was sent automatically. Please do not reply.</p>
+            </body>
+          </html>`;
+        const text = `Dear ${userName},\n\nYour invoice request has been completed.\n\nInvoice ID: #${updatedRequest.id}\nAmount: ${updatedRequest.invoiceAmount} ${updatedRequest.invoiceCurrency}\n\n📥 You can now download your invoice from your user dashboard.\n\nThank you.`;
+        
+        await emailService.sendEmail({ to: userEmail, subject, html, text });
+        emailResult = { success: true };
+      } else if (userEmail && status === 'rejected') {
+        // 发送拒绝通知邮件
+        const reason = (adminNotes || '').trim();
+        const subject = 'ICPADS 2025 - Invoice Request Rejected';
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <head><meta charset="utf-8"></head>
+            <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
+              <p>Dear ${userName},</p>
+              <p>We regret to inform you that your invoice request has been <strong style="color:#dc2626;">rejected</strong>.</p>
+              <p>
+                Invoice Request Details:<br/>
+                - Invoice ID: <strong>#${updatedRequest.id}</strong><br/>
+                - Amount: <strong>${updatedRequest.invoiceAmount} ${updatedRequest.invoiceCurrency}</strong>
+              </p>
+              ${reason ? `<p style="background-color:#fef2f2; border-left:4px solid #dc2626; padding:12px; margin:16px 0;"><strong style="color:#991b1b;">Reason:</strong><br/><span style="color:#374151;">${reason.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></p>` : ''}
+              <p>You may contact the organizing committee for further assistance or submit a new request.</p>
+              <p style="color:#6b7280; font-size:12px;">This email was sent automatically. Please do not reply.</p>
+            </body>
+          </html>`;
+        const text = `Dear ${userName},\n\nYour invoice request has been rejected.\n\nInvoice ID: #${updatedRequest.id}\nAmount: ${updatedRequest.invoiceAmount} ${updatedRequest.invoiceCurrency}${reason ? `\n\nReason: ${reason}` : ''}\n\nYou may contact the organizing committee for further assistance.`;
+        
+        await emailService.sendEmail({ to: userEmail, subject, html, text });
+        emailResult = { success: true };
+      }
+    } catch (e) {
+      console.warn('Send invoice status email failed:', e?.message || e);
+      emailResult = { success: false, error: e?.message || 'send email failed' };
+    }
+
     res.json({
       message: '状态更新成功',
-      request: await InvoiceRequest.findByPk(req.params.id, {
-        include: [
-          {
-            model: User,
-            as: 'user',
-            attributes: ['id', 'username', 'fullname', 'email']
-          },
-          {
-            model: RegistrationSubmission,
-            as: 'registration',
-            attributes: ['id', 'name', 'email', 'phone', 'affiliation', 'paper_type', 'paper_id', 'paper_pages', 'product_code', 'product_price', 'product_price_rmb', 'total_amount_usd', 'total_amount_rmb', 'extra_page_fee_usd', 'extra_page_fee_rmb', 'registration_category', 'payment_method', 'status', 'submission_time', 'review_time']
-          }
-        ]
-      })
+      request: updatedRequest,
+      email: emailResult
     });
 
   } catch (error) {
@@ -372,22 +440,64 @@ router.post('/request/:id/red-ink', requireAdmin, async (req, res) => {
       processedAt: new Date()
     });
 
+    // 发送冲红通知邮件（尽力而为，不影响主流程）
+    let emailResult = { success: false };
+    const updatedRequest = await InvoiceRequest.findByPk(req.params.id, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username', 'fullname', 'email']
+        },
+        {
+          model: RegistrationSubmission,
+          as: 'registration',
+          attributes: ['id', 'name', 'email', 'phone', 'affiliation', 'paper_type', 'paper_id', 'paper_pages', 'product_code', 'product_price', 'product_price_rmb', 'total_amount_usd', 'total_amount_rmb', 'extra_page_fee_usd', 'extra_page_fee_rmb', 'registration_category', 'payment_method', 'status', 'submission_time', 'review_time']
+        }
+      ]
+    });
+
+    try {
+      const userName = updatedRequest.user?.fullname || updatedRequest.registration?.name || 'User';
+      const userEmail = updatedRequest.user?.email || updatedRequest.registration?.email;
+      const reason = (adminNotes || '原发票作废，需重新开具').trim();
+      
+      if (userEmail) {
+        const subject = 'ICPADS 2025 - Invoice Has Been Red-Inked (Voided)';
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <head><meta charset="utf-8"></head>
+            <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
+              <p>Dear ${userName},</p>
+              <p>Your invoice has been <strong style="color:#d97706;">red-inked (voided)</strong>.</p>
+              <p>
+                Invoice Details:<br/>
+                - Invoice ID: <strong>#${updatedRequest.id}</strong><br/>
+                - Amount: <strong>${updatedRequest.invoiceAmount} ${updatedRequest.invoiceCurrency}</strong>
+              </p>
+              <p style="background-color:#fef3c7; border-left:4px solid #d97706; padding:12px; margin:16px 0;">
+                <strong style="color:#92400e;">⚠️ Notice:</strong><br/>
+                <span style="color:#374151;">${reason.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+              </p>
+              <p>If you need a new invoice, please submit a new request through your user dashboard.</p>
+              <p style="color:#6b7280; font-size:12px;">This email was sent automatically. Please do not reply.</p>
+            </body>
+          </html>`;
+        const text = `Dear ${userName},\n\nYour invoice has been red-inked (voided).\n\nInvoice ID: #${updatedRequest.id}\nAmount: ${updatedRequest.invoiceAmount} ${updatedRequest.invoiceCurrency}\n\n⚠️ Notice: ${reason}\n\nIf you need a new invoice, please submit a new request through your user dashboard.`;
+        
+        await emailService.sendEmail({ to: userEmail, subject, html, text });
+        emailResult = { success: true };
+      }
+    } catch (e) {
+      console.warn('Send red-ink notification email failed:', e?.message || e);
+      emailResult = { success: false, error: e?.message || 'send email failed' };
+    }
+
     res.json({
       message: '已成功标记为已冲红',
-      request: await InvoiceRequest.findByPk(req.params.id, {
-        include: [
-          {
-            model: User,
-            as: 'user',
-            attributes: ['id', 'username', 'fullname', 'email']
-          },
-          {
-            model: RegistrationSubmission,
-            as: 'registration',
-            attributes: ['id', 'name', 'email', 'phone', 'affiliation', 'paper_type', 'paper_id', 'paper_pages', 'product_code', 'product_price', 'product_price_rmb', 'total_amount_usd', 'total_amount_rmb', 'extra_page_fee_usd', 'extra_page_fee_rmb', 'registration_category', 'payment_method', 'status', 'submission_time', 'review_time']
-          }
-        ]
-      })
+      request: updatedRequest,
+      email: emailResult
     });
 
   } catch (error) {

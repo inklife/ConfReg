@@ -16,9 +16,21 @@ const RegistrationSubmission = sequelize.define('RegistrationSubmission', {
       key: 'id'
     }
   },
+  ieee_member_id: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+    defaultValue: '',
+    comment: 'IEEE Member ID (or N/A if not a member)'
+  },
   name: {
     type: DataTypes.STRING(100),
     allowNull: false
+  },
+  middle_initial: {
+    type: DataTypes.STRING(10),
+    allowNull: false,
+    defaultValue: '',
+    comment: 'Middle Initial (or N/A)'
   },
   email: {
     type: DataTypes.STRING,
@@ -35,7 +47,38 @@ const RegistrationSubmission = sequelize.define('RegistrationSubmission', {
   affiliation: {
     type: DataTypes.STRING(200),
     allowNull: false,
-    defaultValue: ''
+    defaultValue: '',
+    comment: 'Company / Institution Affiliation'
+  },
+  address: {
+    type: DataTypes.STRING(300),
+    allowNull: false,
+    defaultValue: '',
+    comment: 'Street address'
+  },
+  city: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    defaultValue: '',
+    comment: 'City'
+  },
+  state_province: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    defaultValue: '',
+    comment: 'State or Province'
+  },
+  country: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    defaultValue: '',
+    comment: 'Country'
+  },
+  postal_code: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: '',
+    comment: 'Postal/ZIP Code'
   },
   paper_type: {
     type: DataTypes.TEXT,

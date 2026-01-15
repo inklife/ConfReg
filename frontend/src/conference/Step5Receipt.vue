@@ -1097,6 +1097,13 @@ export default {
           email: regData.email,
           phone: regData.phone,
           affiliation: regData.affiliation,
+          ieeeMemberId: regData.ieee_member_id || '',
+          middleInitial: regData.middle_initial || '',
+          address: regData.address || '',
+          city: regData.city || '',
+          stateProvince: regData.state_province || '',
+          country: regData.country || '',
+          postalCode: regData.postal_code || '',
           paperId: regData.paper_id,
           paperPages: regData.paper_pages
         };

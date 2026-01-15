@@ -86,16 +86,48 @@
         <div class="info-section">
           <h4>Personal Information</h4>
           <div class="info-row">
+            <span>IEEE Member ID:</span>
+            <strong>{{ userInfo.ieeeMemberId || 'Not provided' }}</strong>
+          </div>
+          <div class="info-row">
             <span>Full Name:</span>
             <strong>{{ userInfo.name || 'Not provided' }}</strong>
+          </div>
+          <div class="info-row" v-if="userInfo.middleInitial">
+            <span>Middle Initial:</span>
+            <strong>{{ userInfo.middleInitial }}</strong>
           </div>
           <div class="info-row">
             <span>Email:</span>
             <strong>{{ userInfo.email || 'Not provided' }}</strong>
           </div>
           <div class="info-row">
-            <span>Institution:</span>
+            <span>Phone:</span>
+            <strong>{{ userInfo.phone || 'Not provided' }}</strong>
+          </div>
+          <div class="info-row">
+            <span>Company/Institution:</span>
             <strong>{{ userInfo.affiliation || 'Not provided' }}</strong>
+          </div>
+          <div class="info-row">
+            <span>Address:</span>
+            <strong>{{ userInfo.address || 'Not provided' }}</strong>
+          </div>
+          <div class="info-row">
+            <span>City:</span>
+            <strong>{{ userInfo.city || 'Not provided' }}</strong>
+          </div>
+          <div class="info-row">
+            <span>State/Province:</span>
+            <strong>{{ userInfo.stateProvince || 'Not provided' }}</strong>
+          </div>
+          <div class="info-row">
+            <span>Country:</span>
+            <strong>{{ userInfo.country || 'Not provided' }}</strong>
+          </div>
+          <div class="info-row">
+            <span>Postal Code:</span>
+            <strong>{{ userInfo.postalCode || 'Not provided' }}</strong>
           </div>
         </div>
 
@@ -1250,6 +1282,13 @@ export default {
         formData.append('name', this.userInfo.name || '');
         formData.append('phone', this.userInfo.phone || '');
         formData.append('affiliation', this.userInfo.affiliation || '');
+        formData.append('ieee_member_id', this.userInfo.ieeeMemberId || '');
+        formData.append('middle_initial', this.userInfo.middleInitial || '');
+        formData.append('address', this.userInfo.address || '');
+        formData.append('city', this.userInfo.city || '');
+        formData.append('state_province', this.userInfo.stateProvince || '');
+        formData.append('country', this.userInfo.country || '');
+        formData.append('postal_code', this.userInfo.postalCode || '');
         formData.append('paper_type', this.userInfo.paperType || 'none');
         formData.append('paper_id', this.userInfo.paperId || '');
         formData.append('paper_pages', this.userInfo.paperPages || '');

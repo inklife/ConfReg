@@ -2079,7 +2079,21 @@ class InvoiceManager extends BaseComponent {
             
             if (!response.ok) throw new Error('状态更新失败');
             
+            const data = await response.json();
+            
             this.showSuccess(`状态已更新为${statusTexts[newStatus]}`);
+            
+            // 如果邮件发送成功，额外提示
+            if (data.email && data.email.success) {
+                setTimeout(() => {
+                    if (newStatus === 'completed') {
+                        this.showSuccess('已向用户发送发票下载通知邮件');
+                    } else if (newStatus === 'rejected') {
+                        this.showSuccess('已向用户发送拒绝原因邮件');
+                    }
+                }, 1500);
+            }
+            
             this.loadData(); // 重新加载数据和统计
             
         } catch (error) {
@@ -2342,7 +2356,17 @@ class InvoiceManager extends BaseComponent {
                 throw new Error(errorData.error || '标记冲红失败');
             }
             
+            const data = await response.json();
+            
             this.showSuccess('已成功标记为已冲红');
+            
+            // 如果邮件发送成功，额外提示
+            if (data.email && data.email.success) {
+                setTimeout(() => {
+                    this.showSuccess('已向用户发送发票冲红通知邮件');
+                }, 1500);
+            }
+            
             this.loadData(); // 重新加载数据和统计
             
         } catch (error) {

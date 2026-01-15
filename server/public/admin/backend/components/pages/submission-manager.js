@@ -10,16 +10,17 @@ class SubmissionManager extends BaseComponent {
         super();
         this.submissions = [];
         this.currentFilter = '';
-        this.productCodeFilter = ''; // 产品代码筛选
+        this.productCodeFilter = ''; // 注册类别筛选
         this.currentSort = 'created_desc';
         this.isLoading = false;
+        this.currentUsername = ''; // 当前用户名，用于localStorage
         
         // 加载模式: 'pagination' 或 'infinite'
-        this.loadMode = 'infinite'; // 默认使用无限滚动模式
+        this.loadMode = 'pagination'; // 默认使用分页模式
         
         // 分页模式相关 (保留，当loadMode='pagination'时使用)
         this.currentPage = 1;
-        this.pageSize = 5;
+        this.pageSize = 20; // 默认每页20条
         this.totalPages = 0;
         
         // 无限滚动模式相关 (当loadMode='infinite'时使用)
@@ -33,12 +34,25 @@ class SubmissionManager extends BaseComponent {
         this.initialLoadTimeout = null;
         this.isSettingFilter = false; // 防止重复设置过滤器
         this.searchTerm = ''; // 添加搜索词属性
+        
+        // 存储事件监听器引用，用于动态绑定/解绑
+        this.infiniteScrollHandlers = {
+            loadMoreClick: null,
+            tableScroll: null,
+            contentWheel: null
+        };
     }
 
     async render() {
         // 重置状态标记，确保每次渲染时都是清洁状态
         this.hasReceivedParameters = false;
         this.isSettingFilter = false;
+        
+        // 获取当前用户名
+        this.currentUsername = this.getCurrentUsername();
+        
+        // 从localStorage加载设置
+        this.loadSettingsFromLocalStorage();
         
         // 使用基础组件的样式
         const baseStyles = this.createBaseStyles();
@@ -54,7 +68,7 @@ class SubmissionManager extends BaseComponent {
             }
             
             /* 注册管理组件特定样式 */
-            .submissions-content .data-table td:nth-child(4),  /* 产品代码 */
+            .submissions-content .data-table td:nth-child(4),  /* 注册类别 */
             .submissions-content .data-table td:nth-child(5),  /* 价格 */
             .submissions-content .data-table td:nth-child(6),  /* 状态 */
             .submissions-content .data-table td:nth-child(7),  /* 提交时间 */
@@ -92,6 +106,103 @@ class SubmissionManager extends BaseComponent {
                 .submissions-content .data-table td:nth-child(7) {
                     display: none;
                 }
+            }
+
+            /* 加载模式控制样式 */
+            .load-mode-controls {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                padding: 8px 0;
+            }
+
+            .mode-switch-container {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .mode-switch-label {
+                font-size: 13px;
+                color: #6b7280;
+                font-weight: 500;
+            }
+
+            .mode-switch {
+                position: relative;
+                display: inline-block;
+                width: 48px;
+                height: 24px;
+            }
+
+            .mode-switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .mode-slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: #cbd5e1;
+                transition: 0.3s;
+                border-radius: 24px;
+            }
+
+            .mode-slider:before {
+                position: absolute;
+                content: "";
+                height: 18px;
+                width: 18px;
+                left: 3px;
+                bottom: 3px;
+                background-color: white;
+                transition: 0.3s;
+                border-radius: 50%;
+            }
+
+            input:checked + .mode-slider {
+                background-color: #3b82f6;
+            }
+
+            input:checked + .mode-slider:before {
+                transform: translateX(24px);
+            }
+
+            .page-size-container {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .page-size-label {
+                font-size: 13px;
+                color: #6b7280;
+                font-weight: 500;
+            }
+
+            .page-size-input {
+                width: 70px;
+                padding: 6px 10px;
+                font-size: 13px;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                text-align: center;
+                transition: all 0.2s ease;
+            }
+
+            .page-size-input:focus {
+                outline: none;
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+
+            .page-size-input:invalid {
+                border-color: #ef4444;
             }
 
             /* 无限滚动模式样式 */
@@ -192,7 +303,7 @@ class SubmissionManager extends BaseComponent {
                                 <option value="refunded">已退款</option>
                             </select>
                             <select class="filter-select" id="product-code-filter">
-                                <option value="">全部产品</option>
+                                <option value="">全部类别</option>
                                 <option value="IEEE Member">IEEE Member</option>
                                 <option value="Non-IEEE Member">Non-IEEE Member</option>
                                 <option value="Attendee - IEEE Member">Attendee - IEEE Member</option>
@@ -215,6 +326,28 @@ class SubmissionManager extends BaseComponent {
                     </div>
                     
                     <div class="toolbar-right">
+                        <div class="load-mode-controls">
+                            <!-- 加载模式切换 -->
+                            <div class="mode-switch-container">
+                                <span class="mode-switch-label">分页模式</span>
+                                <label class="mode-switch">
+                                    <input type="checkbox" id="load-mode-switch">
+                                    <span class="mode-slider"></span>
+                                </label>
+                                <span class="mode-switch-label">滚动模式</span>
+                            </div>
+                            
+                            <!-- 分页大小设置（仅在分页模式下显示） -->
+                            <div class="page-size-container" id="page-size-container">
+                                <span class="page-size-label">每页：</span>
+                                <input type="number" 
+                                       class="page-size-input" 
+                                       id="page-size-input" 
+                                       min="3" 
+                                       max="500" 
+                                       value="20">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -228,7 +361,7 @@ class SubmissionManager extends BaseComponent {
                                     <th style="width: 14%;">邮箱</th>
                                     <th style="width: 14%;">机构</th>
                                     <th style="width: 12%;">Paper ID</th>
-                                    <th style="width: 10%;">产品代码</th>
+                                    <th style="width: 10%;">注册类别</th>
                                     <th style="width: 8%;">总价</th>
                                     <th style="width: 8%;">状态</th>
                                     <th style="width: 9%;">提交时间</th>
@@ -312,16 +445,66 @@ class SubmissionManager extends BaseComponent {
     updateUIForLoadMode() {
         const paginationContainer = this.shadowRoot.getElementById('pagination-container');
         const infiniteScrollContainer = this.shadowRoot.getElementById('infinite-scroll-container');
+        const pageSizeContainer = this.shadowRoot.getElementById('page-size-container');
+        const loadModeSwitch = this.shadowRoot.getElementById('load-mode-switch');
         
         if (this.loadMode === 'pagination') {
             // 分页模式
             if (paginationContainer) paginationContainer.style.display = 'block';
             if (infiniteScrollContainer) infiniteScrollContainer.style.display = 'none';
+            if (pageSizeContainer) pageSizeContainer.style.display = 'flex';
+            if (loadModeSwitch) loadModeSwitch.checked = false;
         } else {
             // 无限滚动模式
             if (paginationContainer) paginationContainer.style.display = 'none';
             if (infiniteScrollContainer) infiniteScrollContainer.style.display = 'block';
+            if (pageSizeContainer) pageSizeContainer.style.display = 'none';
+            if (loadModeSwitch) loadModeSwitch.checked = true;
         }
+    }
+
+    /**
+     * 获取当前用户名
+     */
+    getCurrentUsername() {
+        // 尝试从全局admin-app获取
+        const adminApp = document.querySelector('admin-app');
+        if (adminApp && adminApp.currentUser) {
+            return adminApp.currentUser.username || adminApp.currentUser.name || 'admin';
+        }
+        // 备用方案
+        return 'admin';
+    }
+
+    /**
+     * 从localStorage加载设置
+     */
+    loadSettingsFromLocalStorage() {
+        const prefix = `submission_manager_${this.currentUsername}_`;
+        
+        // 加载加载模式
+        const savedLoadMode = localStorage.getItem(`${prefix}loadMode`);
+        if (savedLoadMode && ['pagination', 'infinite'].includes(savedLoadMode)) {
+            this.loadMode = savedLoadMode;
+        }
+        
+        // 加载分页大小
+        const savedPageSize = localStorage.getItem(`${prefix}pageSize`);
+        if (savedPageSize) {
+            const pageSize = parseInt(savedPageSize, 10);
+            if (!isNaN(pageSize) && pageSize >= 3 && pageSize <= 500) {
+                this.pageSize = pageSize;
+            }
+        }
+    }
+
+    /**
+     * 保存设置到localStorage
+     */
+    saveSettingsToLocalStorage() {
+        const prefix = `submission_manager_${this.currentUsername}_`;
+        localStorage.setItem(`${prefix}loadMode`, this.loadMode);
+        localStorage.setItem(`${prefix}pageSize`, this.pageSize.toString());
     }
 
     scheduleInitialLoad() {
@@ -384,7 +567,7 @@ class SubmissionManager extends BaseComponent {
             this.loadSubmissions();
         });
 
-        // 产品代码筛选
+        // 注册类别筛选
         const productCodeFilter = this.shadowRoot.getElementById('product-code-filter');
         productCodeFilter?.addEventListener('change', (e) => {
             this.productCodeFilter = e.target.value;
@@ -438,6 +621,82 @@ class SubmissionManager extends BaseComponent {
             this.loadSubmissions();
         });
 
+        // 加载模式切换
+        const loadModeSwitch = this.shadowRoot.getElementById('load-mode-switch');
+        loadModeSwitch?.addEventListener('change', (e) => {
+            const newMode = e.target.checked ? 'infinite' : 'pagination';
+            if (newMode !== this.loadMode) {
+                this.loadMode = newMode;
+                
+                // 保存到localStorage
+                this.saveSettingsToLocalStorage();
+                
+                // 重置状态
+                this.currentPage = 1;
+                this.infiniteScrollOffset = 0;
+                this.hasMoreData = true;
+                this.submissions = [];
+                
+                // 动态绑定/解绑事件
+                if (newMode === 'infinite') {
+                    this.bindInfiniteScrollEvents();
+                } else {
+                    this.unbindInfiniteScrollEvents();
+                }
+                
+                // 更新UI
+                this.updateUIForLoadMode();
+                
+                // 重新加载数据
+                this.loadSubmissions();
+            }
+        });
+
+        // 页面大小设置
+        const pageSizeInput = this.shadowRoot.getElementById('page-size-input');
+        if (pageSizeInput) {
+            // 设置初始值
+            pageSizeInput.value = this.pageSize;
+            
+            // 输入验证
+            pageSizeInput.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value, 10);
+                if (!isNaN(value)) {
+                    if (value < 3) e.target.value = 3;
+                    if (value > 500) e.target.value = 500;
+                }
+            });
+            
+            // 值变更时重新加载
+            pageSizeInput.addEventListener('change', (e) => {
+                const newPageSize = parseInt(e.target.value, 10);
+                if (!isNaN(newPageSize) && newPageSize >= 3 && newPageSize <= 500) {
+                    if (newPageSize !== this.pageSize) {
+                        this.pageSize = newPageSize;
+                        
+                        // 保存到localStorage
+                        this.saveSettingsToLocalStorage();
+                        
+                        // 重置到第一页
+                        this.currentPage = 1;
+                        
+                        // 重新加载数据
+                        this.loadSubmissions();
+                    }
+                } else {
+                    // 恢复有效值
+                    e.target.value = this.pageSize;
+                }
+            });
+            
+            // 支持回车键
+            pageSizeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.target.blur(); // 触发change事件
+                }
+            });
+        }
+
         // 分页按钮
         const prevBtn = this.shadowRoot.getElementById('prev-page');
         const nextBtn = this.shadowRoot.getElementById('next-page');
@@ -472,42 +731,85 @@ class SubmissionManager extends BaseComponent {
             }
         });
 
-        // 无限滚动模式事件
+        // 根据当前模式绑定或不绑定无限滚动事件
         if (this.loadMode === 'infinite') {
-            // 加载更多按钮
-            const loadMoreBtn = this.shadowRoot.getElementById('load-more-btn');
-            loadMoreBtn?.addEventListener('click', () => {
+            this.bindInfiniteScrollEvents();
+        }
+    }
+
+    /**
+     * 绑定无限滚动模式的事件监听器
+     */
+    bindInfiniteScrollEvents() {
+        // 防止重复绑定
+        if (this.infiniteScrollHandlers.loadMoreClick) {
+            return;
+        }
+
+        // 加载更多按钮
+        const loadMoreBtn = this.shadowRoot.getElementById('load-more-btn');
+        if (loadMoreBtn) {
+            this.infiniteScrollHandlers.loadMoreClick = () => {
                 this.loadMoreSubmissions();
-            });
+            };
+            loadMoreBtn.addEventListener('click', this.infiniteScrollHandlers.loadMoreClick);
+        }
 
-            // 滚动事件监听（表格容器）
-            const tableContainer = this.shadowRoot.querySelector('.table-container');
-            if (tableContainer) {
-                tableContainer.addEventListener('scroll', () => {
-                    this.handleScroll(tableContainer);
-                });
-            }
+        // 滚动事件监听（表格容器）
+        const tableContainer = this.shadowRoot.querySelector('.table-container');
+        if (tableContainer) {
+            this.infiniteScrollHandlers.tableScroll = () => {
+                this.handleScroll(tableContainer);
+            };
+            tableContainer.addEventListener('scroll', this.infiniteScrollHandlers.tableScroll);
+        }
 
-            // 鼠标滚轮事件（主容器）
-            const contentArea = this.shadowRoot.querySelector('.content-area');
-            if (contentArea) {
-                contentArea.addEventListener('wheel', (e) => {
-                    // 向下滚动且接近底部时自动加载
-                    if (e.deltaY > 0) {
-                        const container = this.shadowRoot.querySelector('.table-container');
-                        if (container) {
-                            const scrollTop = container.scrollTop;
-                            const scrollHeight = container.scrollHeight;
-                            const clientHeight = container.clientHeight;
-                            
-                            // 距离底部200px时触发加载
-                            if (scrollHeight - scrollTop - clientHeight < 200) {
-                                this.loadMoreSubmissions();
-                            }
+        // 鼠标滚轮事件（主容器）
+        const contentArea = this.shadowRoot.querySelector('.content-area');
+        if (contentArea) {
+            this.infiniteScrollHandlers.contentWheel = (e) => {
+                // 向下滚动且接近底部时自动加载
+                if (e.deltaY > 0) {
+                    const container = this.shadowRoot.querySelector('.table-container');
+                    if (container) {
+                        const scrollTop = container.scrollTop;
+                        const scrollHeight = container.scrollHeight;
+                        const clientHeight = container.clientHeight;
+                        
+                        // 距离底部200px时触发加载
+                        if (scrollHeight - scrollTop - clientHeight < 200) {
+                            this.loadMoreSubmissions();
                         }
                     }
-                });
-            }
+                }
+            };
+            contentArea.addEventListener('wheel', this.infiniteScrollHandlers.contentWheel);
+        }
+    }
+
+    /**
+     * 解绑无限滚动模式的事件监听器
+     */
+    unbindInfiniteScrollEvents() {
+        // 移除加载更多按钮事件
+        const loadMoreBtn = this.shadowRoot.getElementById('load-more-btn');
+        if (loadMoreBtn && this.infiniteScrollHandlers.loadMoreClick) {
+            loadMoreBtn.removeEventListener('click', this.infiniteScrollHandlers.loadMoreClick);
+            this.infiniteScrollHandlers.loadMoreClick = null;
+        }
+
+        // 移除表格滚动事件
+        const tableContainer = this.shadowRoot.querySelector('.table-container');
+        if (tableContainer && this.infiniteScrollHandlers.tableScroll) {
+            tableContainer.removeEventListener('scroll', this.infiniteScrollHandlers.tableScroll);
+            this.infiniteScrollHandlers.tableScroll = null;
+        }
+
+        // 移除鼠标滚轮事件
+        const contentArea = this.shadowRoot.querySelector('.content-area');
+        if (contentArea && this.infiniteScrollHandlers.contentWheel) {
+            contentArea.removeEventListener('wheel', this.infiniteScrollHandlers.contentWheel);
+            this.infiniteScrollHandlers.contentWheel = null;
         }
     }
 
@@ -598,11 +900,19 @@ class SubmissionManager extends BaseComponent {
                         'ID',
                         '姓名',
                         '邮箱',
+                        'IEEE Member ID',
+                        'Middle Initial',
                         '机构',
+                        '地址',
+                        '城市',
+                        '州/省',
+                        '国家',
+                        '邮政编码',
+                        '电话',
                         'Paper ID',
                         'Paper Type',
                         '注册类别',
-                        '产品代码',
+                        '注册类别',
                         '基础价格',
                         '论文页数',
                         '超页费用',
@@ -641,7 +951,15 @@ class SubmissionManager extends BaseComponent {
                             this.escapeCSV(sub.id),
                             this.escapeCSV(sub.name || sub.fullname || sub.realname),
                             this.escapeCSV(sub.email),
+                            this.escapeCSV(sub.ieee_member_id || 'N/A'),
+                            this.escapeCSV(sub.middle_initial || 'N/A'),
                             this.escapeCSV(sub.affiliation),
+                            this.escapeCSV(sub.address),
+                            this.escapeCSV(sub.city),
+                            this.escapeCSV(sub.state_province),
+                            this.escapeCSV(sub.country),
+                            this.escapeCSV(sub.postal_code),
+                            this.escapeCSV(sub.phone),
                             this.escapeCSVAsText(sub.paper_id), // 可能是数字字符串，防止转大数
                             this.escapeCSV(getPaperTypeText(sub.paper_type)),
                             this.escapeCSV(this.getRegistrationCategoryText(sub.registration_category)),
@@ -1791,9 +2109,17 @@ class SubmissionManager extends BaseComponent {
         return `
             <!-- 基本信息 -->
             <div class="detail-group" style="margin-bottom: 0;">
-                <h4 class="detail-group-title">
-                    <i class="fas fa-user"></i>
-                    基本信息
+                <h4 class="detail-group-title" style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-user"></i>
+                        基本信息
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: #6b7280;">
+                        IEEE Member ID:
+                        <code style="background: #f0fdf4; padding: 3px 10px; border-radius: 4px; color: #166534; font-weight: 600;">
+                            ${this.escapeHtml(submission.ieee_member_id || 'N/A')}
+                        </code>
+                    </span>
                 </h4>
                 <div class="detail-grid">
                     <div class="detail-item">
@@ -1809,6 +2135,46 @@ class SubmissionManager extends BaseComponent {
                         <div class="detail-value">${this.escapeHtml(submission.affiliation || '未填写')}</div>
                     </div>
                 </div>
+                
+                <!-- 更多个人信息 - 折叠面板 -->
+                <details class="extra-info-panel" style="margin-top: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                    <summary style="padding: 10px 14px; background: #f9fafb; cursor: pointer; user-select: none; font-size: 13px; color: #6b7280; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-chevron-right" style="font-size: 10px; transition: transform 0.2s;"></i>
+                        更多个人信息
+                    </summary>
+                    <div style="padding: 14px; background: #fff;">
+                        <div class="detail-grid" style="gap: 10px;">
+                            <div class="detail-item" style="margin-bottom: 0;">
+                                <div class="detail-label">Middle Initial</div>
+                                <div class="detail-value">${this.escapeHtml(submission.middle_initial || 'N/A')}</div>
+                            </div>
+                            <div class="detail-item" style="margin-bottom: 0;">
+                                <div class="detail-label">地址</div>
+                                <div class="detail-value">${this.escapeHtml(submission.address || '未填写')}</div>
+                            </div>
+                            <div class="detail-item" style="margin-bottom: 0;">
+                                <div class="detail-label">城市</div>
+                                <div class="detail-value">${this.escapeHtml(submission.city || '未填写')}</div>
+                            </div>
+                            <div class="detail-item" style="margin-bottom: 0;">
+                                <div class="detail-label">州/省</div>
+                                <div class="detail-value">${this.escapeHtml(submission.state_province || '未填写')}</div>
+                            </div>
+                            <div class="detail-item" style="margin-bottom: 0;">
+                                <div class="detail-label">国家</div>
+                                <div class="detail-value">${this.escapeHtml(submission.country || '未填写')}</div>
+                            </div>
+                            <div class="detail-item" style="margin-bottom: 0;">
+                                <div class="detail-label">邮政编码</div>
+                                <div class="detail-value">${this.escapeHtml(submission.postal_code || '未填写')}</div>
+                            </div>
+                            <div class="detail-item" style="margin-bottom: 0;">
+                                <div class="detail-label">电话</div>
+                                <div class="detail-value">${this.escapeHtml(submission.phone || '未填写')}</div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
             </div>
 
             <!-- 注册信息 -->
@@ -1855,7 +2221,7 @@ class SubmissionManager extends BaseComponent {
                         <div class="detail-value">${this.escapeHtml(this.getRegistrationCategoryText(submission.registration_category) || '未知')}</div>
                     </div>
                     <div class="detail-item" style="margin-bottom: 0;">
-                        <div class="detail-label">产品代码</div>
+                        <div class="detail-label">注册类别</div>
                         <div class="detail-value">
                             <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">
                                 ${this.escapeHtml(submission.product_code || 'N/A')}

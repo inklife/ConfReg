@@ -762,6 +762,39 @@ router.post('/register', [
 
     console.log('User registered successfully:', newUser.username, 'email:', newUser.email);
 
+    // 6. 发送注册成功欢迎邮件（尽力而为，不影响注册流程）
+    try {
+      const subject = 'Welcome to ICPADS 2025 - Account Created Successfully';
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head><meta charset="utf-8"></head>
+          <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
+            <p>Dear ${finalFullname || username},</p>
+            <p>Welcome to <strong>ICPADS 2025</strong>!</p>
+            <p>Your account has been successfully created.</p>
+            <p>
+              Account Details:<br/>
+              - Username: <strong>${username}</strong><br/>
+              - Email: <strong>${email}</strong>
+            </p>
+            <p style="background-color:#f0fdf4; border-left:4px solid #16a34a; padding:12px; margin:16px 0;">
+              <strong style="color:#15803d;">🎉 Next Steps</strong><br/>
+              <span style="color:#374151; font-size:14px;">You can now complete your conference registration and payment. Please log in to your account to get started.</span>
+            </p>
+            <p>If you have any questions, please feel free to contact the organizing committee.</p>
+            <p style="color:#6b7280; font-size:12px;">This email was sent automatically. Please do not reply.</p>
+          </body>
+        </html>`;
+      const text = `Dear ${finalFullname || username},\n\nWelcome to ICPADS 2025!\n\nYour account has been successfully created.\n\nAccount Details:\n- Username: ${username}\n- Email: ${email}\n\n🎉 Next Steps:\nYou can now complete your conference registration and payment. Please log in to your account to get started.\n\nIf you have any questions, please feel free to contact the organizing committee.`;
+      
+      await emailService.sendEmail({ to: email, subject, html, text });
+      console.log('✅ Welcome email sent to:', email);
+    } catch (emailError) {
+      console.warn('⚠️ Failed to send welcome email:', emailError.message);
+      // 邮件发送失败不影响注册成功
+    }
+
     // Return success response (don't auto-login, require explicit login)
     res.status(201).json({
       success: true,

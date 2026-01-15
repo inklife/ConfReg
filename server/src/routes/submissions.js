@@ -11,6 +11,7 @@ const { apiResponse } = require('../utils/response');
 const { pdfDownloadLimiter, memoryMonitor } = require('../middleware/pdfProtection');
 const asyncPDFManager = require('../services/asyncPdfManager');
 const pdfNotificationService = require('../services/pdfNotificationService');
+const emailService = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -117,6 +118,13 @@ router.post('/submit', requireAuth, upload.fields([
       name, 
       phone = '', 
       affiliation = '', 
+      ieee_member_id = '',
+      middle_initial = '',
+      address = '',
+      city = '',
+      state_province = '',
+      country = '',
+      postal_code = '',
       paper_type,
       paper_id = '', 
       paper_pages = '', 
@@ -241,6 +249,13 @@ router.post('/submit', requireAuth, upload.fields([
       submission.email = email;
       submission.phone = phone;
       submission.affiliation = affiliation;
+      submission.ieee_member_id = ieee_member_id;
+      submission.middle_initial = middle_initial;
+      submission.address = address;
+      submission.city = city;
+      submission.state_province = state_province;
+      submission.country = country;
+      submission.postal_code = postal_code;
       submission.paper_type = paper_type;
       submission.paper_id = paper_id;
       submission.paper_pages = paper_pages ? parseInt(paper_pages) : 0;
@@ -277,6 +292,46 @@ router.post('/submit', requireAuth, upload.fields([
       submission.submission_time = new Date(); // 更新提交时间
       await submission.save();
       
+      // 发送注册提交确认邮件（编辑模式，尽力而为）
+      try {
+        const hasProof = !!submission.proof;
+        const hasScreenshot = !!submission.screenshot;
+        
+        const subject = 'ICPADS 2025 - Registration Updated and Under Review';
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <head><meta charset="utf-8"></head>
+            <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
+              <p>Dear ${name},</p>
+              <p>We have received your <strong>updated</strong> conference registration submission for ICPADS 2025.</p>
+              <p>
+                Registration Details:<br/>
+                - Registration ID: <strong>#${submission.id}</strong><br/>
+                - Registration Type: <strong>${productCode}</strong><br/>
+                - Total Amount: <strong>${totalAmountUSD ? `$${totalAmountUSD} USD` : `¥${totalAmountRMB} RMB`}</strong>
+              </p>
+              <p style="background-color:#fef3c7; border-left:4px solid #d97706; padding:12px; margin:16px 0;">
+                <strong style="color:#92400e;">📋 Submission Status</strong><br/>
+                <span style="color:#374151; font-size:14px;">Your updated registration is currently under review by our team.</span>
+              </p>
+              <p>
+                <strong>Documents Submitted:</strong><br/>
+                ${hasScreenshot ? '✅ Payment proof uploaded' : '❌ Payment proof not uploaded'}<br/>
+                ${hasProof ? '✅ Verification document (PDF) uploaded' : 'ℹ️ No verification document uploaded'}
+              </p>
+              <p>You will receive a notification email once the review is complete.</p>
+              <p style="color:#6b7280; font-size:12px;">This email was sent automatically. Please do not reply.</p>
+            </body>
+          </html>`;
+        const text = `Dear ${name},\n\nWe have received your updated conference registration submission for ICPADS 2025.\n\nRegistration ID: #${submission.id}\nRegistration Type: ${productCode}\nTotal Amount: ${totalAmountUSD ? `$${totalAmountUSD} USD` : `¥${totalAmountRMB} RMB`}\n\n📋 Your updated registration is under review.\n\nDocuments Submitted:\n${hasScreenshot ? '✅ Payment proof uploaded' : '❌ Payment proof not uploaded'}\n${hasProof ? '✅ Verification document uploaded' : 'ℹ️ No verification document uploaded'}\n\nYou will receive a notification once the review is complete.`;
+        
+        await emailService.sendEmail({ to: email, subject, html, text });
+        console.log('✅ Registration update confirmation email sent to:', email);
+      } catch (emailError) {
+        console.warn('⚠️ Failed to send registration update confirmation email:', emailError.message);
+      }
+      
       const receiptNumber = generateReceiptNumber(submission.id);
       console.log('Update successful, returning response with receiptNumber:', receiptNumber);
       return apiResponse(res, true, { id: receiptNumber }, 'Update success');
@@ -288,6 +343,13 @@ router.post('/submit', requireAuth, upload.fields([
         email,
         phone,
         affiliation,
+        ieee_member_id,
+        middle_initial,
+        address,
+        city,
+        state_province,
+        country,
+        postal_code,
         paper_type,
         paper_id,
         paper_pages: paper_pages ? parseInt(paper_pages) : 0,
@@ -305,6 +367,46 @@ router.post('/submit', requireAuth, upload.fields([
         status: 'pending',
         submission_time: new Date()
       });
+      
+      // 发送注册提交确认邮件（新提交，尽力而为）
+      try {
+        const hasProof = !!proof;
+        const hasScreenshot = !!screenshot;
+        
+        const subject = 'ICPADS 2025 - Registration Received and Under Review';
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <head><meta charset="utf-8"></head>
+            <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
+              <p>Dear ${name},</p>
+              <p>Thank you for submitting your conference registration for <strong>ICPADS 2025</strong>.</p>
+              <p>
+                Registration Details:<br/>
+                - Registration ID: <strong>#${submission.id}</strong><br/>
+                - Registration Type: <strong>${productCode}</strong><br/>
+                - Total Amount: <strong>${totalAmountUSD ? `$${totalAmountUSD} USD` : `¥${totalAmountRMB} RMB`}</strong>
+              </p>
+              <p style="background-color:#f0f9ff; border-left:4px solid #3b82f6; padding:12px; margin:16px 0;">
+                <strong style="color:#1e40af;">📋 Submission Status</strong><br/>
+                <span style="color:#374151; font-size:14px;">Your registration is currently under review by our team. We will notify you once the review is complete.</span>
+              </p>
+              <p>
+                <strong>Documents Submitted:</strong><br/>
+                ${hasScreenshot ? '✅ Payment proof uploaded' : '❌ Payment proof not uploaded'}<br/>
+                ${hasProof ? '✅ Verification document (PDF) uploaded' : 'ℹ️ No verification document uploaded'}
+              </p>
+              <p>If you have any questions, please feel free to contact the organizing committee.</p>
+              <p style="color:#6b7280; font-size:12px;">This email was sent automatically. Please do not reply.</p>
+            </body>
+          </html>`;
+        const text = `Dear ${name},\n\nThank you for submitting your conference registration for ICPADS 2025.\n\nRegistration ID: #${submission.id}\nRegistration Type: ${productCode}\nTotal Amount: ${totalAmountUSD ? `$${totalAmountUSD} USD` : `¥${totalAmountRMB} RMB`}\n\n📋 Your registration is under review.\n\nDocuments Submitted:\n${hasScreenshot ? '✅ Payment proof uploaded' : '❌ Payment proof not uploaded'}\n${hasProof ? '✅ Verification document uploaded' : 'ℹ️ No verification document uploaded'}\n\nWe will notify you once the review is complete.`;
+        
+        await emailService.sendEmail({ to: email, subject, html, text });
+        console.log('✅ Registration submission confirmation email sent to:', email);
+      } catch (emailError) {
+        console.warn('⚠️ Failed to send registration submission confirmation email:', emailError.message);
+      }
       
       const receiptNumber = generateReceiptNumber(submission.id);
       console.log('Create successful, returning response with receiptNumber:', receiptNumber);
@@ -359,6 +461,13 @@ router.get('/user-registrations', requireAuth, async (req, res) => {
           email: submission.email,
           phone: submission.phone,
           affiliation: submission.affiliation,
+          ieee_member_id: submission.ieee_member_id,
+          middle_initial: submission.middle_initial,
+          address: submission.address,
+          city: submission.city,
+          state_province: submission.state_province,
+          country: submission.country,
+          postal_code: submission.postal_code,
           paper_type: submission.paper_type,
           paper_id: submission.paper_id,
           paper_pages: submission.paper_pages,
@@ -440,6 +549,13 @@ router.get('/check-registration', requireAuth, async (req, res) => {
             email: latestSubmission.email,
             phone: latestSubmission.phone,
             affiliation: latestSubmission.affiliation,
+            ieee_member_id: latestSubmission.ieee_member_id,
+            middle_initial: latestSubmission.middle_initial,
+            address: latestSubmission.address,
+            city: latestSubmission.city,
+            state_province: latestSubmission.state_province,
+            country: latestSubmission.country,
+            postal_code: latestSubmission.postal_code,
             paper_type: latestSubmission.paper_type,
             paper_id: latestSubmission.paper_id,
             paper_pages: latestSubmission.paper_pages,
@@ -473,6 +589,13 @@ router.get('/check-registration', requireAuth, async (req, res) => {
             email: latestSubmission.email,
             phone: latestSubmission.phone,
             affiliation: latestSubmission.affiliation,
+            ieee_member_id: latestSubmission.ieee_member_id,
+            middle_initial: latestSubmission.middle_initial,
+            address: latestSubmission.address,
+            city: latestSubmission.city,
+            state_province: latestSubmission.state_province,
+            country: latestSubmission.country,
+            postal_code: latestSubmission.postal_code,
             paper_type: latestSubmission.paper_type,
             paper_id: latestSubmission.paper_id,
             paper_pages: latestSubmission.paper_pages,
@@ -1349,7 +1472,13 @@ router.get('/registration/:id', requireAuth, async (req, res) => {
         email: registration.email,
         phone: registration.phone,
         affiliation: registration.affiliation,
+        ieee_member_id: registration.ieee_member_id,
+        middle_initial: registration.middle_initial,
+        address: registration.address,
+        city: registration.city,
+        state_province: registration.state_province,
         country: registration.country,
+        postal_code: registration.postal_code,
         product_code: registration.product_code,
         product_price: registration.product_price,
         product_price_rmb: registration.product_price_rmb,

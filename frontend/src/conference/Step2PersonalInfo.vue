@@ -33,10 +33,10 @@
           :label-width="labelWidth"
           class="user-form"
         >
-          <el-form-item label="First Name" prop="firstName" required>
+          <el-form-item label="IEEE Member ID" prop="ieeeMemberId" required>
             <el-input 
-              v-model="userInfo.firstName" 
-              placeholder="Enter your first name"
+              v-model="userInfo.ieeeMemberId" 
+              placeholder="Enter your IEEE Member ID (or N/A if not a member)"
               size="large"
             ></el-input>
           </el-form-item>
@@ -45,6 +45,22 @@
             <el-input 
               v-model="userInfo.lastName" 
               placeholder="Enter your last name"
+              size="large"
+            ></el-input>
+          </el-form-item>
+
+          <el-form-item label="First Name" prop="firstName" required>
+            <el-input 
+              v-model="userInfo.firstName" 
+              placeholder="Enter your first name"
+              size="large"
+            ></el-input>
+          </el-form-item>
+
+          <el-form-item label="Middle Initial" prop="middleInitial" required>
+            <el-input 
+              v-model="userInfo.middleInitial" 
+              placeholder="Enter your middle initial (or N/A)"
               size="large"
             ></el-input>
           </el-form-item>
@@ -75,10 +91,50 @@
             ></el-input>
           </el-form-item>
 
-          <el-form-item label="Affiliation" prop="affiliation">
+          <el-form-item label="Affiliation" prop="affiliation" required>
             <el-input 
               v-model="userInfo.affiliation" 
-              placeholder="Enter your organization/university"
+              placeholder="Enter your company/institution affiliation"
+              size="large"
+            ></el-input>
+          </el-form-item>
+
+          <el-form-item label="Address" prop="address" required>
+            <el-input 
+              v-model="userInfo.address" 
+              placeholder="Enter your address"
+              size="large"
+            ></el-input>
+          </el-form-item>
+
+          <el-form-item label="City" prop="city" required>
+            <el-input 
+              v-model="userInfo.city" 
+              placeholder="Enter your city"
+              size="large"
+            ></el-input>
+          </el-form-item>
+
+          <el-form-item label="State/Province" prop="stateProvince" required>
+            <el-input 
+              v-model="userInfo.stateProvince" 
+              placeholder="Enter your state or province"
+              size="large"
+            ></el-input>
+          </el-form-item>
+
+          <el-form-item label="Country" prop="country" required>
+            <el-input 
+              v-model="userInfo.country" 
+              placeholder="Enter your country"
+              size="large"
+            ></el-input>
+          </el-form-item>
+
+          <el-form-item label="Postal Code" prop="postalCode" required>
+            <el-input 
+              v-model="userInfo.postalCode" 
+              placeholder="Enter your postal code"
               size="large"
             ></el-input>
           </el-form-item>
@@ -154,12 +210,19 @@ export default {
   data() {
     return {
       userInfo: {
+        ieeeMemberId: '',
         firstName: '',
         lastName: '',
+        middleInitial: '',
         name: '', // 自动计算的 full name
         email: '',
         phone: '',
         affiliation: '',
+        address: '',
+        city: '',
+        stateProvince: '',
+        country: '',
+        postalCode: '',
         paperType: 'research', // 默认为 research paper
         paperId: '',
         paperPages: ''
@@ -169,14 +232,38 @@ export default {
       labelWidth: '120px',
       registrationCategory: null, // 保存注册类型
       rules: {
+        ieeeMemberId: [
+          { required: true, message: 'Please enter your IEEE Member ID (or N/A if not a member)', trigger: 'blur' }
+        ],
         firstName: [
           { required: true, message: 'Please enter your first name', trigger: 'blur' }
         ],
         lastName: [
           { required: true, message: 'Please enter your last name', trigger: 'blur' }
         ],
+        middleInitial: [
+          { required: true, message: 'Please enter your middle initial (or N/A)', trigger: 'blur' }
+        ],
         phone: [
           { required: true, message: 'Please enter your phone number', trigger: 'blur' }
+        ],
+        affiliation: [
+          { required: true, message: 'Please enter your company/institution affiliation', trigger: 'blur' }
+        ],
+        address: [
+          { required: true, message: 'Please enter your address', trigger: 'blur' }
+        ],
+        city: [
+          { required: true, message: 'Please enter your city', trigger: 'blur' }
+        ],
+        stateProvince: [
+          { required: true, message: 'Please enter your state or province', trigger: 'blur' }
+        ],
+        country: [
+          { required: true, message: 'Please enter your country', trigger: 'blur' }
+        ],
+        postalCode: [
+          { required: true, message: 'Please enter your postal code', trigger: 'blur' }
         ],
         paperType: [
           { required: true, message: 'Please select paper type', trigger: 'change' }
@@ -211,11 +298,19 @@ export default {
   },
   computed: {
     canProceed() {
-      // 检查必填字段：firstName, lastName, email, phone, paperType
-      return this.userInfo.firstName.trim() && 
+      // 检查必填字段
+      return this.userInfo.ieeeMemberId.trim() && 
+             this.userInfo.firstName.trim() && 
              this.userInfo.lastName.trim() && 
+             this.userInfo.middleInitial.trim() &&
              this.userInfo.email.trim() && 
              this.userInfo.phone.trim() &&
+             this.userInfo.affiliation.trim() &&
+             this.userInfo.address.trim() &&
+             this.userInfo.city.trim() &&
+             this.userInfo.stateProvince.trim() &&
+             this.userInfo.country.trim() &&
+             this.userInfo.postalCode.trim() &&
              this.userInfo.paperType;
     },
     // 自动计算 full name
@@ -372,12 +467,19 @@ export default {
           // 从 full name 拆分为 firstName 和 lastName
           const nameParts = (regData.name || '').trim().split(' ');
           const userInfo = {
+            ieeeMemberId: regData.ieee_member_id || '',
             firstName: nameParts[0] || '',
             lastName: nameParts.slice(1).join(' ') || '',
+            middleInitial: regData.middle_initial || '',
             name: regData.name,
             email: regData.email,
             phone: regData.phone,
             affiliation: regData.affiliation,
+            address: regData.address || '',
+            city: regData.city || '',
+            stateProvince: regData.state_province || '',
+            country: regData.country || '',
+            postalCode: regData.postal_code || '',
             paperType: regData.paper_type || 'research',
             paperId: regData.paper_id,
             paperPages: regData.paper_pages
@@ -514,12 +616,19 @@ export default {
 
     clearUserInfo() {
       this.userInfo = {
+        ieeeMemberId: '',
         firstName: '',
         lastName: '',
+        middleInitial: '',
         name: '',
         email: '',
         phone: '',
         affiliation: '',
+        address: '',
+        city: '',
+        stateProvince: '',
+        country: '',
+        postalCode: '',
         paperType: 'research',
         paperId: '',
         paperPages: ''
