@@ -249,8 +249,8 @@
                       
                       <div class="detail-group">
                         <h5>Transfer Reference</h5>
-                        <p><strong>Format:</strong> <code>Name+ICPADS 2025+Banquet</code></p>
-                        <p class="reference-example">Example: JohnDoe+ICPADS 2025+Banquet</p>
+                        <p><strong>Format:</strong> <code>Name+{{ conferenceName }}+Banquet</code></p>
+                        <p class="reference-example">Example: JohnDoe+{{ conferenceName }}+Banquet</p>
                       </div>
                     </div>
                     <div class="payment-note">
@@ -271,8 +271,8 @@
                       
                       <div class="detail-group">
                         <h5>转账附言</h5>
-                        <p><strong>格式：</strong> <code>姓名+ICPADS 2025+晚宴</code></p>
-                        <p class="reference-example">示例：张三+ICPADS 2025+晚宴</p>
+                        <p><strong>格式：</strong> <code>姓名+{{ conferenceName }}+晚宴</code></p>
+                        <p class="reference-example">示例：张三+{{ conferenceName }}+晚宴</p>
                       </div>
                     </div>
                     <div class="payment-note">
@@ -461,6 +461,7 @@
 
 <script>
 import { sseService } from '../../_services/sse.service.js';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'MealVoucherManagement',
@@ -506,6 +507,7 @@ export default {
     };
   },
   computed: {
+    ...mapGetters('config', ['conferenceName', 'conferenceNameShort']),
     canPurchase() {
       // 简化逻辑，实际应该检查用户是否有有效的注册
       return true;
@@ -899,7 +901,7 @@ export default {
         taskId,
         type: 'meal-voucher',
         downloadKey,
-        filename: `ICPADS2025_MealVoucher_${voucher.id}.pdf`,
+        filename: `${this.conferenceNameShort.replace(/\s+/g, '')}_MealVoucher_${voucher.id}.pdf`,
         context: this,
         onSuccess: (taskId) => {
           this.$message.success('Ticket downloaded successfully!');

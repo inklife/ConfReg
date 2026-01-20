@@ -245,6 +245,7 @@
 <script>
 import { userService } from '../../_services';
 import { sseService } from '../../_services/sse.service.js';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'RegistrationManagement',
@@ -261,6 +262,9 @@ export default {
         message: ''
       }
     };
+  },
+  computed: {
+    ...mapGetters('config', ['conferenceNameShort'])
   },
   async mounted() {
     await this.loadAnnouncement();
@@ -713,7 +717,7 @@ export default {
         taskId,
         type: 'receipt',
         downloadKey,
-        filename: `ICPADS2025_Receipt_${registration.id}.pdf`,
+        filename: `${this.conferenceNameShort.replace(/\s+/g, '')}_Receipt_${registration.id}.pdf`,
         context: this,
         onSuccess: (taskId) => {
           this.$message.success('Receipt downloaded successfully!');

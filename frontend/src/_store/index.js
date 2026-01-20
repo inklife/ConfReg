@@ -4,6 +4,7 @@ import { alert } from './alert.module';
 import { account } from './account.module';
 import { tasks } from './tasks.module';
 import { sse } from './sse.module';
+import { config } from './config.module';
 
 Vue.use(Vuex);
 export const store = new Vuex.Store({
@@ -12,5 +13,6 @@ export const store = new Vuex.Store({
         account,
         tasks,
         sse,
+        config,
     }
 });

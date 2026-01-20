@@ -11,12 +11,17 @@ const adminTokens = require('../utils/cache/adminTokensCache');
 const passwordResetCache = require('../utils/cache/passwordResetCache');
 const simulateLoginCache = require('../utils/cache/simulateLoginCache');
 const { validateUsername, generateUsernameSuggestions } = require('../utils/usernameValidator');
+const { emailConfig } = require('../config/email');
 const { 
   passwordResetLimiter, 
   captchaLimiter, 
   loginLimiter, 
   forgotPasswordLimiter 
 } = require('../middleware/rateLimiter');
+
+// 会议名称（从配置中读取）
+const CONFERENCE_NAME = emailConfig.conference.name;
+const CONFERENCE_NAME_SHORT = emailConfig.conference.nameShort;
 
 const router = express.Router();
 
@@ -764,14 +769,14 @@ router.post('/register', [
 
     // 6. 发送注册成功欢迎邮件（尽力而为，不影响注册流程）
     try {
-      const subject = 'Welcome to ICPADS 2025 - Account Created Successfully';
+      const subject = `Welcome to ${CONFERENCE_NAME} - Account Created Successfully`;
       const html = `
         <!DOCTYPE html>
         <html>
           <head><meta charset="utf-8"></head>
           <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
             <p>Dear ${finalFullname || username},</p>
-            <p>Welcome to <strong>ICPADS 2025</strong>!</p>
+            <p>Welcome to <strong>${CONFERENCE_NAME}</strong>!</p>
             <p>Your account has been successfully created.</p>
             <p>
               Account Details:<br/>
@@ -786,7 +791,7 @@ router.post('/register', [
             <p style="color:#6b7280; font-size:12px;">This email was sent automatically. Please do not reply.</p>
           </body>
         </html>`;
-      const text = `Dear ${finalFullname || username},\n\nWelcome to ICPADS 2025!\n\nYour account has been successfully created.\n\nAccount Details:\n- Username: ${username}\n- Email: ${email}\n\n🎉 Next Steps:\nYou can now complete your conference registration and payment. Please log in to your account to get started.\n\nIf you have any questions, please feel free to contact the organizing committee.`;
+      const text = `Dear ${finalFullname || username},\n\nWelcome to ${CONFERENCE_NAME}!\n\nYour account has been successfully created.\n\nAccount Details:\n- Username: ${username}\n- Email: ${email}\n\n🎉 Next Steps:\nYou can now complete your conference registration and payment. Please log in to your account to get started.\n\nIf you have any questions, please feel free to contact the organizing committee.`;
       
       await emailService.sendEmail({ to: email, subject, html, text });
       console.log('✅ Welcome email sent to:', email);

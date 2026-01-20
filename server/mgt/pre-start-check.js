@@ -9,7 +9,7 @@ const { ensureChromiumReady } = require('../src/utils/cross-platform-chromium');
 
 async function main() {
     try {
-        console.log('🚀 ICPADS 2025 Backend 启动前检查...\n');
+        console.log('🚀 Backend 启动前检查...\n');
         
         // 确保 SQLite3 准备就绪
         await ensureSQLite3Ready();

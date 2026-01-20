@@ -329,6 +329,7 @@
 <script>
 import { userService } from '../_services';
 import { sseService } from '../_services/sse.service.js';
+import { mapGetters } from 'vuex';
 import ProfileManagement from './components/ProfileManagement.vue';
 import RegistrationManagement from './components/RegistrationManagement.vue';
 import MealVoucherManagement from './components/MealVoucherManagement.vue';
@@ -386,6 +387,7 @@ export default {
     };
   },
   computed: {
+    ...mapGetters('config', ['conferenceNameShort']),
     currentComponent() {
       const componentMap = {
         'profile': 'ProfileManagement',
@@ -1043,7 +1045,7 @@ export default {
         taskId,
         type: 'receipt',
         downloadKey,
-        filename: 'ICPADS2025_Receipt.pdf',
+        filename: `${this.conferenceNameShort.replace(/\s+/g, '')}_Receipt.pdf`,
         context: this,
         onSuccess: (taskId) => {
           // 下载成功后先标记任务为已下载
@@ -1201,7 +1203,7 @@ export default {
       
       // 设置文件名
       const contentDisposition = response.headers['content-disposition'];
-      let filename = 'ICPADS2025_Receipt.pdf';
+      let filename = `${this.conferenceNameShort.replace(/\s+/g, '')}_Receipt.pdf`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="(.+)"/);
         if (filenameMatch) {

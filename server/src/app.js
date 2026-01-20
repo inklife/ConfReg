@@ -233,6 +233,10 @@ app.use((req, res) => {
 const { globalMemoryMonitor } = require('./middleware/pdfProtection');
 console.log('🧠 内存监控系统已启动');
 
+// 启动审核通知定时任务（每天北京时间9点发送）
+const reviewNotificationScheduler = require('./services/reviewNotificationScheduler');
+reviewNotificationScheduler.startScheduler();
+
 // 启动定期内存监控（每5分钟报告一次）
 globalMemoryMonitor.startPeriodicMonitoring(5 * 60 * 1000);
 

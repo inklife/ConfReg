@@ -324,6 +324,7 @@
 import { userService } from '../../_services';
 import { sseService } from '../../_services/sse.service.js';
 import globalSSEManager from '../../_services/globalSSEManager.js';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'DocumentManagement',
@@ -375,6 +376,7 @@ export default {
     };
   },
   computed: {
+    ...mapGetters('config', ['conferenceNameShort']),
     hasPendingTasks() {
       return Object.keys(this.allPendingTasks).length > 0;
     },
@@ -2144,13 +2146,14 @@ export default {
     
     getDocumentFileName(type) {
       const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const prefix = this.conferenceNameShort.replace(/\s+/g, '');
       const fileNames = {
-        'confirmation': `ICPADS2025_Confirmation_Letter_${timestamp}.pdf`,
-        'receipt': `ICPADS2025_Payment_Receipt_${timestamp}.pdf`,
-        'registration': `ICPADS2025_Registration_Information_${timestamp}.pdf`,
-        'certificate': `ICPADS2025_Attendance_Certificate_${timestamp}.pdf`
+        'confirmation': `${prefix}_Confirmation_Letter_${timestamp}.pdf`,
+        'receipt': `${prefix}_Payment_Receipt_${timestamp}.pdf`,
+        'registration': `${prefix}_Registration_Information_${timestamp}.pdf`,
+        'certificate': `${prefix}_Attendance_Certificate_${timestamp}.pdf`
       };
-      return fileNames[type] || `ICPADS2025_Document_${timestamp}.pdf`;
+      return fileNames[type] || `${prefix}_Document_${timestamp}.pdf`;
     },
     
     getDocumentTypeName(type) {

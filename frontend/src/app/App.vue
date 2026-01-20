@@ -4,7 +4,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary py-3">
       <div class="container-fluid px-4">
         <span class="navbar-brand fs-3">
-          <i class="fas fa-lock me-2"></i>ICPADS2025 Registration
+          <i class="fas fa-lock me-2"></i>{{ conferenceNameShort }} Registration
         </span>
         
         <!-- 未登录时显示登录/注册按钮 -->
@@ -41,7 +41,7 @@
       <div class="container-fluid text-center px-4">
                            <p class="mb-2">
                         <a href="http://ieee-icpads.org.cn/" target="_blank">
-                            <i class="fas fa-book me-2"></i>ICPADS2025 homepage
+                            <i class="fas fa-book me-2"></i>{{ conferenceNameShort }} homepage
                         </a>
                     </p>
                     <p class="mb-0">
@@ -55,6 +55,7 @@
 <script>
 import axios from 'axios';
 import config from 'config';
+import { mapGetters } from 'vuex';
 import { clearAllUserData } from '../_helpers/router';
 axios.defaults.withCredentials = true;
 
@@ -68,6 +69,7 @@ export default {
     }
   },
   computed: {
+    ...mapGetters('config', ['conferenceName', 'conferenceNameShort']),
     displayUsername() {
       if (!this.currentUser) return '';
       

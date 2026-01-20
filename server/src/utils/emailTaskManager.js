@@ -6,6 +6,11 @@
 const fs = require('fs');
 const path = require('path');
 const emailService = require('./emailService');
+const { emailConfig } = require('../config/email');
+
+// 会议名称（从配置中读取）
+const CONFERENCE_NAME = emailConfig.conference.name;
+const CONFERENCE_NAME_SHORT = emailConfig.conference.nameShort;
 
 // 任务文件存储路径
 const TASKS_FILE_PATH = path.join(__dirname, '../../database/email_tasks.json');
@@ -459,7 +464,7 @@ class EmailTaskManager {
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 40px; border-radius: 8px 8px 0 0;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">ICPADS 2025</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">${CONFERENCE_NAME}</h1>
               <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">The 25th IEEE International Conference on Parallel and Distributed Systems</p>
             </td>
           </tr>
@@ -477,7 +482,7 @@ class EmailTaskManager {
           <tr>
             <td style="padding: 30px 40px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; border-top: 1px solid #eee;">
               <p style="margin: 0; color: #888; font-size: 12px; text-align: center;">
-                This email was sent from ICPADS 2025 Registration System.<br>
+                This email was sent from ${CONFERENCE_NAME} Registration System.<br>
                 If you have any questions, please contact us.
               </p>
             </td>

@@ -2565,16 +2565,12 @@ class SubmissionManager extends BaseComponent {
                 if (modal) modal.remove();
                 
                 // 显示成功提示
-                console.log('准备显示批准成功提示...');
                 this.showMessage('批准成功', 'success');
-                console.log('已调用 showMessage');
                 
-                // 如果邮件发送成功，额外提示
-                if (data.email && data.email.success) {
-                    setTimeout(() => {
-                        this.showMessage('已向用户发送审核通过邮件', 'success');
-                    }, 1500);
-                }
+                // 提示邮件将定时发送
+                setTimeout(() => {
+                    this.showMessage('通知邮件将在每天北京时间9点统一发送', 'info');
+                }, 1500);
                 
                 // 重新加载列表
                 this.loadSubmissions();
@@ -2611,16 +2607,12 @@ class SubmissionManager extends BaseComponent {
                 if (modal) modal.remove();
                 
                 // 显示成功提示
-                console.log('准备显示拒绝成功提示...');
                 this.showMessage('拒绝成功', 'success');
-                console.log('已调用 showMessage');
                 
-                // 如果邮件发送成功，额外提示
-                if (data.email && data.email.success) {
-                    setTimeout(() => {
-                        this.showMessage('已向用户发送拒绝原因邮件', 'success');
-                    }, 1500);
-                }
+                // 提示邮件将定时发送
+                setTimeout(() => {
+                    this.showMessage('通知邮件将在每天北京时间9点统一发送', 'info');
+                }, 1500);
                 
                 // 重新加载列表
                 this.loadSubmissions();

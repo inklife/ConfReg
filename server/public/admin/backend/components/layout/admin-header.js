@@ -246,7 +246,7 @@ class AdminHeader extends BaseComponent {
         const titleSection = document.createElement('div');
         const title = document.createElement('h1');
         title.className = 'header-title';
-        title.textContent = 'ICPADS 2025 注册管理系统';
+        title.textContent = '注册管理系统';
 
         titleSection.appendChild(title);
         

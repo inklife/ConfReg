@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICPADS 2025 Confirmation Letter</title>
+    <title>{{conferenceName}} Confirmation Letter</title>
     <style>
         * {
             margin: 0;
@@ -307,7 +307,7 @@
     <div class="letter-container">
         <div class="letterhead">
             <h1>CONFIRMATION LETTER</h1>
-            <p class="conference-name">ICPADS 2025</p>
+            <p class="conference-name">{{conferenceName}}</p>
             <p class="subtitle">International Conference on Parallel and Distributed Systems</p>
         </div>
         
@@ -324,7 +324,7 @@
                 <div class="main-text">
                     This is to confirm that <span class="participant-name">{{participantName}}</span> 
                     has successfully registered for the International Conference on Parallel and 
-                    Distributed Systems (ICPADS 2025), which will be held from December 17-19, 2025.
+                    Distributed Systems ({{conferenceName}}), which will be held from December 17-19, 2025.
                 </div>
                 
                 <div class="registration-details">
@@ -362,7 +362,7 @@
                 </div>
                 
                 <div class="main-text">
-                    We look forward to welcoming {{participantName}} to ICPADS 2025 and to their 
+                    We look forward to welcoming {{participantName}} to {{conferenceName}} and to their 
                     contribution to the advancement of parallel and distributed systems research.
                 </div>
             </div>
@@ -375,12 +375,12 @@
                         <div class="signature-block">
                             <div class="signature-line"></div>
                             <div class="signature-title">Conference Chair</div>
-                            <div class="signature-name">ICPADS 2025 Organizing Committee</div>
+                            <div class="signature-name">{{conferenceName}} Organizing Committee</div>
                         </div>
                         <div class="signature-block">
                             <div class="signature-line"></div>
                             <div class="signature-title">Registration Committee</div>
-                            <div class="signature-name">ICPADS 2025</div>
+                            <div class="signature-name">{{conferenceName}}</div>
                         </div>
                     </div>
                 </div>

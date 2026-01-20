@@ -8,6 +8,11 @@ const crypto = require('crypto');
 // 导入现有的工具函数
 const { getChromiumExecutablePath } = require('../utils/cross-platform-chromium');
 
+// 读取会议配置
+const { emailConfig } = require('../config/email');
+const CONFERENCE_NAME = emailConfig.conference.name;
+const CONFERENCE_NAME_SHORT = emailConfig.conference.nameShort;
+
 // 获取北京时间(UTC+8)的工具函数
 function getBeijingTime() {
   const now = new Date();
@@ -76,11 +81,18 @@ async function renderTemplate(templateName, data) {
     const templatePath = path.join(__dirname, '../templates', `${templateName}.html`);
     let template = await fs.readFile(templatePath, 'utf8');
     
-    if (templateName === 'registration-info' && data.reviewDate) {
+    // 自动添加会议名称到所有模板数据
+    const enrichedData = {
+      ...data,
+      conferenceName: CONFERENCE_NAME,
+      conferenceNameShort: CONFERENCE_NAME_SHORT
+    };
+    
+    if (templateName === 'registration-info' && enrichedData.reviewDate) {
       const reviewTimelineItem = `
                     <div class="timeline-item">
-                        <div class="timeline-date">${data.reviewDate}</div>
-                        <div class="timeline-event">Registration reviewed and ${data.registrationStatus}</div>
+                        <div class="timeline-date">${enrichedData.reviewDate}</div>
+                        <div class="timeline-event">Registration reviewed and ${enrichedData.registrationStatus}</div>
                     </div>`;
       template = template.replace('{{REVIEW_TIMELINE_ITEM}}', reviewTimelineItem);
     } else {
@@ -89,11 +101,11 @@ async function renderTemplate(templateName, data) {
     
     // Handle payment instructions section for receipt template
     if (templateName === 'receipt') {
-      if (data.paymentInstructions) {
+      if (enrichedData.paymentInstructions) {
         const paymentInstructionsSection = `
                 <!-- Payment Instructions -->
                 <div style="margin-top: 15px; padding: 10px 12px; background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 4px;">
-                    <div style="font-size: 0.85rem; color: #555; line-height: 1.5; white-space: pre-line;">${data.paymentInstructions}</div>
+                    <div style="font-size: 0.85rem; color: #555; line-height: 1.5; white-space: pre-line;">${enrichedData.paymentInstructions}</div>
                 </div>`;
         template = template.replace('{{PAYMENT_INSTRUCTIONS_SECTION}}', paymentInstructionsSection);
       } else {
@@ -101,7 +113,7 @@ async function renderTemplate(templateName, data) {
       }
     }
     
-    for (const [key, value] of Object.entries(data)) {
+    for (const [key, value] of Object.entries(enrichedData)) {
       const regex = new RegExp(`{{${key}}}`, 'g');
       template = template.replace(regex, value || '');
     }
@@ -368,7 +380,7 @@ async function generateReceiptPDF(submission, customOptions = {}) {
 
     const templateData = {
       // Event Information
-      eventTitle: 'ICPADS 2025 - International Conference on Parallel and Distributed Systems',
+      eventTitle: `${CONFERENCE_NAME} - International Conference on Parallel and Distributed Systems`,
       eventLocation: 'Hefei, China',
       eventDates: 'December 14-18, 2025',
       confirmationNumber: receiptNumber,

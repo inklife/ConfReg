@@ -80,6 +80,14 @@ Vue.use(GlobalSSEManagerPlugin);
 //Vue.component(Button.name, Button);
 //Vue.component(Select.name, Select);
 //Vue.use(Form);
+
+// 在应用启动时加载全局配置（会议名称等）
+store.dispatch('config/fetchConfig').then(() => {
+  console.log('✅ Global config loaded');
+}).catch(err => {
+  console.warn('⚠️ Failed to load global config, using defaults:', err);
+});
+
 new Vue({
     el: '#app',
     router,

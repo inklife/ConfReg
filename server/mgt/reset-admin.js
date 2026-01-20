@@ -263,7 +263,7 @@ async function resetAdminUser() {
  * 主函数
  */
 async function main() {
-  console.log('🔧 ICPADS 2025 Admin用户重置工具');
+  console.log('🔧 Admin用户重置工具');
   console.log('=====================================\n');
   
   try {

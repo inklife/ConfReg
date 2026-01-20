@@ -5,6 +5,10 @@
  * 注意：环境变量已在 app.js 中加载，这里直接使用 process.env
  */
 
+// 会议名称配置（从环境变量读取）
+const CONFERENCE_NAME = process.env.CONFREG_CONFERENCE_NAME || 'ICPADS 2025';
+const CONFERENCE_NAME_SHORT = process.env.CONFREG_CONFERENCE_NAME_SHORT || 'ICPADS2025';
+
 const emailConfig = {
   // 阿里云企业邮箱SMTP配置
   smtp: {
@@ -22,7 +26,7 @@ const emailConfig = {
   
   // 默认发件人信息
   from: {
-    name: process.env.CONFREG_EMAIL_FROM_NAME || 'ICPADS 2025',
+    name: process.env.CONFREG_EMAIL_FROM_NAME || CONFERENCE_NAME,
     address: process.env.CONFREG_EMAIL_FROM_ADDRESS || process.env.CONFREG_EMAIL_USER
   },
   
@@ -30,19 +34,25 @@ const emailConfig = {
   templates: {
     // 邮箱验证模板
     verification: {
-      subject: 'ICPADS 2025 - 邮箱验证',
+      subject: `${CONFERENCE_NAME} - 邮箱验证`,
       template: 'verification'
     },
     // 密码重置模板
     passwordReset: {
-      subject: 'ICPADS 2025 - 密码重置',
+      subject: `${CONFERENCE_NAME} - 密码重置`,
       template: 'password-reset'
     },
     // 注册确认模板
     registrationConfirm: {
-      subject: 'ICPADS 2025 - 注册确认',
+      subject: `${CONFERENCE_NAME} - 注册确认`,
       template: 'registration-confirm'
     }
+  },
+  
+  // 会议名称配置
+  conference: {
+    name: CONFERENCE_NAME,
+    nameShort: CONFERENCE_NAME_SHORT
   },
   
   // 验证码配置
@@ -76,7 +86,7 @@ const validateEmailConfig = () => {
     console.warn('   - CONFREG_EMAIL_USER=your-email@yourdomain.com');
     console.warn('   - CONFREG_EMAIL_PASSWORD=your-email-password');
     console.warn('   - CONFREG_EMAIL_FROM_ADDRESS=your-email@yourdomain.com');
-    console.warn('   - CONFREG_EMAIL_FROM_NAME=ICPADS 2025');
+    console.warn(`   - CONFREG_EMAIL_FROM_NAME=${CONFERENCE_NAME}`);
   }
   
   return errors.length === 0;

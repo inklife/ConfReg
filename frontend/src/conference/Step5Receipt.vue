@@ -422,6 +422,7 @@
 
 <script>
 import { sseService } from '../_services/sse.service.js';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'Step5Receipt',
@@ -451,6 +452,7 @@ export default {
     }
   },
   computed: {
+    ...mapGetters('config', ['conferenceName', 'conferenceNameShort']),
     selectedProduct() {
       // 首先尝试从后端数据获取
       if (this.backendRegistrationData && this.backendRegistrationData.registration_data) {
@@ -1058,11 +1060,11 @@ export default {
       // 与后端相同的算法生成收据号
       const crypto = require('crypto-js');
       const hash = crypto.MD5(submissionId.toString()).toString().toUpperCase().slice(0, 6);
-      return `ICPADS-${hash}`;
+      return `${this.conferenceNameShort.replace(/\s+/g, '')}-${hash}`;
     },
 
     generateRegistrationId() {
-      const prefix = 'ICPADS2025';
+      const prefix = this.conferenceNameShort.replace(/\s+/g, '');
       const timestamp = Date.now().toString().slice(-6);
       const random = Math.random().toString(36).substring(2, 5).toUpperCase();
       return `${prefix}-${timestamp}${random}`;
@@ -1459,7 +1461,7 @@ export default {
         taskId,
         type: 'receipt',
         downloadKey,
-        filename: `ICPADS2025_Receipt_${this.registrationId}.pdf`,
+        filename: `${this.conferenceNameShort.replace(/\s+/g, '')}_Receipt_${this.registrationId}.pdf`,
         context: this,
         onSuccess: (taskId) => {
           // 下载成功后先标记任务为已下载

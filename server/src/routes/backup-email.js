@@ -11,6 +11,11 @@ const { body, validationResult } = require('express-validator');
 const emailService = require('../utils/emailService');
 const crypto = require('crypto');
 const backupEmailCache = require('../utils/cache/backupEmailCache');
+const { emailConfig } = require('../config/email');
+
+// 会议名称（从配置中读取）
+const CONFERENCE_NAME = emailConfig.conference.name;
+const CONFERENCE_NAME_SHORT = emailConfig.conference.nameShort;
 
 const router = express.Router();
 
@@ -157,11 +162,11 @@ router.post('/add-backup-email', requireAuth, [
         <body>
           <div class="email-container">
             <div class="header">
-              <h2>ICPADS 2025 - Backup Email Verification</h2>
+              <h2>${CONFERENCE_NAME} - Backup Email Verification</h2>
             </div>
             <div class="content">
               <p>Dear ${user.fullname || user.username},</p>
-              <p>You are adding a backup email to your ICPADS 2025 account.</p>
+              <p>You are adding a backup email to your ${CONFERENCE_NAME} account.</p>
               
               <h3>Method 1: Use Verification Code (Primary Method)</h3>
               <p>Enter this verification code in the system:</p>
@@ -185,7 +190,7 @@ router.post('/add-backup-email', requireAuth, [
             </div>
             <div class="footer">
               <p>This email was sent automatically. Please do not reply.</p>
-              <p>© 2025 ICPADS Conference</p>
+              <p>© ${CONFERENCE_NAME}</p>
             </div>
           </div>
         </body>
@@ -193,11 +198,11 @@ router.post('/add-backup-email', requireAuth, [
       `;
 
       const emailText = `
-ICPADS 2025 - Backup Email Verification
+${CONFERENCE_NAME} - Backup Email Verification
 
 Dear ${user.fullname || user.username},
 
-You are adding a backup email to your ICPADS 2025 account.
+You are adding a backup email to your ${CONFERENCE_NAME} account.
 
 Method 1: Use Verification Code (Primary Method)
 Enter this verification code: ${verificationCode}
@@ -215,12 +220,12 @@ After verification, your backup email can be used for:
 - Note: Backup email cannot be used for login
 
 This email was sent automatically. Please do not reply.
-© 2025 ICPADS Conference
+© ${CONFERENCE_NAME}
       `;
 
       await emailService.sendEmail({
         to: backupEmail,
-        subject: 'ICPADS 2025 - Backup Email Verification',
+        subject: `${CONFERENCE_NAME} - Backup Email Verification`,
         html: emailHtml,
         text: emailText
       });
@@ -573,7 +578,7 @@ router.post('/resend-backup-verification', requireAuth, async (req, res) => {
         <body>
           <div class="email-container">
             <div class="header">
-              <h2>ICPADS 2025 - Backup Email Verification (Resent)</h2>
+              <h2>${CONFERENCE_NAME} - Backup Email Verification (Resent)</h2>
             </div>
             <div class="content">
               <p>Dear ${user.fullname || user.username},</p>
@@ -594,7 +599,7 @@ router.post('/resend-backup-verification', requireAuth, async (req, res) => {
             </div>
             <div class="footer">
               <p>This email was sent automatically. Please do not reply.</p>
-              <p>© 2025 ICPADS Conference</p>
+              <p>© ${CONFERENCE_NAME}</p>
             </div>
           </div>
         </body>
@@ -602,7 +607,7 @@ router.post('/resend-backup-verification', requireAuth, async (req, res) => {
       `;
 
       const emailText = `
-ICPADS 2025 - Backup Email Verification (Resent)
+${CONFERENCE_NAME} - Backup Email Verification (Resent)
 
 Dear ${user.fullname || user.username},
 
@@ -619,12 +624,12 @@ This verification code will expire in 15 minutes.
 If you did not request to add a backup email, please ignore this email.
 
 This email was sent automatically. Please do not reply.
-© 2025 ICPADS Conference
+© ${CONFERENCE_NAME}
       `;
 
       await emailService.sendEmail({
         to: user.backup_email,
-        subject: 'ICPADS 2025 - Backup Email Verification (Resent)',
+        subject: `${CONFERENCE_NAME} - Backup Email Verification (Resent)`,
         html: emailHtml,
         text: emailText
       });

@@ -115,12 +115,12 @@
             </div>
             
             <div class="info-section">
-              <p><strong>Reference:</strong> Name+ICPADS 2025+PaperID</p>
+              <p><strong>Reference:</strong> Name+{{ conferenceName }}+PaperID</p>
             </div>
           </div>
           <div class="reference-box">
             <div class="ref-title">Transfer reference</div>
-            <div class="ref-format">Format: <code>Name+ICPADS 2025+PaperID</code></div>
+            <div class="ref-format">Format: <code>Name+{{ conferenceName }}+PaperID</code></div>
             <div class="ref-copy">
               <el-input :value="transferReferenceFilled" readonly size="small" class="ref-input"></el-input>
               <el-button size="small" @click="copyReference(transferReferenceFilled)"><i class="el-icon-document-copy"></i> Copy</el-button>
@@ -143,11 +143,11 @@
             <p><strong>账户名称：</strong>合肥博研会议会务服务有限公司</p>
             <p><strong>开户行：</strong>中国邮政储蓄银行股份有限公司安徽自贸试验区合肥片区支行</p>
             <p><strong>账户号码：</strong>934012013000728814</p>
-            <p><strong>转账附言：</strong> Name+ICPADS 2025+PaperID</p>
+            <p><strong>转账附言：</strong> Name+{{ conferenceName }}+PaperID</p>
           </div>
           <div class="reference-box cn">
             <div class="ref-title">转账附言</div>
-            <div class="ref-format">格式：<code>Name+ICPADS 2025+PaperID</code></div>
+            <div class="ref-format">格式：<code>Name+{{ conferenceName }}+PaperID</code></div>
             <div class="ref-copy">
               <el-input :value="transferReferenceFilled" readonly size="small" class="ref-input"></el-input>
               <el-button size="small" @click="copyReference(transferReferenceFilled)"><i class="el-icon-document-copy"></i> 复制</el-button>
@@ -228,6 +228,8 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
+
 export default {
   name: 'Step3Payment',
   props: {
@@ -265,6 +267,7 @@ export default {
     }
   },
   computed: {
+    ...mapGetters('config', ['conferenceName']),
     selectedProduct() {
       if (!this.currentUserId) return null;
       const saved = localStorage.getItem(this.getStorageKey('conferenceProductSelection'));
@@ -363,7 +366,7 @@ export default {
     transferReferenceFilled() {
       const name = (this.userInfo && this.userInfo.name) ? this.userInfo.name : 'Name';
       const pid = (this.userInfo && this.userInfo.paperId) ? this.userInfo.paperId : 'PaperID';
-      return `${name}+ICPADS 2025+${pid}`;
+      return `${name}+${this.conferenceName}+${pid}`;
     }
   },
   async mounted() {

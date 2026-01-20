@@ -122,7 +122,7 @@
     <div class="important-notes">
       <h4>Important Notes</h4>
       <ul>
-        <li>To be published in the IEEE ICPADS 2025 Proceedings and to be eligible for publication in IEEE Xplore, at least one author of an accepted paper is required to register for the conference at the <strong>FULL (member or non-member) rate</strong>.</li>
+        <li>To be published in the IEEE {{ conferenceName }} Proceedings and to be eligible for publication in IEEE Xplore, at least one author of an accepted paper is required to register for the conference at the <strong>FULL (member or non-member) rate</strong>.</li>
         <li>Please note that <strong>ONE Full Registration must be paid for EACH paper</strong> to be published in the proceedings.</li>
       </ul>
     </div>
@@ -205,6 +205,8 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
+
 export default {
   name: 'Step1ProductSelection',
   props: {
@@ -237,6 +239,7 @@ export default {
     }
   },
   computed: {
+    ...mapGetters('config', ['conferenceName']),
     fullRegistrationProducts() {
       return this.products.slice(0, 2); // First 2 products are Full Registration
     },

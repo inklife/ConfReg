@@ -289,7 +289,7 @@ router.put('/request/:id/status', requireAdmin, async (req, res) => {
       
       if (userEmail && status === 'completed') {
         // 发送完成通知邮件
-        const subject = 'ICPADS 2025 - Invoice Ready for Download';
+        const subject = `${CONFERENCE_NAME} - Invoice Ready for Download`;
         const html = `
           <!DOCTYPE html>
           <html>
@@ -317,7 +317,7 @@ router.put('/request/:id/status', requireAdmin, async (req, res) => {
       } else if (userEmail && status === 'rejected') {
         // 发送拒绝通知邮件
         const reason = (adminNotes || '').trim();
-        const subject = 'ICPADS 2025 - Invoice Request Rejected';
+        const subject = `${CONFERENCE_NAME} - Invoice Request Rejected`;
         const html = `
           <!DOCTYPE html>
           <html>
@@ -463,7 +463,7 @@ router.post('/request/:id/red-ink', requireAdmin, async (req, res) => {
       const reason = (adminNotes || '原发票作废，需重新开具').trim();
       
       if (userEmail) {
-        const subject = 'ICPADS 2025 - Invoice Has Been Red-Inked (Voided)';
+        const subject = `${CONFERENCE_NAME} - Invoice Has Been Red-Inked (Voided)`;
         const html = `
           <!DOCTYPE html>
           <html>

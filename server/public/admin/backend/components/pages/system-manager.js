@@ -1296,7 +1296,7 @@ class SystemManager extends BaseComponent {
                 
                 // 从响应头获取文件名或使用默认名称
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-                a.download = `icpads2025_backup_${timestamp}.sqlite`;
+                a.download = `backup_${timestamp}.sqlite`;
                 
                 document.body.appendChild(a);
                 a.click();

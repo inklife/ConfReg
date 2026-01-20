@@ -6,12 +6,17 @@ const { v4: uuidv4 } = require('uuid');
 const { body, validationResult } = require('express-validator');
 const { RegistrationSubmission, User, RefundRequest } = require('../models');
 const { requireAuth } = require('../middleware/auth');
+const { emailConfig } = require('../config/email');
 // 移除同步PDF生成，全部使用异步系统
 const { apiResponse } = require('../utils/response');
 const { pdfDownloadLimiter, memoryMonitor } = require('../middleware/pdfProtection');
 const asyncPDFManager = require('../services/asyncPdfManager');
 const pdfNotificationService = require('../services/pdfNotificationService');
 const emailService = require('../utils/emailService');
+
+// 会议名称（从配置中读取）
+const CONFERENCE_NAME = emailConfig.conference.name;
+const CONFERENCE_NAME_SHORT = emailConfig.conference.nameShort;
 
 const router = express.Router();
 
@@ -297,14 +302,14 @@ router.post('/submit', requireAuth, upload.fields([
         const hasProof = !!submission.proof;
         const hasScreenshot = !!submission.screenshot;
         
-        const subject = 'ICPADS 2025 - Registration Updated and Under Review';
+        const subject = `${CONFERENCE_NAME} - Registration Updated and Under Review`;
         const html = `
           <!DOCTYPE html>
           <html>
             <head><meta charset="utf-8"></head>
             <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
               <p>Dear ${name},</p>
-              <p>We have received your <strong>updated</strong> conference registration submission for ICPADS 2025.</p>
+              <p>We have received your <strong>updated</strong> conference registration submission for ${CONFERENCE_NAME}.</p>
               <p>
                 Registration Details:<br/>
                 - Registration ID: <strong>#${submission.id}</strong><br/>
@@ -324,7 +329,7 @@ router.post('/submit', requireAuth, upload.fields([
               <p style="color:#6b7280; font-size:12px;">This email was sent automatically. Please do not reply.</p>
             </body>
           </html>`;
-        const text = `Dear ${name},\n\nWe have received your updated conference registration submission for ICPADS 2025.\n\nRegistration ID: #${submission.id}\nRegistration Type: ${productCode}\nTotal Amount: ${totalAmountUSD ? `$${totalAmountUSD} USD` : `¥${totalAmountRMB} RMB`}\n\n📋 Your updated registration is under review.\n\nDocuments Submitted:\n${hasScreenshot ? '✅ Payment proof uploaded' : '❌ Payment proof not uploaded'}\n${hasProof ? '✅ Verification document uploaded' : 'ℹ️ No verification document uploaded'}\n\nYou will receive a notification once the review is complete.`;
+        const text = `Dear ${name},\n\nWe have received your updated conference registration submission for ${CONFERENCE_NAME}.\n\nRegistration ID: #${submission.id}\nRegistration Type: ${productCode}\nTotal Amount: ${totalAmountUSD ? `$${totalAmountUSD} USD` : `¥${totalAmountRMB} RMB`}\n\n📋 Your updated registration is under review.\n\nDocuments Submitted:\n${hasScreenshot ? '✅ Payment proof uploaded' : '❌ Payment proof not uploaded'}\n${hasProof ? '✅ Verification document uploaded' : 'ℹ️ No verification document uploaded'}\n\nYou will receive a notification once the review is complete.`;
         
         await emailService.sendEmail({ to: email, subject, html, text });
         console.log('✅ Registration update confirmation email sent to:', email);
@@ -373,14 +378,14 @@ router.post('/submit', requireAuth, upload.fields([
         const hasProof = !!proof;
         const hasScreenshot = !!screenshot;
         
-        const subject = 'ICPADS 2025 - Registration Received and Under Review';
+        const subject = `${CONFERENCE_NAME} - Registration Received and Under Review`;
         const html = `
           <!DOCTYPE html>
           <html>
             <head><meta charset="utf-8"></head>
             <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
               <p>Dear ${name},</p>
-              <p>Thank you for submitting your conference registration for <strong>ICPADS 2025</strong>.</p>
+              <p>Thank you for submitting your conference registration for <strong>${CONFERENCE_NAME}</strong>.</p>
               <p>
                 Registration Details:<br/>
                 - Registration ID: <strong>#${submission.id}</strong><br/>
@@ -400,7 +405,7 @@ router.post('/submit', requireAuth, upload.fields([
               <p style="color:#6b7280; font-size:12px;">This email was sent automatically. Please do not reply.</p>
             </body>
           </html>`;
-        const text = `Dear ${name},\n\nThank you for submitting your conference registration for ICPADS 2025.\n\nRegistration ID: #${submission.id}\nRegistration Type: ${productCode}\nTotal Amount: ${totalAmountUSD ? `$${totalAmountUSD} USD` : `¥${totalAmountRMB} RMB`}\n\n📋 Your registration is under review.\n\nDocuments Submitted:\n${hasScreenshot ? '✅ Payment proof uploaded' : '❌ Payment proof not uploaded'}\n${hasProof ? '✅ Verification document uploaded' : 'ℹ️ No verification document uploaded'}\n\nWe will notify you once the review is complete.`;
+        const text = `Dear ${name},\n\nThank you for submitting your conference registration for ${CONFERENCE_NAME}.\n\nRegistration ID: #${submission.id}\nRegistration Type: ${productCode}\nTotal Amount: ${totalAmountUSD ? `$${totalAmountUSD} USD` : `¥${totalAmountRMB} RMB`}\n\n📋 Your registration is under review.\n\nDocuments Submitted:\n${hasScreenshot ? '✅ Payment proof uploaded' : '❌ Payment proof not uploaded'}\n${hasProof ? '✅ Verification document uploaded' : 'ℹ️ No verification document uploaded'}\n\nWe will notify you once the review is complete.`;
         
         await emailService.sendEmail({ to: email, subject, html, text });
         console.log('✅ Registration submission confirmation email sent to:', email);
@@ -834,16 +839,16 @@ router.get('/download_pdf/:taskId', requireAuth, async (req, res) => {
     let filename;
     switch (task.type) {
       case 'receipt':
-        filename = `ICPADS2025_Receipt_${task.submissionId}.pdf`;
+        filename = `${CONFERENCE_NAME_SHORT}_Receipt_${task.submissionId}.pdf`;
         break;
       case 'confirmation-letter':
-        filename = `ICPADS2025_Confirmation_${task.submissionId}.pdf`;
+        filename = `${CONFERENCE_NAME_SHORT}_Confirmation_${task.submissionId}.pdf`;
         break;
       case 'registration-info':
-        filename = `ICPADS2025_Registration_${task.submissionId}.pdf`;
+        filename = `${CONFERENCE_NAME_SHORT}_Registration_${task.submissionId}.pdf`;
         break;
       default:
-        filename = `ICPADS2025_Document_${task.submissionId}.pdf`;
+        filename = `${CONFERENCE_NAME_SHORT}_Document_${task.submissionId}.pdf`;
     }
 
     // 发送PDF文件

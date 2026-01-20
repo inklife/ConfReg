@@ -12,9 +12,14 @@ const emailService = require('../utils/emailService');
 const User = require('../models/User');
 const { RefundRequest } = require('../models');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { emailConfig } = require('../config/email');
 // 移除pdfService引用，使用简化的状态检查
 const asyncPDFManager = require('../services/asyncPdfManager');
 const { sequelize } = require('../config/database');
+
+// 会议名称（从配置中读取）
+const CONFERENCE_NAME = emailConfig.conference.name;
+const CONFERENCE_NAME_SHORT = emailConfig.conference.nameShort;
 
 // 导入模拟登录缓存
 const simulateLoginCache = require('../utils/cache/simulateLoginCache');
@@ -541,50 +546,13 @@ router.post('/submissions/:id/approve', requireAdmin, async (req, res) => {
 
     await submission.save();
 
-    // 发送审核通过邮件（尽力而为，不影响主流程）
-    let emailResult = { success: false };
-    try {
-      const userName = submission.name || 'Attendee';
-      const subject = 'ICPADS 2025 - Registration Approved';
-      const html = `
-        <!DOCTYPE html>
-        <html>
-          <head><meta charset="utf-8"></head>
-          <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
-            <p>Dear ${userName},</p>
-            <p>Your ICPADS 2025 registration has been <strong style=\"color:#16a34a;\">approved</strong>.</p>
-            <p>
-              Registration Info:<br/>
-              - Product: <strong>${submission.product_code || 'N/A'}</strong><br/>
-              - Paper ID: <strong>${submission.paper_id || 'N/A'}</strong>
-            </p>
-            <p>Thank you for your registration. We look forward to seeing you at the conference.</p>
-            <p style="background-color:#f0f9ff; border-left:4px solid #3b82f6; padding:12px; margin:16px 0;">
-              <strong style="color:#1e40af;">📄 Invoice Application</strong><br/>
-              <span style="color:#374151; font-size:14px;">You can now apply for an invoice through your user dashboard.</span>
-            </p>
-            <p style=\"color:#6b7280; font-size:12px;\">This email was sent automatically. Please do not reply.</p>
-          </body>
-        </html>`;
-      const text = `Dear ${userName},\n\nYour ICPADS 2025 registration has been approved.\n\nProduct: ${submission.product_code || 'N/A'}\nPaper ID: ${submission.paper_id || 'N/A'}\n\n📄 Invoice Application:\nYou can now apply for an invoice through your user dashboard.\n\nThank you.`;
-
-      await emailService.sendEmail({
-        to: submission.email,
-        subject,
-        html,
-        text
-      });
-      emailResult = { success: true };
-    } catch (e) {
-      console.warn('Send approval email failed:', e?.message || e);
-      emailResult = { success: false, error: e?.message || 'send email failed' };
-    }
+    // 邮件将由定时任务在每天北京时间9点统一发送
+    // 这样可以给管理员留出反应时间，避免手误操作
 
     res.json({
       success: true,
-      message: 'Submission approved successfully',
-      data: submission,
-      email: emailResult
+      message: 'Submission approved successfully. Email notification will be sent at 9:00 AM Beijing time.',
+      data: submission
     });
 
   } catch (error) {
@@ -617,43 +585,13 @@ router.post('/submissions/:id/reject', requireAdmin, async (req, res) => {
 
     await submission.save();
 
-    // 发送拒绝邮件（包含原因，尽力而为，不影响主流程）
-    let emailResult = { success: false };
-    try {
-      const userName = submission.name || 'Attendee';
-      const reason = (notes || submission.review_notes || '').trim();
-      const subject = 'ICPADS 2025 - Registration Rejected';
-      const html = `
-        <!DOCTYPE html>
-        <html>
-          <head><meta charset="utf-8"></head>
-          <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
-            <p>Dear ${userName},</p>
-            <p>We regret to inform you that your ICPADS 2025 registration has been <strong style=\"color:#dc2626;\">rejected</strong>.</p>
-            ${reason ? `<p><strong>Reason:</strong> ${reason.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` : ''}
-            <p>You may contact the organizing committee for further assistance.</p>
-            <p style=\"color:#6b7280; font-size:12px;\">This email was sent automatically. Please do not reply.</p>
-          </body>
-        </html>`;
-      const text = `Dear ${userName},\n\nYour ICPADS 2025 registration has been rejected.${reason ? `\nReason: ${reason}` : ''}`;
-
-      await emailService.sendEmail({
-        to: submission.email,
-        subject,
-        html,
-        text
-      });
-      emailResult = { success: true };
-    } catch (e) {
-      console.warn('Send rejection email failed:', e?.message || e);
-      emailResult = { success: false, error: e?.message || 'send email failed' };
-    }
+    // 邮件将由定时任务在每天北京时间9点统一发送
+    // 这样可以给管理员留出反应时间，避免手误操作
 
     res.json({
       success: true,
-      message: 'Submission rejected successfully',
-      data: submission,
-      email: emailResult
+      message: 'Submission rejected successfully. Email notification will be sent at 9:00 AM Beijing time.',
+      data: submission
     });
 
   } catch (error) {
@@ -1880,7 +1818,7 @@ router.get('/backup/export', requireAdmin, async (req, res) => {
     // 创建备份文件名（带时间戳）
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const backupDir = path.join(path.dirname(dbPath), 'backups');
-    const backupFileName = `icpads2025_backup_${timestamp}.sqlite`;
+    const backupFileName = `${CONFERENCE_NAME_SHORT.toLowerCase()}_backup_${timestamp}.sqlite`;
     const backupPath = path.join(backupDir, backupFileName);
 
     // 确保备份目录存在
@@ -2148,7 +2086,7 @@ router.post('/import/database', requireAdmin, upload.single('file'), async (req,
     
     // 1. 备份当前数据库
     const backupDir = path.join(path.dirname(dbPath), 'backups');
-    const backupFileName = `icpads2025_before_import_${timestamp}.sqlite`;
+    const backupFileName = `${CONFERENCE_NAME_SHORT.toLowerCase()}_before_import_${timestamp}.sqlite`;
     const backupPath = path.join(backupDir, backupFileName);
 
     // 确保备份目录存在

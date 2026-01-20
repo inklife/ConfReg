@@ -8,6 +8,11 @@ const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const emailService = require('../utils/emailService');
 const emailVerificationCache = require('../utils/cache/emailVerificationCache');
+const { emailConfig } = require('../config/email');
+
+// 会议名称（从配置中读取）
+const CONFERENCE_NAME = emailConfig.conference.name;
+const CONFERENCE_NAME_SHORT = emailConfig.conference.nameShort;
 
 const router = express.Router();
 
@@ -328,7 +333,7 @@ router.post('/test',
 
       const { 
         to, 
-        subject = 'ICPADS 2025 邮件服务测试', 
+        subject = `${CONFERENCE_NAME} 邮件服务测试`, 
         message = '这是一封测试邮件，用于验证邮件服务配置是否正确。' 
       } = req.body;
 
@@ -341,7 +346,7 @@ router.post('/test',
       // 发送测试邮件
       const html = `
         <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-          <h2 style="color: #007bff;">ICPADS 2025 邮件服务测试</h2>
+          <h2 style="color: #007bff;">${CONFERENCE_NAME} 邮件服务测试</h2>
           <p>${message}</p>
           <p><strong>发送时间:</strong> ${new Date().toLocaleString('zh-CN')}</p>
           <p style="color: #666; font-size: 12px;">此邮件由系统自动发送，请勿回复。</p>

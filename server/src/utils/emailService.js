@@ -1,11 +1,15 @@
 /**
- * ICPADS 2025 邮件服务工具类
+ * 会议注册系统邮件服务工具类
  * 提供邮件发送、验证码生成等功能
  */
 
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const { emailConfig, validateEmailConfig } = require('../config/email');
+
+// 会议名称（从配置中读取）
+const CONFERENCE_NAME = emailConfig.conference.name;
+const CONFERENCE_NAME_SHORT = emailConfig.conference.nameShort;
 
 class EmailService {
   constructor() {
@@ -120,7 +124,7 @@ class EmailService {
    * @returns {Object} 发送结果
    */
   async sendRegistrationVerificationEmail(email, userName, verificationCode) {
-    const subject = 'ICPADS 2025 - Email Verification for Registration';
+    const subject = `${CONFERENCE_NAME} - Email Verification for Registration`;
     const html = this.generateRegistrationVerificationEmailHTML(verificationCode, userName);
     const text = this.generateRegistrationVerificationEmailText(verificationCode, userName);
     
@@ -155,22 +159,22 @@ class EmailService {
     
     switch (type) {
       case 'username-update':
-        subject = 'ICPADS 2025 - Username Update Verification';
+        subject = `${CONFERENCE_NAME} - Username Update Verification`;
         html = this.generateUsernameUpdateVerificationHTML(verificationCode, userName);
         text = this.generateUsernameUpdateVerificationText(verificationCode, userName);
         break;
       case 'password-reset':
-        subject = 'ICPADS 2025 - Password Reset Verification';
+        subject = `${CONFERENCE_NAME} - Password Reset Verification`;
         html = this.generateVerificationEmailHTML(verificationCode, userName);
         text = this.generateVerificationEmailText(verificationCode, userName);
         break;
       case 'backup-email':
-        subject = 'ICPADS 2025 - Backup Email Verification';
+        subject = `${CONFERENCE_NAME} - Backup Email Verification`;
         html = this.generateVerificationEmailHTML(verificationCode, userName);
         text = this.generateVerificationEmailText(verificationCode, userName);
         break;
       default:
-        subject = 'ICPADS 2025 - Email Verification';
+        subject = `${CONFERENCE_NAME} - Email Verification`;
         html = this.generateVerificationEmailHTML(verificationCode, userName);
         text = this.generateVerificationEmailText(verificationCode, userName);
     }
@@ -202,7 +206,7 @@ class EmailService {
    * @returns {Object} 发送结果
    */
   async sendPasswordResetEmail(email, userName, resetCode, resetLink) {
-    const subject = 'ICPADS 2025 - Password Reset';
+    const subject = `${CONFERENCE_NAME} - Password Reset`;
     const html = this.generatePasswordResetEmailHTML(userName, resetCode, resetLink);
     const text = this.generatePasswordResetEmailText(userName, resetCode, resetLink);
     
@@ -254,11 +258,11 @@ class EmailService {
       <body>
         <div class="email-container">
           <div class="header">
-            <h2>ICPADS 2025 - Registration Email Verification</h2>
+            <h2>${CONFERENCE_NAME} - Registration Email Verification</h2>
           </div>
           <div class="content">
             <p>Dear ${userName || 'User'},</p>
-            <p>Thank you for joining ICPADS 2025! To complete your registration, please verify your email address using the verification code below:</p>
+            <p>Thank you for joining ${CONFERENCE_NAME}! To complete your registration, please verify your email address using the verification code below:</p>
             
             <div class="verification-code">${code}</div>
             
@@ -285,11 +289,11 @@ class EmailService {
             
             <p>After verification, you'll be able to create your account and access all conference features.</p>
             
-            <p>Best regards,<br>ICPADS 2025 Conference Team</p>
+            <p>Best regards,<br>${CONFERENCE_NAME} Conference Team</p>
           </div>
           <div class="footer">
             <p>This email was sent automatically. Please do not reply.</p>
-            <p>© 2025 ICPADS Conference</p>
+            <p>© ${CONFERENCE_NAME}</p>
           </div>
         </div>
       </body>
@@ -302,11 +306,11 @@ class EmailService {
    */
   generateRegistrationVerificationEmailText(code, userName) {
     return `
-ICPADS 2025 - Registration Email Verification
+${CONFERENCE_NAME} - Registration Email Verification
 
 Dear ${userName || 'User'},
 
-Thank you for joining ICPADS 2025! To complete your registration, please verify your email address using the verification code below:
+Thank you for joining ${CONFERENCE_NAME}! To complete your registration, please verify your email address using the verification code below:
 
 VERIFICATION CODE: ${code}
 
@@ -329,10 +333,10 @@ Why email verification is required:
 After verification, you'll be able to create your account and access all conference features.
 
 Best regards,
-ICPADS 2025 Conference Team
+${CONFERENCE_NAME} Conference Team
 
 This email was sent automatically. Please do not reply.
-© 2025 ICPADS Conference
+© ${CONFERENCE_NAME}
     `;
   }
 
@@ -366,7 +370,7 @@ This email was sent automatically. Please do not reply.
       <body>
         <div class="email-container">
           <div class="header">
-            <h2>ICPADS 2025 邮箱验证</h2>
+            <h2>${CONFERENCE_NAME} 邮箱验证</h2>
           </div>
           <div class="content">
             <p>亲爱的 ${userName || '用户'}，</p>
@@ -374,11 +378,11 @@ This email was sent automatically. Please do not reply.
             <div class="verification-code">${code}</div>
             <p><strong>验证码有效期为 ${emailConfig.verification.expiryMinutes} 分钟</strong></p>
             <p>如果您没有申请此验证码，请忽略此邮件。</p>
-            <p>感谢您使用 ICPADS 2025 会议注册系统！</p>
+            <p>感谢您使用 ${CONFERENCE_NAME} 会议注册系统！</p>
           </div>
           <div class="footer">
             <p>此邮件由系统自动发送，请勿回复。</p>
-            <p>© 2025 ICPADS Conference</p>
+            <p>© ${CONFERENCE_NAME}</p>
           </div>
         </div>
       </body>
@@ -391,7 +395,7 @@ This email was sent automatically. Please do not reply.
    */
   generateVerificationEmailText(code, userName) {
     return `
-ICPADS 2025 邮箱验证
+${CONFERENCE_NAME} 邮箱验证
 
 亲爱的 ${userName || '用户'}，
 
@@ -401,10 +405,10 @@ ICPADS 2025 邮箱验证
 
 如果您没有申请此验证码，请忽略此邮件。
 
-感谢您使用 ICPADS 2025 会议注册系统！
+感谢您使用 ${CONFERENCE_NAME} 会议注册系统！
 
 此邮件由系统自动发送，请勿回复。
-© 2025 ICPADS Conference
+© ${CONFERENCE_NAME}
     `;
   }
 
@@ -458,7 +462,7 @@ ICPADS 2025 邮箱验证
       <body>
         <div class="email-container">
           <div class="header">
-            <h2>ICPADS 2025 Password Reset</h2>
+            <h2>${CONFERENCE_NAME} Password Reset</h2>
           </div>
           <div class="content">
             <p>Dear ${userName},</p>
@@ -484,11 +488,11 @@ ICPADS 2025 邮箱验证
             <p class="warning">⚠️ This security code will expire in 30 minutes.</p>
             <p>If you did not request this password reset, please ignore this email and your password will remain unchanged.</p>
             
-            <p>Best regards,<br>ICPADS 2025 Conference Team</p>
+            <p>Best regards,<br>${CONFERENCE_NAME} Conference Team</p>
           </div>
           <div class="footer">
             <p>This email was sent automatically. Please do not reply.</p>
-            <p>© 2025 ICPADS Conference</p>
+            <p>© ${CONFERENCE_NAME}</p>
           </div>
         </div>
       </body>
@@ -501,7 +505,7 @@ ICPADS 2025 邮箱验证
    */
   generatePasswordResetEmailText(userName, resetCode, resetLink) {
     return `
-ICPADS 2025 Password Reset
+${CONFERENCE_NAME} Password Reset
 
 Dear ${userName},
 
@@ -522,10 +526,10 @@ IMPORTANT: This security code will expire in 30 minutes.
 If you did not request this password reset, please ignore this email and your password will remain unchanged.
 
 Best regards,
-ICPADS 2025 Conference Team
+${CONFERENCE_NAME} Conference Team
 
 This email was sent automatically. Please do not reply.
-© 2025 ICPADS Conference
+© ${CONFERENCE_NAME}
     `;
   }
 
@@ -587,11 +591,11 @@ This email was sent automatically. Please do not reply.
       <body>
         <div class="email-container">
           <div class="header">
-            <h2>ICPADS 2025 - Username Update Verification</h2>
+            <h2>${CONFERENCE_NAME} - Username Update Verification</h2>
           </div>
           <div class="content">
             <p>Dear ${userName || 'User'},</p>
-            <p>You have requested to update your username for your ICPADS 2025 account. For security purposes, please verify this action using the verification code below:</p>
+            <p>You have requested to update your username for your ${CONFERENCE_NAME} account. For security purposes, please verify this action using the verification code below:</p>
             
             <div class="verification-code">${code}</div>
             
@@ -604,11 +608,11 @@ This email was sent automatically. Please do not reply.
             <p><strong>This verification code will expire in 15 minutes.</strong></p>
             <p>Please enter this code on the username update page to confirm your change.</p>
             
-            <p>Best regards,<br>ICPADS 2025 Team</p>
+            <p>Best regards,<br>${CONFERENCE_NAME} Team</p>
           </div>
           <div class="footer">
             <p>This email was sent automatically. Please do not reply to this message.</p>
-            <p>© 2025 ICPADS Conference</p>
+            <p>© ${CONFERENCE_NAME}</p>
           </div>
         </div>
       </body>
@@ -621,11 +625,11 @@ This email was sent automatically. Please do not reply.
    */
   generateUsernameUpdateVerificationText(code, userName) {
     return `
-ICPADS 2025 - Username Update Verification
+${CONFERENCE_NAME} - Username Update Verification
 
 Dear ${userName || 'User'},
 
-You have requested to update your username for your ICPADS 2025 account. For security purposes, please verify this action using the verification code below:
+You have requested to update your username for your ${CONFERENCE_NAME} account. For security purposes, please verify this action using the verification code below:
 
 Verification Code: ${code}
 
@@ -637,11 +641,11 @@ This verification code will expire in 15 minutes.
 Please enter this code on the username update page to confirm your change.
 
 Best regards,
-ICPADS 2025 Team
+${CONFERENCE_NAME} Team
 
 ---
 This email was sent automatically. Please do not reply to this message.
-© 2025 ICPADS Conference
+© ${CONFERENCE_NAME}
     `;
   }
 }
