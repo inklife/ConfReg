@@ -1216,7 +1216,7 @@ class StatisticsManager extends BaseComponent {
             }
 
             const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js';
+            script.src = 'https://cdn.jsdmirror.com/npm/chart.js@4.4.0/dist/chart.umd.js';
             script.onload = () => {
                 console.log('Chart.js loaded, version:', window.Chart?.version);
                 resolve();
@@ -1919,7 +1919,7 @@ class StatisticsManager extends BaseComponent {
             }
 
             const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+            script.src = 'https://cdn.jsdmirror.com/npm/jszip@3.10.1/dist/jszip.min.js';
             script.onload = () => {
                 console.log('JSZip loaded successfully');
                 resolve();

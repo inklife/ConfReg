@@ -38,11 +38,14 @@ class BaseComponent extends HTMLElement {
         fontAwesomeLink.crossOrigin = 'anonymous';
         this.shadowRoot.appendChild(fontAwesomeLink);
 
-        // Google Fonts (如果需要)
-        const googleFontsLink = document.createElement('link');
-        googleFontsLink.rel = 'stylesheet';
-        googleFontsLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap';
-        this.shadowRoot.appendChild(googleFontsLink);
+        // Inter Font from jsDelivr @fontsource
+        const interFontWeights = ['300', '400', '500', '600', '700'];
+        interFontWeights.forEach(weight => {
+            const fontLink = document.createElement('link');
+            fontLink.rel = 'stylesheet';
+            fontLink.href = `https://cdn.jsdmirror.com/npm/@fontsource/inter@5.0.0/${weight}.css`;
+            this.shadowRoot.appendChild(fontLink);
+        });
 
         this._externalStylesLoaded = true;
 

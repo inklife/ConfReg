@@ -8,6 +8,7 @@
 // 会议名称配置（从环境变量读取）
 const CONFERENCE_NAME = process.env.CONFREG_CONFERENCE_NAME || 'ICPADS 2025';
 const CONFERENCE_NAME_SHORT = process.env.CONFREG_CONFERENCE_NAME_SHORT || 'ICPADS2025';
+const CONFERENCE_NAME_FULL = process.env.CONFREG_CONFERENCE_NAME_FULL || 'International Conference on Parallel and Distributed Systems';
 
 const emailConfig = {
   // 阿里云企业邮箱SMTP配置
@@ -52,7 +53,8 @@ const emailConfig = {
   // 会议名称配置
   conference: {
     name: CONFERENCE_NAME,
-    nameShort: CONFERENCE_NAME_SHORT
+    nameShort: CONFERENCE_NAME_SHORT,
+    nameFull: CONFERENCE_NAME_FULL
   },
   
   // 验证码配置

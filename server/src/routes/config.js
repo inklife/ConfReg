@@ -100,60 +100,11 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * GET /api/config/:key
- * 获取配置的特定子键
- * 公开访问，无需认证
- * 示例: /api/config/announcement, /api/config/registrationFees
- * 
- * 注意：此路由必须放在 /admin 之前，因为 Express 按定义顺序匹配路由
- * 但 /admin 使用中间件区分，所以实际上 /admin 会被特殊处理
- */
-router.get('/:key', async (req, res) => {
-  try {
-    const { key } = req.params;
-    
-    // 验证 key 的安全性
-    if (!isValidConfigKey(key)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid configuration key: ${key}`,
-        availableKeys: PUBLIC_CONFIG_KEYS
-      });
-    }
-    
-    // 读取配置
-    const enhancedConfig = await getEnhancedConfig();
-    
-    // 获取指定的子配置
-    const subConfig = enhancedConfig[key];
-    
-    if (subConfig === undefined) {
-      return res.status(404).json({
-        success: false,
-        message: `Configuration key not found: ${key}`,
-        availableKeys: PUBLIC_CONFIG_KEYS
-      });
-    }
-    
-    res.json({
-      success: true,
-      key: key,
-      data: subConfig
-    });
-  } catch (error) {
-    console.error(`Error reading config key [${req.params.key}]:`, error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to read configuration',
-      error: error.message
-    });
-  }
-});
-
-/**
  * GET /api/config/admin
  * 获取完整配置（用于管理后台编辑）
  * 需要管理员权限
+ * 
+ * 注意：此路由必须放在 /:key 之前，因为 Express 按定义顺序匹配路由
  */
 router.get('/admin', requireAdmin, async (req, res) => {
   try {
@@ -236,6 +187,57 @@ router.put('/admin', requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update configuration',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/config/:key
+ * 获取配置的特定子键
+ * 公开访问，无需认证
+ * 示例: /api/config/announcement, /api/config/registrationFees
+ * 
+ * 注意：此路由必须放在 /admin 之后，因为 Express 按定义顺序匹配路由
+ * 否则 /admin 会被当作 :key 参数处理
+ */
+router.get('/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+    
+    // 验证 key 的安全性
+    if (!isValidConfigKey(key)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid configuration key: ${key}`,
+        availableKeys: PUBLIC_CONFIG_KEYS
+      });
+    }
+    
+    // 读取配置
+    const enhancedConfig = await getEnhancedConfig();
+    
+    // 获取指定的子配置
+    const subConfig = enhancedConfig[key];
+    
+    if (subConfig === undefined) {
+      return res.status(404).json({
+        success: false,
+        message: `Configuration key not found: ${key}`,
+        availableKeys: PUBLIC_CONFIG_KEYS
+      });
+    }
+    
+    res.json({
+      success: true,
+      key: key,
+      data: subConfig
+    });
+  } catch (error) {
+    console.error(`Error reading config key [${req.params.key}]:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to read configuration',
       error: error.message
     });
   }

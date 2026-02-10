@@ -12,6 +12,7 @@ const { getChromiumExecutablePath } = require('../utils/cross-platform-chromium'
 const { emailConfig } = require('../config/email');
 const CONFERENCE_NAME = emailConfig.conference.name;
 const CONFERENCE_NAME_SHORT = emailConfig.conference.nameShort;
+const CONFERENCE_NAME_FULL = emailConfig.conference.nameFull;
 
 // 获取北京时间(UTC+8)的工具函数
 function getBeijingTime() {
@@ -85,7 +86,8 @@ async function renderTemplate(templateName, data) {
     const enrichedData = {
       ...data,
       conferenceName: CONFERENCE_NAME,
-      conferenceNameShort: CONFERENCE_NAME_SHORT
+      conferenceNameShort: CONFERENCE_NAME_SHORT,
+      conferenceNameFull: CONFERENCE_NAME_FULL
     };
     
     if (templateName === 'registration-info' && enrichedData.reviewDate) {
@@ -380,7 +382,7 @@ async function generateReceiptPDF(submission, customOptions = {}) {
 
     const templateData = {
       // Event Information
-      eventTitle: `${CONFERENCE_NAME} - International Conference on Parallel and Distributed Systems`,
+      eventTitle: `${CONFERENCE_NAME} - ${CONFERENCE_NAME_FULL}`,
       eventLocation: 'Hefei, China',
       eventDates: 'December 14-18, 2025',
       confirmationNumber: receiptNumber,
