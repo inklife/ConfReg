@@ -1,4 +1,8 @@
-# ICPADS 2025 会议注册系统
+# ConfReg — ICPADS 2025 Conference Registration System
+
+> **What is this? / 这是什么？**
+>
+> ConfReg is a full-stack conference registration management system built for [ICPADS 2025](https://ieee-icpads.org/) (IEEE International Conference on Parallel and Distributed Systems). It provides a Vue.js frontend and a Node.js/Express backend with a SQLite database. Attendees can register, submit papers, upload payment proofs, and download PDF receipts, while administrators can review registrations and manage users through a dedicated dashboard.
 
 一个完整的会议注册管理系统，包含前端用户界面和后端API服务。该系统专为学术会议注册设计，支持用户注册、论文提交、付款管理和管理员后台等功能。
 
